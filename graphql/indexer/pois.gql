@@ -1,0 +1,10 @@
+query ProofsOfIndexing($requests: [ProofOfIndexingRequest!]!) {
+  publicProofsOfIndexing(requests: $requests) {
+    deployment
+    block {
+      number
+      hash
+    }
+    proofOfIndexing
+  }
+}

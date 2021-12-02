@@ -1,0 +1,88 @@
+scalar BigInt
+scalar Boolean
+scalar Bytes
+scalar String
+
+type Query {
+  indexingStatuses(subgraphs: [String!]): [SubgraphIndexingStatus!]!
+  publicProofsOfIndexing(
+    requests: [ProofOfIndexingRequest!]!
+  ): [ProofOfIndexingResult!]!
+}
+
+type SubgraphIndexingStatus {
+  subgraph: String!
+  synced: Boolean!
+
+  # Note that the health can be implied from fatalError and nonFatalErrors:
+  # - If fatalError is non-null, then health is 'failed'.
+  # - Else if nonFatalErrors is non-empty, then health is 'unhealthy'.
+  # - Else health is 'healthy'.
+  health: Health!
+
+  "If the subgraph has failed, this is the error caused it"
+  fatalError: SubgraphError
+
+  "Sorted from first to last, limited to first 1000"
+  nonFatalErrors: [SubgraphError!]!
+  chains: [ChainIndexingStatus!]!
+  entityCount: BigInt!
+  node: String
+}
+
+interface ChainIndexingStatus {
+  network: String!
+  chainHeadBlock: Block
+  earliestBlock: Block
+  latestBlock: Block
+  lastHealthyBlock: Block
+}
+
+type EthereumIndexingStatus implements ChainIndexingStatus {
+  network: String!
+  chainHeadBlock: Block
+  earliestBlock: Block
+  latestBlock: Block
+  lastHealthyBlock: Block
+}
+
+type Block {
+  hash: Bytes!
+  number: BigInt!
+}
+
+type SubgraphError {
+  message: String!
+
+  # Context for the error.
+  block: Block
+  handler: String
+
+  # `true` means we have certainty that the error is deterministic.
+  deterministic: Boolean!
+}
+
+enum Health {
+  "Subgraph syncing normally"
+  healthy
+  "Subgraph syncing but with errors"
+  unhealthy
+  "Subgraph halted due to errors"
+  failed
+}
+
+input BlockInput {
+  hash: Bytes!
+  number: BigInt!
+}
+
+input ProofOfIndexingRequest {
+  deployment: String!
+  block: BlockInput!
+}
+
+type ProofOfIndexingResult {
+  deployment: String!
+  block: Block!
+  proofOfIndexing: Bytes
+}

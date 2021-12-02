@@ -1,0 +1,8 @@
+testing:
+  environments:
+    - id: local-graph-node
+      urls:
+        status: http://localhost:8030/graphql
+    - id: local-indexer
+      urls:
+        status: http://localhost:7600
