@@ -29,13 +29,13 @@ graph-ixi --config examples/testing.yml
 ## Implementation Status
 
 - [ ] Mode configuration files
-  - [ ] Testing
+  - [x] Testing
   - [ ] Network
   - [ ] P2P
 - [ ] Cross-checking
   - [ ] Indexing
-    - [ ] Monitor indexing statuses
-    - [ ] Monitor POIs for common blocks
+    - [x] Monitor indexing statuses
+    - [x] Monitor POIs for common blocks
     - [ ] Write POIs to a POI database
     - [ ] Cross-check POIs
     - [ ] Generate detailed report data

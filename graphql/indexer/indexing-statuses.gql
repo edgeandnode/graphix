@@ -1,0 +1,15 @@
+query IndexingStatuses {
+  indexingStatuses {
+    subgraph
+    chains {
+      __typename
+      network
+      ... on EthereumIndexingStatus {
+        latestBlock {
+          number
+          hash
+        }
+      }
+    }
+  }
+}
