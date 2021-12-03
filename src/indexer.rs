@@ -1,6 +1,5 @@
 use anyhow::anyhow;
 use graphql_client::{GraphQLQuery, Response};
-use reqwest::Url;
 use tracing::*;
 
 use crate::config::EnvironmentUrls;
