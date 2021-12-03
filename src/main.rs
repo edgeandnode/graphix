@@ -5,7 +5,7 @@ mod modes;
 mod pois;
 pub mod types;
 
-use std::{path::PathBuf, thread, time::Duration};
+use std::path::PathBuf;
 use structopt::StructOpt;
 use tokio;
 use tracing::*;

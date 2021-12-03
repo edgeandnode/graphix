@@ -1,7 +1,4 @@
-use std::{
-    collections::{hash_map::RandomState, HashMap, HashSet},
-    time::Duration,
-};
+use std::collections::{hash_map::RandomState, HashMap, HashSet};
 
 use eventuals::*;
 use futures::stream::FuturesUnordered;
