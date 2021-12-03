@@ -36,7 +36,8 @@ pub struct P2PIndexerConfig {}
 
 #[derive(Debug, Deserialize)]
 pub struct P2PConfig {
-    pub indexers: Option<Vec<P2PIndexerConfig>>,
+    #[serde(default)]
+    pub indexers: Vec<P2PIndexerConfig>,
 }
 
 #[derive(Debug, Deserialize)]
