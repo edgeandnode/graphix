@@ -25,6 +25,7 @@ pub struct EnvironmentConfig {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TestingConfig {
+    pub database_url: String,
     pub environments: Vec<EnvironmentConfig>,
 }
 

@@ -4,7 +4,7 @@ use tracing::*;
 
 use crate::config::EnvironmentUrls;
 use crate::types::BlockPointer;
-use crate::{config::EnvironmentConfig, pois::ProofOfIndexing};
+use crate::{config::EnvironmentConfig, proofs_of_indexing::ProofOfIndexing};
 
 use super::types::{IndexingStatus, SubgraphDeployment};
 
@@ -40,7 +40,7 @@ impl TryInto<IndexingStatus> for indexing_statuses::IndexingStatusesIndexingStat
             ) => match latest_block {
                 Some(block) => BlockPointer {
                     number: block.number.parse()?,
-                    hash: block.hash.clone(),
+                    hash: block.hash.clone().into(),
                 },
                 None => {
                     return Err(anyhow!("deployment has not started indexing yet"));
@@ -77,7 +77,7 @@ impl Into<proofs_of_indexing::BlockInput> for BlockPointer {
     fn into(self) -> proofs_of_indexing::BlockInput {
         proofs_of_indexing::BlockInput {
             number: self.number.to_string(),
-            hash: self.hash,
+            hash: self.hash.into(),
         }
     }
 }
@@ -91,9 +91,9 @@ impl TryInto<ProofOfIndexing> for proofs_of_indexing::ProofsOfIndexingPublicProo
                 deployment: SubgraphDeployment(self.deployment.clone()),
                 block: BlockPointer {
                     number: self.block.number.parse()?,
-                    hash: self.block.hash,
+                    hash: self.block.hash.into(),
                 },
-                proof_of_indexing,
+                proof_of_indexing: proof_of_indexing.into(),
             }),
             None => Err(anyhow!(
                 "no proof of indexing available for deployment {} at block #{} ({})",

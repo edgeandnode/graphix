@@ -17,7 +17,7 @@ pub fn testing_indexers(config: TestingConfig) -> Eventual<Vec<Indexer>> {
         loop {
             timer.next().await.unwrap();
 
-            info!("Prepare indexers for environments");
+            info!("Refresh indexers");
 
             out.write(
                 config
@@ -43,14 +43,14 @@ fn skip_errors(result: (Result<Indexer, anyhow::Error>, &EnvironmentConfig)) -> 
         Ok(indexer) => {
             let Indexer { id, urls, .. } = &indexer;
             let url = urls.status.to_string();
-            info!(%id, %url, "Successfully prepared indexer for environment");
+            info!(%id, %url, "Successfully refreshed indexer");
 
             Some(indexer)
         }
         Err(error) => {
             let EnvironmentConfig { id, urls } = result.1;
             let url = urls.status.to_string();
-            warn!(%id, %url, %error, "Failed to prepare indexer for environment");
+            warn!(%id, %url, %error, "Failed to refresh indexer");
             None
         }
     }
