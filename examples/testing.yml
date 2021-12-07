@@ -1,4 +1,5 @@
 testing:
+  databaseUrl: postgres://localhost:5432/graph-ixi
   environments:
     - id: local-graph-node
       urls:
