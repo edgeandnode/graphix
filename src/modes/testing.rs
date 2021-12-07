@@ -1,6 +1,7 @@
 use eventuals::*;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::*;
 
@@ -8,7 +9,7 @@ use crate::config::{EnvironmentConfig, TestingConfig};
 use crate::indexer::Indexer;
 
 #[instrument]
-pub fn testing_indexers(config: TestingConfig) -> Eventual<Vec<Indexer>> {
+pub fn testing_indexers(config: TestingConfig) -> Eventual<Vec<Arc<Indexer>>> {
     let (mut out, eventual) = Eventual::new();
 
     tokio::spawn(async move {
@@ -30,6 +31,7 @@ pub fn testing_indexers(config: TestingConfig) -> Eventual<Vec<Indexer>> {
                     .into_iter()
                     .zip(config.environments.iter())
                     .filter_map(skip_errors)
+                    .map(Arc::new)
                     .collect(),
             );
         }

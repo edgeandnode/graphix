@@ -7,7 +7,7 @@ use crate::{
     types::{Bytes32, SubgraphDeployment},
 };
 
-use super::{IndexerWithProofsOfIndexing, ProofOfIndexing};
+use super::ProofOfIndexing;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct POISummary {
@@ -34,24 +34,31 @@ impl From<(&Indexer, &ProofOfIndexing)> for POISummary {
 pub struct POICrossCheckReport {}
 
 pub fn cross_checking(
-    pois: Eventual<Vec<IndexerWithProofsOfIndexing>>,
+    pois: Eventual<Vec<ProofOfIndexing>>,
 ) -> (
     impl Stream<Item = POISummary>,
     Eventual<Vec<POICrossCheckReport>>,
 ) {
     let (mut poi_sender, poi_receiver) = channel(1000);
 
-    let reports = pois.subscribe().map(move |indexers| {
-        // NOTE: This is just for testing POI writes.
-        for indexer in indexers {
-            for poi in indexer.proofs_of_indexing {
-                if let Err(error) = poi_sender.try_send((&indexer.indexer.indexer, &poi).into()) {
-                    warn!(%error, "Failed to forward POI")
-                }
-            }
-        }
+    let reports = pois.subscribe().map(move |pois| {
+        // Build a flat, unique list of all deployments we have POIs for
+        let mut deployments = pois.iter().map(|poi| &poi.deployment).collect::<Vec<_>>();
+        deployments.sort();
+        deployments.dedup();
 
-        // TODO: Fill this with real cross-checking logic.
+        // Build a map of deployments to Indexers/POIs
+        let pois_by_deployment = deployments.iter().map(|deployment| {
+            (
+                deployment,
+                pois.iter()
+                    .filter(|poi| poi.deployment.eq(deployment))
+                    .collect::<Vec<_>>(),
+            )
+        });
+
+        // TODO: Add cross-checking logic here.
+
         future::ready(vec![])
     });
 

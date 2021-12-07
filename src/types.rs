@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::{fmt, ops::Deref};
+use std::{fmt, ops::Deref, sync::Arc};
+
+use crate::indexer::Indexer;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize)]
 pub struct BlockPointer {
@@ -7,7 +9,7 @@ pub struct BlockPointer {
     pub hash: Bytes32,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct SubgraphDeployment(pub String);
 
 impl Deref for SubgraphDeployment {
@@ -20,6 +22,7 @@ impl Deref for SubgraphDeployment {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct IndexingStatus {
+    pub indexer: Arc<Indexer>,
     pub deployment: SubgraphDeployment,
     pub network: String,
     pub latest_block: BlockPointer,
