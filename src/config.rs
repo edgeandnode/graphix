@@ -11,7 +11,7 @@ where
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Hash)]
-pub struct EnvironmentUrls {
+pub struct IndexerUrls {
     #[serde(deserialize_with = "deserialize_url")]
     pub status: Url,
 }
@@ -19,7 +19,7 @@ pub struct EnvironmentUrls {
 #[derive(Clone, Debug, Deserialize)]
 pub struct EnvironmentConfig {
     pub id: String,
-    pub urls: EnvironmentUrls,
+    pub urls: IndexerUrls,
 }
 
 #[derive(Clone, Debug, Deserialize)]

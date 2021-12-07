@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 use anyhow::anyhow;
 use graphql_client::{GraphQLQuery, Response};
 use tracing::*;
 
-use crate::config::EnvironmentUrls;
+use crate::config::IndexerUrls;
 use crate::types::BlockPointer;
 use crate::{config::EnvironmentConfig, proofs_of_indexing::ProofOfIndexing};
 
@@ -22,11 +24,17 @@ type Bytes = String;
 )]
 struct IndexingStatuses;
 
-impl TryInto<IndexingStatus> for indexing_statuses::IndexingStatusesIndexingStatuses {
+impl TryInto<IndexingStatus>
+    for (
+        Arc<Indexer>,
+        indexing_statuses::IndexingStatusesIndexingStatuses,
+    )
+{
     type Error = anyhow::Error;
 
     fn try_into(self) -> Result<IndexingStatus, Self::Error> {
         let chain = self
+            .1
             .chains
             .get(0)
             .ok_or_else(|| anyhow!("chain status missing"))?;
@@ -49,7 +57,8 @@ impl TryInto<IndexingStatus> for indexing_statuses::IndexingStatusesIndexingStat
         };
 
         Ok(IndexingStatus {
-            deployment: SubgraphDeployment(self.subgraph),
+            indexer: self.0,
+            deployment: SubgraphDeployment(self.1.subgraph),
             network: chain.network.clone(),
             latest_block,
         })
@@ -82,24 +91,30 @@ impl Into<proofs_of_indexing::BlockInput> for BlockPointer {
     }
 }
 
-impl TryInto<ProofOfIndexing> for proofs_of_indexing::ProofsOfIndexingPublicProofsOfIndexing {
+impl TryInto<ProofOfIndexing>
+    for (
+        Arc<Indexer>,
+        proofs_of_indexing::ProofsOfIndexingPublicProofsOfIndexing,
+    )
+{
     type Error = anyhow::Error;
 
     fn try_into(self) -> Result<ProofOfIndexing, Self::Error> {
-        match self.proof_of_indexing {
+        match self.1.proof_of_indexing {
             Some(proof_of_indexing) => Ok(ProofOfIndexing {
-                deployment: SubgraphDeployment(self.deployment.clone()),
+                indexer: self.0,
+                deployment: SubgraphDeployment(self.1.deployment.clone()),
                 block: BlockPointer {
-                    number: self.block.number.parse()?,
-                    hash: self.block.hash.into(),
+                    number: self.1.block.number.parse()?,
+                    hash: self.1.block.hash.into(),
                 },
                 proof_of_indexing: proof_of_indexing.into(),
             }),
             None => Err(anyhow!(
                 "no proof of indexing available for deployment {} at block #{} ({})",
-                self.deployment,
-                self.block.number,
-                self.block.hash
+                self.1.deployment,
+                self.1.block.number,
+                self.1.block.hash
             )),
         }
     }
@@ -107,10 +122,10 @@ impl TryInto<ProofOfIndexing> for proofs_of_indexing::ProofsOfIndexingPublicProo
 
 /// Indexer
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Indexer {
     pub id: String,
-    pub urls: EnvironmentUrls,
+    pub urls: IndexerUrls,
 }
 
 impl Indexer {
@@ -123,7 +138,9 @@ impl Indexer {
     }
 
     #[instrument]
-    pub async fn indexing_statuses<'a>(&self) -> Result<Vec<IndexingStatus>, anyhow::Error> {
+    pub async fn indexing_statuses<'a>(
+        self: Arc<Self>,
+    ) -> Result<Vec<IndexingStatus>, anyhow::Error> {
         let client = reqwest::Client::new();
         let request = IndexingStatuses::build_query(indexing_statuses::Variables);
         let response: Response<indexing_statuses::ResponseData> = client
@@ -154,7 +171,7 @@ impl Indexer {
             for indexing_status in data.indexing_statuses {
                 let deployment = indexing_status.subgraph.clone();
 
-                match indexing_status.try_into() {
+                match (self.clone(), indexing_status).try_into() {
                     Ok(status) => statuses.push(status),
                     Err(e) => {
                         warn!(
@@ -171,7 +188,7 @@ impl Indexer {
     }
 
     pub async fn proofs_of_indexing(
-        &self,
+        self: Arc<Self>,
         requests: Vec<POIRequest>,
     ) -> Result<Vec<ProofOfIndexing>, anyhow::Error> {
         let client = reqwest::Client::new();
@@ -213,13 +230,11 @@ impl Indexer {
             .map(|data| {
                 data.public_proofs_of_indexing
                     .into_iter()
-                    .map(|result| result.try_into())
+                    .map(|result| (self.clone(), result).try_into())
                     .filter_map(|result| match result {
                         Ok(v) => Some(v),
                         Err(error) => {
-                            let Indexer { id, urls, .. } = &self;
-                            let url = urls.status.to_string();
-                            warn!(%id, %url, %error);
+                            warn!(id = %self.id, url = %self.urls.status.to_string(), %error);
                             None
                         }
                     })
