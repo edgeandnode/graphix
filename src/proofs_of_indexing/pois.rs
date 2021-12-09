@@ -13,7 +13,7 @@ use crate::{
     types::{BlockPointer, Bytes32, IndexingStatus, SubgraphDeployment},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 pub struct ProofOfIndexing {
     pub indexer: Arc<Indexer>,
     pub deployment: SubgraphDeployment,

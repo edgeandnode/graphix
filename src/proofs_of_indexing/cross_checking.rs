@@ -9,7 +9,7 @@ use crate::{
 
 use super::ProofOfIndexing;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct POISummary {
     pub indexer: String,
     pub deployment: SubgraphDeployment,

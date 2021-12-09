@@ -3,7 +3,7 @@ use std::{fmt, ops::Deref, sync::Arc};
 
 use crate::indexer::Indexer;
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, Ord, PartialOrd)]
 pub struct BlockPointer {
     pub number: u64,
     pub hash: Bytes32,
@@ -28,7 +28,7 @@ pub struct IndexingStatus {
     pub latest_block: BlockPointer,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Deserialize, Serialize, Ord, PartialOrd)]
 #[serde(from = "String")]
 pub struct Bytes32(String);
 
