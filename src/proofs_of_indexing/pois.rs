@@ -82,8 +82,7 @@ async fn query_proofs_of_indexing(indexing_statuses: Vec<IndexingStatus>) -> Vec
                         .get(*deployment)
                         .expect("bug in matching deployments to latest blocks and indexers")
                         .iter()
-                        .find(|status| status.indexer.eq(&indexer))
-                        .is_some()
+                        .any(|status| status.indexer.eq(&indexer))
                 })
                 .filter_map(|(deployment, block)| {
                     block.clone().map(|block| POIRequest {
