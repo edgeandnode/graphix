@@ -62,10 +62,10 @@ async fn main() -> Result<(), anyhow::Error> {
     };
 
     info!("Monitor indexing statuses");
-    let indexers_with_statuses = indexing_statuses::indexing_statuses(indexers);
+    let indexing_statuses = indexing_statuses::indexing_statuses(indexers);
 
     info!("Monitor proofs of indexing");
-    let pois = proofs_of_indexing::proofs_of_indexing(indexers_with_statuses);
+    let pois = proofs_of_indexing::proofs_of_indexing(indexing_statuses);
 
     info!("Start POI cross checking");
     let (pois, reports) = proofs_of_indexing::cross_checking(pois);
