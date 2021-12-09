@@ -111,7 +111,7 @@ fn skip_errors(
     let url = result.1.urls.status.to_string();
     match result.0 {
         Ok(pois) => {
-            debug!(id = %result.1.id, %url, "Successfully queried POIs from indexer");
+            info!(id = %result.1.id, %url, pois=%pois.len(), "Successfully queried POIs from indexer");
             Some(pois)
         }
         Err(error) => {

@@ -37,7 +37,7 @@ fn skip_errors(
     let url = result.1.urls.status.to_string();
     match result.0 {
         Ok(indexing_statuses) => {
-            info!(id = %result.1.id, %url, "Successfully queried indexing statuses");
+            info!(id = %result.1.id, %url, statuses=%indexing_statuses.len(), "Successfully queried indexing statuses");
             Some(indexing_statuses)
         }
         Err(error) => {
