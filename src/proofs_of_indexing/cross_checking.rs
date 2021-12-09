@@ -1,6 +1,13 @@
+use std::collections::BTreeSet;
+
 use eventuals::{Eventual, EventualExt};
-use futures::{channel::mpsc::channel, future, Stream};
-use tracing::warn;
+use futures::{
+    channel::mpsc::{channel, Sender},
+    stream::FuturesUnordered,
+    FutureExt, SinkExt, Stream, StreamExt,
+};
+use itertools::Itertools;
+use tracing::{info, warn};
 
 use crate::{
     indexer::Indexer,
@@ -9,58 +16,105 @@ use crate::{
 
 use super::ProofOfIndexing;
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub struct POISummary {
-    pub indexer: String,
-    pub deployment: SubgraphDeployment,
-    pub block_number: u64,
-    pub block_hash: Bytes32,
-    pub proof_of_indexing: Bytes32,
-}
-
-impl From<(&Indexer, &ProofOfIndexing)> for POISummary {
-    fn from((indexer, poi): (&Indexer, &ProofOfIndexing)) -> Self {
-        Self {
-            indexer: indexer.id.clone(),
-            deployment: poi.deployment.clone(),
-            block_number: poi.block.number,
-            block_hash: poi.block.hash.clone(),
-            proof_of_indexing: poi.proof_of_indexing.clone(),
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct POICrossCheckReport {}
+pub struct POICrossCheckReport {
+    poi1: ProofOfIndexing,
+    poi2: ProofOfIndexing,
+    diverging_block: Option</* TODO */ ()>,
+}
 
 pub fn cross_checking(
     pois: Eventual<Vec<ProofOfIndexing>>,
 ) -> (
-    impl Stream<Item = POISummary>,
+    impl Stream<Item = ProofOfIndexing>,
     Eventual<Vec<POICrossCheckReport>>,
 ) {
-    let (mut poi_sender, poi_receiver) = channel(1000);
+    let (poi_broadcaster, poi_receiver) = channel(1000);
 
-    let reports = pois.map(move |pois| {
+    let reports = pois.map(move |mut pois| {
+        // Sort POIs (to make everything a little more predictable)
+        pois.sort();
+
         // Build a flat, unique list of all deployments we have POIs for
-        let mut deployments = pois.iter().map(|poi| &poi.deployment).collect::<Vec<_>>();
-        deployments.sort();
-        deployments.dedup();
+        let deployments = pois
+            .iter()
+            .map(|poi| &poi.deployment)
+            .collect::<BTreeSet<_>>();
 
         // Build a map of deployments to Indexers/POIs
-        let pois_by_deployment = deployments.iter().map(|deployment| {
-            (
-                deployment,
-                pois.iter()
-                    .filter(|poi| poi.deployment.eq(deployment))
-                    .collect::<Vec<_>>(),
-            )
-        });
+        deployments
+            .into_iter()
+            .map(|deployment| {
+                (
+                    deployment,
+                    pois.iter()
+                        .filter(|poi| poi.deployment.eq(deployment))
+                        .map(|poi| poi.to_owned())
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .map(|(deployment, pois)| {
+                info!(
+                    deployment = %deployment.as_str(),
+                    "Cross-checking POIs for deployment"
+                );
 
-        // TODO: Add cross-checking logic here.
+                // Get all pairs of POIS/indexers to compare against each other
+                let count = pois.len();
+                let combinations = pois
+                    .into_iter()
+                    .tuple_combinations::<(_, _)>()
+                    .collect_vec();
 
-        future::ready(vec![])
+                if count > 0 && combinations.len() == 0 {
+                    warn!(
+                        indexers = %count,
+                        deployment = %deployment.as_str(),
+                        "Deployment has POIs but not enough indexers to cross-check",
+                    );
+                    return vec![];
+                }
+
+                combinations
+            })
+            .flatten()
+            .map(|(poi1, poi2)| cross_check_poi(poi1, poi2, poi_broadcaster.clone()))
+            .collect::<FuturesUnordered<_>>()
+            .collect::<Vec<_>>()
+            .map(|reports| reports.into_iter().flatten().collect())
     });
 
     (poi_receiver, reports)
+}
+
+async fn cross_check_poi(
+    poi1: ProofOfIndexing,
+    poi2: ProofOfIndexing,
+    mut poi_broadcaster: Sender<ProofOfIndexing>,
+) -> Result<POICrossCheckReport, anyhow::Error> {
+    info!(
+        indexer1 = %poi1.indexer.id,
+        indexer2 = %poi2.indexer.id,
+        poi1 = %poi1.proof_of_indexing,
+        poi2 = %poi2.proof_of_indexing,
+        block = %poi1.block,
+        deployment = %poi1.deployment.as_str(),
+        "Cross-check POI"
+    );
+
+    // Broadcast these two POIs
+    poi_broadcaster.send(poi1.clone()).await?;
+    poi_broadcaster.send(poi2.clone()).await?;
+
+    // If both POIs are identical, we're done
+    if poi1.proof_of_indexing == poi2.proof_of_indexing {
+        return Ok(POICrossCheckReport {
+            poi1,
+            poi2,
+            diverging_block: None,
+        });
+    }
+
+    // TODO: Implement cross-checking for POIs that are different
+    todo!()
 }
