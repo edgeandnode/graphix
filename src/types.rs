@@ -27,8 +27,11 @@ impl Deref for SubgraphDeployment {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct IndexingStatus {
-    pub indexer: Arc<Indexer>,
+pub struct IndexingStatus<T>
+where
+    T: Indexer,
+{
+    pub indexer: Arc<T>,
     pub deployment: SubgraphDeployment,
     pub network: String,
     pub latest_block: BlockPointer,
@@ -57,17 +60,23 @@ impl Into<String> for Bytes32 {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
-pub struct ProofOfIndexing {
-    pub indexer: Arc<Indexer>,
+pub struct ProofOfIndexing<T>
+where
+    T: Indexer,
+{
+    pub indexer: Arc<T>,
     pub deployment: SubgraphDeployment,
     pub block: BlockPointer,
     pub proof_of_indexing: Bytes32,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct POICrossCheckReport {
-    pub poi1: ProofOfIndexing,
-    pub poi2: ProofOfIndexing,
+pub struct POICrossCheckReport<T>
+where
+    T: Indexer,
+{
+    pub poi1: ProofOfIndexing<T>,
+    pub poi2: ProofOfIndexing<T>,
     pub diverging_block: Option</* TODO */ ()>,
 }
 

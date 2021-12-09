@@ -9,24 +9,32 @@ use futures::StreamExt;
 use tracing::*;
 
 use crate::{
-    indexer::Indexer,
-    types::{BlockPointer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment},
+    indexer::{Indexer, POIRequest},
+    types::{BlockPointer, IndexingStatus, ProofOfIndexing, SubgraphDeployment},
 };
 
-pub fn proofs_of_indexing(
-    indexing_statuses: Eventual<Vec<IndexingStatus>>,
-) -> Eventual<Vec<ProofOfIndexing>> {
+pub fn proofs_of_indexing<T>(
+    indexing_statuses: Eventual<Vec<IndexingStatus<T>>>,
+) -> Eventual<Vec<ProofOfIndexing<T>>>
+where
+    T: Indexer + 'static,
+{
     indexing_statuses.map(query_proofs_of_indexing)
 }
 
-async fn query_proofs_of_indexing(indexing_statuses: Vec<IndexingStatus>) -> Vec<ProofOfIndexing> {
+async fn query_proofs_of_indexing<T>(
+    indexing_statuses: Vec<IndexingStatus<T>>,
+) -> Vec<ProofOfIndexing<T>>
+where
+    T: Indexer,
+{
     info!("Query POIs for recent common blocks across indexers");
 
     // Identify all indexers
     let indexers = indexing_statuses
         .iter()
         .map(|status| status.indexer.clone())
-        .collect::<HashSet<Arc<Indexer>, RandomState>>();
+        .collect::<HashSet<Arc<T>, RandomState>>();
 
     // Identify all deployments
     let deployments: HashSet<SubgraphDeployment, RandomState> = HashSet::from_iter(
@@ -36,7 +44,7 @@ async fn query_proofs_of_indexing(indexing_statuses: Vec<IndexingStatus>) -> Vec
     );
 
     // Group indexing statuses by deployment
-    let statuses_by_deployment: HashMap<SubgraphDeployment, Vec<&IndexingStatus>> =
+    let statuses_by_deployment: HashMap<SubgraphDeployment, Vec<&IndexingStatus<T>>> =
         HashMap::from_iter(deployments.iter().map(|deployment| {
             (
                 deployment.clone(),
@@ -98,17 +106,23 @@ async fn query_proofs_of_indexing(indexing_statuses: Vec<IndexingStatus>) -> Vec
         .collect::<Vec<_>>()
 }
 
-fn skip_errors(
-    result: (Result<Vec<ProofOfIndexing>, anyhow::Error>, Arc<Indexer>),
-) -> Option<Vec<ProofOfIndexing>> {
-    let url = result.1.urls.status.to_string();
+fn skip_errors<T>(
+    result: (
+        Result<Vec<ProofOfIndexing<T>>, anyhow::Error>,
+        Arc<impl Indexer>,
+    ),
+) -> Option<Vec<ProofOfIndexing<T>>>
+where
+    T: Indexer,
+{
+    let url = result.1.urls().status.to_string();
     match result.0 {
         Ok(pois) => {
-            info!(id = %result.1.id, %url, pois=%pois.len(), "Successfully queried POIs from indexer");
+            info!(id = %result.1.id(), %url, pois=%pois.len(), "Successfully queried POIs from indexer");
             Some(pois)
         }
         Err(error) => {
-            warn!(id = %result.1.id, %url, %error, "Failed to query POIs from indexer");
+            warn!(id = %result.1.id(), %url, %error, "Failed to query POIs from indexer");
             None
         }
     }
