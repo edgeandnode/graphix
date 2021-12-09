@@ -9,6 +9,12 @@ pub struct BlockPointer {
     pub hash: Bytes32,
 }
 
+impl fmt::Display for BlockPointer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "#{} ({})", self.number, self.hash)
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct SubgraphDeployment(pub String);
 
