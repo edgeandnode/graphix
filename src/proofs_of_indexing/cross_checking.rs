@@ -9,19 +9,7 @@ use futures::{
 use itertools::Itertools;
 use tracing::{info, warn};
 
-use crate::{
-    indexer::Indexer,
-    types::{Bytes32, SubgraphDeployment},
-};
-
-use super::ProofOfIndexing;
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct POICrossCheckReport {
-    poi1: ProofOfIndexing,
-    poi2: ProofOfIndexing,
-    diverging_block: Option</* TODO */ ()>,
-}
+use crate::types::{POICrossCheckReport, ProofOfIndexing};
 
 pub fn cross_checking(
     pois: Eventual<Vec<ProofOfIndexing>>,
