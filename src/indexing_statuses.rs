@@ -9,13 +9,19 @@ use tracing::*;
 use crate::indexer::Indexer;
 use crate::types::IndexingStatus;
 
-pub fn indexing_statuses(indexers: Eventual<Vec<Arc<Indexer>>>) -> Eventual<Vec<IndexingStatus>> {
+pub fn indexing_statuses<T>(indexers: Eventual<Vec<Arc<T>>>) -> Eventual<Vec<IndexingStatus<T>>>
+where
+    T: Indexer + 'static,
+{
     join((indexers, timer(Duration::from_secs(120))))
         .subscribe()
         .map(|(indexers, _)| query_indexing_statuses(indexers))
 }
 
-async fn query_indexing_statuses(indexers: Vec<Arc<Indexer>>) -> Vec<IndexingStatus> {
+async fn query_indexing_statuses<T>(indexers: Vec<Arc<T>>) -> Vec<IndexingStatus<T>>
+where
+    T: Indexer,
+{
     info!("Query indexing statuses");
 
     indexers
@@ -31,17 +37,20 @@ async fn query_indexing_statuses(indexers: Vec<Arc<Indexer>>) -> Vec<IndexingSta
         .collect()
 }
 
-fn skip_errors(
-    result: (Result<Vec<IndexingStatus>, anyhow::Error>, Arc<Indexer>),
-) -> Option<Vec<IndexingStatus>> {
-    let url = result.1.urls.status.to_string();
+fn skip_errors<T>(
+    result: (Result<Vec<IndexingStatus<T>>, anyhow::Error>, Arc<T>),
+) -> Option<Vec<IndexingStatus<T>>>
+where
+    T: Indexer,
+{
+    let url = result.1.urls().status.to_string();
     match result.0 {
         Ok(indexing_statuses) => {
-            info!(id = %result.1.id, %url, statuses=%indexing_statuses.len(), "Successfully queried indexing statuses");
+            info!(id = %result.1.id(), %url, statuses=%indexing_statuses.len(), "Successfully queried indexing statuses");
             Some(indexing_statuses)
         }
         Err(error) => {
-            warn!(id = %result.1.id, %url, %error, "Failed to query indexing statuses");
+            warn!(id = %result.1.id(), %url, %error, "Failed to query indexing statuses");
             None
         }
     }

@@ -1,15 +1,15 @@
 use eventuals::*;
 use futures::stream::FuturesUnordered;
-use futures::StreamExt;
+use futures::{future, StreamExt};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::*;
 
 use crate::config::{EnvironmentConfig, TestingConfig};
-use crate::indexer::Indexer;
+use crate::indexer::{Indexer, RealIndexer};
 
 #[instrument]
-pub fn testing_indexers(config: TestingConfig) -> Eventual<Vec<Arc<Indexer>>> {
+pub fn testing_indexers(config: TestingConfig) -> Eventual<Vec<Arc<RealIndexer>>> {
     let (mut out, eventual) = Eventual::new();
 
     tokio::spawn(async move {
@@ -24,7 +24,8 @@ pub fn testing_indexers(config: TestingConfig) -> Eventual<Vec<Arc<Indexer>>> {
                 config
                     .environments
                     .iter()
-                    .map(Indexer::from_environment)
+                    .map(RealIndexer::new)
+                    .map(future::ready)
                     .collect::<FuturesUnordered<_>>()
                     .collect::<Vec<_>>()
                     .await
@@ -40,12 +41,14 @@ pub fn testing_indexers(config: TestingConfig) -> Eventual<Vec<Arc<Indexer>>> {
     eventual
 }
 
-fn skip_errors(result: (Result<Indexer, anyhow::Error>, &EnvironmentConfig)) -> Option<Indexer> {
+fn skip_errors<T>(result: (Result<T, anyhow::Error>, &EnvironmentConfig)) -> Option<T>
+where
+    T: Indexer,
+{
     match result.0 {
         Ok(indexer) => {
-            let Indexer { id, urls, .. } = &indexer;
-            let url = urls.status.to_string();
-            info!(%id, %url, "Successfully refreshed indexer");
+            let url = indexer.urls().status.to_string();
+            info!(id = %indexer.id(), %url, "Successfully refreshed indexer");
 
             Some(indexer)
         }

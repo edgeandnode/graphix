@@ -1,16 +1,17 @@
+use core::hash::Hash;
 use std::sync::Arc;
 
 use anyhow::anyhow;
+use async_trait::async_trait;
 use graphql_client::{GraphQLQuery, Response};
 use tracing::*;
 
-use crate::config::EnvironmentConfig;
-use crate::config::IndexerUrls;
-use crate::types::BlockPointer;
-use crate::types::POIRequest;
-use crate::types::ProofOfIndexing;
+use crate::{
+    config::{EnvironmentConfig, IndexerUrls},
+    types::{BlockPointer, IndexingStatus, ProofOfIndexing, SubgraphDeployment},
+};
 
-use super::types::{IndexingStatus, SubgraphDeployment};
+use super::{Indexer, POIRequest};
 
 type BigInt = String;
 type Bytes = String;
@@ -26,15 +27,15 @@ type Bytes = String;
 )]
 struct IndexingStatuses;
 
-impl TryInto<IndexingStatus>
+impl TryInto<IndexingStatus<RealIndexer>>
     for (
-        Arc<Indexer>,
+        Arc<RealIndexer>,
         indexing_statuses::IndexingStatusesIndexingStatuses,
     )
 {
     type Error = anyhow::Error;
 
-    fn try_into(self) -> Result<IndexingStatus, Self::Error> {
+    fn try_into(self) -> Result<IndexingStatus<RealIndexer>, Self::Error> {
         let chain = self
             .1
             .chains
@@ -87,15 +88,15 @@ impl Into<proofs_of_indexing::BlockInput> for BlockPointer {
     }
 }
 
-impl TryInto<ProofOfIndexing>
+impl TryInto<ProofOfIndexing<RealIndexer>>
     for (
-        Arc<Indexer>,
+        Arc<RealIndexer>,
         proofs_of_indexing::ProofsOfIndexingPublicProofsOfIndexing,
     )
 {
     type Error = anyhow::Error;
 
-    fn try_into(self) -> Result<ProofOfIndexing, Self::Error> {
+    fn try_into(self) -> Result<ProofOfIndexing<RealIndexer>, Self::Error> {
         match self.1.proof_of_indexing {
             Some(proof_of_indexing) => Ok(ProofOfIndexing {
                 indexer: self.0,
@@ -118,25 +119,43 @@ impl TryInto<ProofOfIndexing>
 
 /// Indexer
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct Indexer {
+#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
+pub struct RealIndexer {
     pub id: String,
     pub urls: IndexerUrls,
 }
 
-impl Indexer {
+impl RealIndexer {
     #[instrument(skip(env))]
-    pub async fn from_environment(env: &EnvironmentConfig) -> Result<Self, anyhow::Error> {
-        Ok(Indexer {
+    pub fn new(env: &EnvironmentConfig) -> Result<Self, anyhow::Error> {
+        Ok(Self {
             id: env.id.clone(),
             urls: env.urls.clone(),
         })
     }
+}
+
+impl Hash for RealIndexer {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+        self.urls.hash(state);
+    }
+}
+
+#[async_trait]
+impl Indexer for RealIndexer {
+    fn id(&self) -> &String {
+        &self.id
+    }
+
+    fn urls(&self) -> &IndexerUrls {
+        &self.urls
+    }
 
     #[instrument]
-    pub async fn indexing_statuses<'a>(
+    async fn indexing_statuses(
         self: Arc<Self>,
-    ) -> Result<Vec<IndexingStatus>, anyhow::Error> {
+    ) -> Result<Vec<IndexingStatus<Self>>, anyhow::Error> {
         let client = reqwest::Client::new();
         let request = IndexingStatuses::build_query(indexing_statuses::Variables);
         let response: Response<indexing_statuses::ResponseData> = client
@@ -183,10 +202,10 @@ impl Indexer {
         Ok(statuses)
     }
 
-    pub async fn proofs_of_indexing(
+    async fn proofs_of_indexing(
         self: Arc<Self>,
         requests: Vec<POIRequest>,
-    ) -> Result<Vec<ProofOfIndexing>, anyhow::Error> {
+    ) -> Result<Vec<ProofOfIndexing<Self>>, anyhow::Error> {
         let client = reqwest::Client::new();
         let request = ProofsOfIndexing::build_query(proofs_of_indexing::Variables {
             requests: requests

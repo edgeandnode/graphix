@@ -1,26 +1,27 @@
+use std::sync::Arc;
+use std::time::Duration;
+
 use diesel::{r2d2, PgConnection, RunQueryDsl};
 use futures::{FutureExt, Stream, StreamExt, TryFutureExt};
 use futures_retry::{FutureRetry, RetryPolicy};
-use std::sync::Arc;
-use std::time::Duration;
 use tracing::{info, warn};
 
-use crate::types;
+use crate::{indexer::Indexer, types};
 
-use super::models::ProofOfIndexing;
-use super::schema;
+use super::{models::ProofOfIndexing, schema};
 
 /// Write any POIs that we receive to the database.
-pub fn write<S>(
+pub fn write<S, T>(
     connection_pool: Arc<r2d2::Pool<r2d2::ConnectionManager<PgConnection>>>,
     proofs_of_indexing: S,
 ) where
-    S: Stream<Item = types::ProofOfIndexing> + Send + 'static,
+    S: Stream<Item = types::ProofOfIndexing<T>> + Send + 'static,
+    T: Indexer + Send + Sync + 'static,
 {
     tokio::spawn(async move {
         proofs_of_indexing
             .ready_chunks(100)
-            .for_each(move |chunk: Vec<types::ProofOfIndexing>| {
+            .for_each(move |chunk: Vec<types::ProofOfIndexing<T>>| {
                 let connection_pool = connection_pool.clone();
                 let mut consecutive_errors = 0;
 
@@ -30,12 +31,12 @@ pub fn write<S>(
                             let pois = chunk
                                 .clone()
                                 .into_iter()
-                                .map(|poi_summary| ProofOfIndexing {
-                                    indexer: poi_summary.indexer.id.trim_start_matches("0x").into(),
-                                    deployment: poi_summary.deployment.to_string(),
-                                    block_number: poi_summary.block.number as i64,
-                                    block_hash: poi_summary.block.hash.into(),
-                                    proof_of_indexing: poi_summary.proof_of_indexing.into(),
+                                .map(|poi| ProofOfIndexing {
+                                    indexer: poi.indexer.id().trim_start_matches("0x").into(),
+                                    deployment: poi.deployment.to_string(),
+                                    block_number: poi.block.number as i64,
+                                    block_hash: poi.block.hash.into(),
+                                    proof_of_indexing: poi.proof_of_indexing.into(),
                                 })
                                 .collect::<Vec<_>>();
 
