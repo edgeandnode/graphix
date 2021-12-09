@@ -41,7 +41,7 @@ pub fn cross_checking(
 ) {
     let (mut poi_sender, poi_receiver) = channel(1000);
 
-    let reports = pois.subscribe().map(move |pois| {
+    let reports = pois.map(move |pois| {
         // Build a flat, unique list of all deployments we have POIs for
         let mut deployments = pois.iter().map(|poi| &poi.deployment).collect::<Vec<_>>();
         deployments.sort();
