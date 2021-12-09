@@ -31,11 +31,10 @@ async fn query_proofs_of_indexing(indexing_statuses: Vec<IndexingStatus>) -> Vec
     info!("Query POIs for recent common blocks across indexers");
 
     // Identify all indexers
-    let indexers: HashSet<Arc<Indexer>, RandomState> = HashSet::from_iter(
-        indexing_statuses
-            .iter()
-            .map(|status| status.indexer.clone()),
-    );
+    let indexers = indexing_statuses
+        .iter()
+        .map(|status| status.indexer.clone())
+        .collect::<HashSet<Arc<Indexer>, RandomState>>();
     // Identify all deployments
     let deployments: HashSet<SubgraphDeployment, RandomState> = HashSet::from_iter(
         indexing_statuses
