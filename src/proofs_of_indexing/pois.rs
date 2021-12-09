@@ -9,17 +9,9 @@ use futures::StreamExt;
 use tracing::*;
 
 use crate::{
-    indexer::{Indexer, POIRequest},
-    types::{BlockPointer, Bytes32, IndexingStatus, SubgraphDeployment},
+    indexer::Indexer,
+    types::{BlockPointer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment},
 };
-
-#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
-pub struct ProofOfIndexing {
-    pub indexer: Arc<Indexer>,
-    pub deployment: SubgraphDeployment,
-    pub block: BlockPointer,
-    pub proof_of_indexing: Bytes32,
-}
 
 pub fn proofs_of_indexing(
     indexing_statuses: Eventual<Vec<IndexingStatus>>,

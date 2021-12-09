@@ -4,9 +4,11 @@ use anyhow::anyhow;
 use graphql_client::{GraphQLQuery, Response};
 use tracing::*;
 
+use crate::config::EnvironmentConfig;
 use crate::config::IndexerUrls;
 use crate::types::BlockPointer;
-use crate::{config::EnvironmentConfig, proofs_of_indexing::ProofOfIndexing};
+use crate::types::POIRequest;
+use crate::types::ProofOfIndexing;
 
 use super::types::{IndexingStatus, SubgraphDeployment};
 
@@ -66,12 +68,6 @@ impl TryInto<IndexingStatus>
 }
 
 /// POIs
-
-#[derive(Debug)]
-pub struct POIRequest {
-    pub deployment: SubgraphDeployment,
-    pub block: BlockPointer,
-}
 
 #[derive(GraphQLQuery)]
 #[graphql(

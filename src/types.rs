@@ -55,3 +55,24 @@ impl Into<String> for Bytes32 {
         format!("{}", self)
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
+pub struct ProofOfIndexing {
+    pub indexer: Arc<Indexer>,
+    pub deployment: SubgraphDeployment,
+    pub block: BlockPointer,
+    pub proof_of_indexing: Bytes32,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct POICrossCheckReport {
+    pub poi1: ProofOfIndexing,
+    pub poi2: ProofOfIndexing,
+    pub diverging_block: Option</* TODO */ ()>,
+}
+
+#[derive(Debug)]
+pub struct POIRequest {
+    pub deployment: SubgraphDeployment,
+    pub block: BlockPointer,
+}
