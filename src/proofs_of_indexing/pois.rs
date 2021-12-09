@@ -22,9 +22,9 @@ pub struct ProofOfIndexing {
 }
 
 pub fn proofs_of_indexing(
-    indexers: Eventual<Vec<IndexingStatus>>,
+    indexing_statuses: Eventual<Vec<IndexingStatus>>,
 ) -> Eventual<Vec<ProofOfIndexing>> {
-    indexers.map(query_proofs_of_indexing)
+    indexing_statuses.map(query_proofs_of_indexing)
 }
 
 async fn query_proofs_of_indexing(indexing_statuses: Vec<IndexingStatus>) -> Vec<ProofOfIndexing> {
@@ -35,6 +35,7 @@ async fn query_proofs_of_indexing(indexing_statuses: Vec<IndexingStatus>) -> Vec
         .iter()
         .map(|status| status.indexer.clone())
         .collect::<HashSet<Arc<Indexer>, RandomState>>();
+
     // Identify all deployments
     let deployments: HashSet<SubgraphDeployment, RandomState> = HashSet::from_iter(
         indexing_statuses
