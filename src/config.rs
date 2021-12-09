@@ -10,7 +10,7 @@ where
     Url::parse(&s).map_err(serde::de::Error::custom)
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct IndexerUrls {
     #[serde(deserialize_with = "deserialize_url")]
     pub status: Url,

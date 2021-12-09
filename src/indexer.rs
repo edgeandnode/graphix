@@ -122,7 +122,7 @@ impl TryInto<ProofOfIndexing>
 
 /// Indexer
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct Indexer {
     pub id: String,
     pub urls: IndexerUrls,
