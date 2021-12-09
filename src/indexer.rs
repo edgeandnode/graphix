@@ -161,7 +161,7 @@ impl Indexer {
             warn!(
                 url = %self.urls.status.to_string(),
                 %errors,
-                "indexer returned indexing status errors"
+                "Indexer returned indexing status errors"
             );
         }
 
@@ -178,7 +178,7 @@ impl Indexer {
                             url = %self.urls.status.to_string(),
                             %e,
                             %deployment,
-                            "failed to parse indexing status, skipping deployment"
+                            "Failed to parse indexing status, skipping deployment"
                         );
                     }
                 }
