@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.48"
+async-trait = "0.1.52"
 diesel = { version = "1.4", features = ["postgres", "r2d2"] }
 diesel_migrations = "1.4"
 eventuals = "0.6.6"

@@ -9,14 +9,20 @@ use futures::{
 use itertools::Itertools;
 use tracing::{info, warn};
 
-use crate::types::{POICrossCheckReport, ProofOfIndexing};
+use crate::{
+    indexer::Indexer,
+    types::{POICrossCheckReport, ProofOfIndexing},
+};
 
-pub fn cross_checking(
-    pois: Eventual<Vec<ProofOfIndexing>>,
+pub fn cross_checking<T>(
+    pois: Eventual<Vec<ProofOfIndexing<T>>>,
 ) -> (
-    impl Stream<Item = ProofOfIndexing>,
-    Eventual<Vec<POICrossCheckReport>>,
-) {
+    impl Stream<Item = ProofOfIndexing<T>>,
+    Eventual<Vec<POICrossCheckReport<T>>>,
+)
+where
+    T: Indexer + 'static,
+{
     let (poi_broadcaster, poi_receiver) = channel(1000);
 
     let reports = pois.map(move |mut pois| {
@@ -75,14 +81,17 @@ pub fn cross_checking(
     (poi_receiver, reports)
 }
 
-async fn cross_check_poi(
-    poi1: ProofOfIndexing,
-    poi2: ProofOfIndexing,
-    mut poi_broadcaster: Sender<ProofOfIndexing>,
-) -> Result<POICrossCheckReport, anyhow::Error> {
+async fn cross_check_poi<T>(
+    poi1: ProofOfIndexing<T>,
+    poi2: ProofOfIndexing<T>,
+    mut poi_broadcaster: Sender<ProofOfIndexing<T>>,
+) -> Result<POICrossCheckReport<T>, anyhow::Error>
+where
+    T: Indexer,
+{
     info!(
-        indexer1 = %poi1.indexer.id,
-        indexer2 = %poi2.indexer.id,
+        indexer1 = %poi1.indexer.id(),
+        indexer2 = %poi2.indexer.id(),
         poi1 = %poi1.proof_of_indexing,
         poi2 = %poi2.proof_of_indexing,
         block = %poi1.block,
