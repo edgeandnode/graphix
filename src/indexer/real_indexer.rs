@@ -119,7 +119,7 @@ impl TryInto<ProofOfIndexing<RealIndexer>>
 
 /// Indexer
 
-#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub struct RealIndexer {
     pub id: String,
     pub urls: IndexerUrls,
@@ -132,13 +132,6 @@ impl RealIndexer {
             id: env.id.clone(),
             urls: env.urls.clone(),
         })
-    }
-}
-
-impl Hash for RealIndexer {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-        self.urls.hash(state);
     }
 }
 
