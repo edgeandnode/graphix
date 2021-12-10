@@ -11,17 +11,17 @@ use crate::{indexer::Indexer, types};
 use super::{models::ProofOfIndexing, schema};
 
 /// Write any POIs that we receive to the database.
-pub fn write<S, T>(
+pub fn write<S, I>(
     connection_pool: Arc<r2d2::Pool<r2d2::ConnectionManager<PgConnection>>>,
     proofs_of_indexing: S,
 ) where
-    S: Stream<Item = types::ProofOfIndexing<T>> + Send + 'static,
-    T: Indexer + Send + Sync + 'static,
+    S: Stream<Item = types::ProofOfIndexing<I>> + Send + 'static,
+    I: Indexer + Send + Sync + 'static,
 {
     tokio::spawn(async move {
         proofs_of_indexing
             .ready_chunks(100)
-            .for_each(move |chunk: Vec<types::ProofOfIndexing<T>>| {
+            .for_each(move |chunk: Vec<types::ProofOfIndexing<I>>| {
                 let connection_pool = connection_pool.clone();
                 let mut consecutive_errors = 0;
 
