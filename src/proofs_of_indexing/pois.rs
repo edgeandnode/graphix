@@ -13,20 +13,20 @@ use crate::{
     types::{BlockPointer, IndexingStatus, ProofOfIndexing, SubgraphDeployment},
 };
 
-pub fn proofs_of_indexing<T>(
-    indexing_statuses: Eventual<Vec<IndexingStatus<T>>>,
-) -> Eventual<Vec<ProofOfIndexing<T>>>
+pub fn proofs_of_indexing<I>(
+    indexing_statuses: Eventual<Vec<IndexingStatus<I>>>,
+) -> Eventual<Vec<ProofOfIndexing<I>>>
 where
-    T: Indexer + 'static,
+    I: Indexer + 'static,
 {
     indexing_statuses.map(query_proofs_of_indexing)
 }
 
-async fn query_proofs_of_indexing<T>(
-    indexing_statuses: Vec<IndexingStatus<T>>,
-) -> Vec<ProofOfIndexing<T>>
+async fn query_proofs_of_indexing<I>(
+    indexing_statuses: Vec<IndexingStatus<I>>,
+) -> Vec<ProofOfIndexing<I>>
 where
-    T: Indexer,
+    I: Indexer,
 {
     info!("Query POIs for recent common blocks across indexers");
 
@@ -34,7 +34,7 @@ where
     let indexers = indexing_statuses
         .iter()
         .map(|status| status.indexer.clone())
-        .collect::<HashSet<Arc<T>, RandomState>>();
+        .collect::<HashSet<Arc<I>, RandomState>>();
 
     // Identify all deployments
     let deployments: HashSet<SubgraphDeployment, RandomState> = HashSet::from_iter(
@@ -44,7 +44,7 @@ where
     );
 
     // Group indexing statuses by deployment
-    let statuses_by_deployment: HashMap<SubgraphDeployment, Vec<&IndexingStatus<T>>> =
+    let statuses_by_deployment: HashMap<SubgraphDeployment, Vec<&IndexingStatus<I>>> =
         HashMap::from_iter(deployments.iter().map(|deployment| {
             (
                 deployment.clone(),
@@ -106,14 +106,14 @@ where
         .collect::<Vec<_>>()
 }
 
-fn skip_errors<T>(
+fn skip_errors<I>(
     result: (
-        Result<Vec<ProofOfIndexing<T>>, anyhow::Error>,
+        Result<Vec<ProofOfIndexing<I>>, anyhow::Error>,
         Arc<impl Indexer>,
     ),
-) -> Option<Vec<ProofOfIndexing<T>>>
+) -> Option<Vec<ProofOfIndexing<I>>>
 where
-    T: Indexer,
+    I: Indexer,
 {
     let url = result.1.urls().status.to_string();
     match result.0 {

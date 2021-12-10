@@ -41,9 +41,9 @@ pub fn testing_indexers(config: TestingConfig) -> Eventual<Vec<Arc<RealIndexer>>
     eventual
 }
 
-fn skip_errors<T>(result: (Result<T, anyhow::Error>, &EnvironmentConfig)) -> Option<T>
+fn skip_errors<I>(result: (Result<I, anyhow::Error>, &EnvironmentConfig)) -> Option<I>
 where
-    T: Indexer,
+    I: Indexer,
 {
     match result.0 {
         Ok(indexer) => {
