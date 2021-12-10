@@ -9,18 +9,18 @@ use tracing::*;
 use crate::indexer::Indexer;
 use crate::types::IndexingStatus;
 
-pub fn indexing_statuses<T>(indexers: Eventual<Vec<Arc<T>>>) -> Eventual<Vec<IndexingStatus<T>>>
+pub fn indexing_statuses<I>(indexers: Eventual<Vec<Arc<I>>>) -> Eventual<Vec<IndexingStatus<I>>>
 where
-    T: Indexer + 'static,
+    I: Indexer + 'static,
 {
     join((indexers, timer(Duration::from_secs(120))))
         .subscribe()
         .map(|(indexers, _)| query_indexing_statuses(indexers))
 }
 
-async fn query_indexing_statuses<T>(indexers: Vec<Arc<T>>) -> Vec<IndexingStatus<T>>
+async fn query_indexing_statuses<I>(indexers: Vec<Arc<I>>) -> Vec<IndexingStatus<I>>
 where
-    T: Indexer,
+    I: Indexer,
 {
     info!("Query indexing statuses");
 
@@ -37,11 +37,11 @@ where
         .collect()
 }
 
-fn skip_errors<T>(
-    result: (Result<Vec<IndexingStatus<T>>, anyhow::Error>, Arc<T>),
-) -> Option<Vec<IndexingStatus<T>>>
+fn skip_errors<I>(
+    result: (Result<Vec<IndexingStatus<I>>, anyhow::Error>, Arc<I>),
+) -> Option<Vec<IndexingStatus<I>>>
 where
-    T: Indexer,
+    I: Indexer,
 {
     let url = result.1.urls().status.to_string();
     match result.0 {

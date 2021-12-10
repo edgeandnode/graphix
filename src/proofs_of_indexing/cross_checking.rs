@@ -14,14 +14,14 @@ use crate::{
     types::{POICrossCheckReport, ProofOfIndexing},
 };
 
-pub fn cross_checking<T>(
-    pois: Eventual<Vec<ProofOfIndexing<T>>>,
+pub fn cross_checking<I>(
+    pois: Eventual<Vec<ProofOfIndexing<I>>>,
 ) -> (
-    impl Stream<Item = ProofOfIndexing<T>>,
-    Eventual<Vec<POICrossCheckReport<T>>>,
+    impl Stream<Item = ProofOfIndexing<I>>,
+    Eventual<Vec<POICrossCheckReport<I>>>,
 )
 where
-    T: Indexer + 'static,
+    I: Indexer + 'static,
 {
     let (poi_broadcaster, poi_receiver) = channel(1000);
 
@@ -81,13 +81,13 @@ where
     (poi_receiver, reports)
 }
 
-async fn cross_check_poi<T>(
-    poi1: ProofOfIndexing<T>,
-    poi2: ProofOfIndexing<T>,
-    mut poi_broadcaster: Sender<ProofOfIndexing<T>>,
-) -> Result<POICrossCheckReport<T>, anyhow::Error>
+async fn cross_check_poi<I>(
+    poi1: ProofOfIndexing<I>,
+    poi2: ProofOfIndexing<I>,
+    mut poi_broadcaster: Sender<ProofOfIndexing<I>>,
+) -> Result<POICrossCheckReport<I>, anyhow::Error>
 where
-    T: Indexer,
+    I: Indexer,
 {
     info!(
         indexer1 = %poi1.indexer.id(),
