@@ -118,11 +118,17 @@ where
     let url = result.1.urls().status.to_string();
     match result.0 {
         Ok(pois) => {
-            info!(id = %result.1.id(), %url, pois=%pois.len(), "Successfully queried POIs from indexer");
+            info!(
+                id = %result.1.id(), %url, pois = %pois.len(),
+                "Successfully queried POIs from indexer"
+            );
             Some(pois)
         }
         Err(error) => {
-            warn!(id = %result.1.id(), %url, %error, "Failed to query POIs from indexer");
+            warn!(
+                id = %result.1.id(), %url, %error,
+                "Failed to query POIs from indexer"
+            );
             None
         }
     }
