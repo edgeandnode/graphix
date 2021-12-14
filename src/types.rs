@@ -1,9 +1,9 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::{fmt, ops::Deref, sync::Arc};
 
 use crate::indexer::Indexer;
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, Ord, PartialOrd)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
 pub struct BlockPointer {
     pub number: u64,
     pub hash: Bytes32,
@@ -37,19 +37,20 @@ where
     pub latest_block: BlockPointer,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Deserialize, Serialize, Ord, PartialOrd)]
-#[serde(from = "String")]
-pub struct Bytes32(String);
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
+pub struct Bytes32(Vec<u8>);
 
-impl From<String> for Bytes32 {
-    fn from(s: String) -> Self {
-        Self(s.trim_start_matches("0x").into())
+impl TryFrom<String> for Bytes32 {
+    type Error = anyhow::Error;
+
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        Ok(Self(hex::decode(s)?))
     }
 }
 
 impl fmt::Display for Bytes32 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", hex::encode(&self.0))
     }
 }
 
