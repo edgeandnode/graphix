@@ -1,10 +1,13 @@
 mod config;
 mod db;
 mod indexer;
-mod indexing_statuses;
+pub mod indexing_statuses;
 mod modes;
-mod proofs_of_indexing;
+pub mod proofs_of_indexing;
 pub mod types;
+
+#[cfg(test)]
+mod tests;
 
 #[macro_use]
 extern crate diesel;

@@ -433,6 +433,7 @@ dependencies = [
  "graphql_client",
  "hex",
  "itertools",
+ "rand",
  "reqwest",
  "serde",
  "serde_yaml",
