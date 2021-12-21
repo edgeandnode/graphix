@@ -51,7 +51,7 @@ impl TryInto<IndexingStatus<RealIndexer>>
             ) => match latest_block {
                 Some(block) => BlockPointer {
                     number: block.number.parse()?,
-                    hash: block.hash.clone().try_into()?,
+                    hash: block.hash.clone().as_str().try_into()?,
                 },
                 None => {
                     return Err(anyhow!("deployment has not started indexing yet"));
@@ -103,9 +103,9 @@ impl TryInto<ProofOfIndexing<RealIndexer>>
                 deployment: SubgraphDeployment(self.1.deployment.clone()),
                 block: BlockPointer {
                     number: self.1.block.number.parse()?,
-                    hash: self.1.block.hash.try_into()?,
+                    hash: self.1.block.hash.as_str().try_into()?,
                 },
-                proof_of_indexing: proof_of_indexing.try_into()?,
+                proof_of_indexing: proof_of_indexing.as_str().try_into()?,
             }),
             None => Err(anyhow!(
                 "no proof of indexing available for deployment {} at block #{} ({})",

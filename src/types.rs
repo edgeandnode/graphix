@@ -40,11 +40,11 @@ where
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
 pub struct Bytes32(Vec<u8>);
 
-impl TryFrom<String> for Bytes32 {
+impl TryFrom<&str> for Bytes32 {
     type Error = anyhow::Error;
 
-    fn try_from(s: String) -> Result<Self, Self::Error> {
-        Ok(Self(hex::decode(s)?))
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        Ok(Self(hex::decode(s.trim_start_matches("0x"))?))
     }
 }
 
