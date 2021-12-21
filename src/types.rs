@@ -26,7 +26,7 @@ impl Deref for SubgraphDeployment {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct IndexingStatus<I>
 where
     I: Indexer,
