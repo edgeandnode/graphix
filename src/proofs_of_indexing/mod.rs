@@ -1,5 +1,5 @@
 mod cross_checking;
-mod pois;
+mod query;
 
 pub use cross_checking::*;
-pub use pois::*;
+pub use query::*;

@@ -14,11 +14,10 @@ where
     I: Indexer + 'static,
 {
     join((indexers, timer(Duration::from_secs(120))))
-        .subscribe()
         .map(|(indexers, _)| query_indexing_statuses(indexers))
 }
 
-async fn query_indexing_statuses<I>(indexers: Vec<Arc<I>>) -> Vec<IndexingStatus<I>>
+pub async fn query_indexing_statuses<I>(indexers: Vec<Arc<I>>) -> Vec<IndexingStatus<I>>
 where
     I: Indexer,
 {
