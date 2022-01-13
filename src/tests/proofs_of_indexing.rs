@@ -280,28 +280,3 @@ async fn cross_check_pois_with_mismatch_in_random_block() {
         }
     }
 }
-
-#[tokio::test]
-#[traced_test]
-async fn random_poi_cross_checking() {
-    let rng = fast_rng();
-
-    for _ in 0..100 {
-        let indexers = gen_indexers(rng.clone(), 4);
-
-        let (mut indexers_writer, indexers_reader) = Eventual::new();
-        indexers_writer.write(indexers.clone());
-
-        let indexing_statuses_reader = indexing_statuses::indexing_statuses(indexers_reader);
-        let proofs_of_indexing_reader =
-            proofs_of_indexing::proofs_of_indexing(indexing_statuses_reader);
-
-        let (_proofs_of_indexing_reader, _reports_reader) =
-            proofs_of_indexing::cross_checking(proofs_of_indexing_reader.clone());
-
-        // TODO: Check POIs and reports
-        // NOTE: The code below freezes the test
-        // let proofs_of_indexing = proofs_of_indexing_reader.collect::<Vec<_>>().await;
-        // let reports = reports_reader.value().await.unwrap();
-    }
-}
