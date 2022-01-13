@@ -5,13 +5,15 @@ use itertools::Itertools;
 
 use crate::{indexing_statuses, proofs_of_indexing};
 
-use super::gen_indexers;
+use super::{fast_rng, gen_indexers};
 
 #[tokio::test]
 async fn proofs_of_indexing() {
+    let rng = fast_rng();
+
     // Run th test 100 times to increase likelyhood that randomness triggers a bug
     for max_indexers in 0..100 {
-        let indexers = gen_indexers(max_indexers);
+        let indexers = gen_indexers(rng.clone(), max_indexers);
 
         let (mut indexers_writer, indexers_reader) = Eventual::new();
         indexers_writer.write(indexers.clone());
@@ -42,8 +44,10 @@ async fn proofs_of_indexing() {
 
 #[tokio::test]
 async fn individual_poi_cross_checking() {
+    let rng = fast_rng();
+
     for _ in 0..100 {
-        let indexers = gen_indexers(2);
+        let indexers = gen_indexers(rng.clone(), 2);
 
         let (mut indexers_writer, indexers_reader) = Eventual::new();
         indexers_writer.write(indexers.clone());

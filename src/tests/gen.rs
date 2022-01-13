@@ -1,6 +1,6 @@
 use std::{iter::repeat_with, sync::Arc};
 
-use rand::{distributions::Alphanumeric, seq::IteratorRandom, thread_rng, Rng};
+use rand::{distributions::Alphanumeric, seq::IteratorRandom, Rng, RngCore};
 
 use crate::{
     config::IndexerUrls,
@@ -72,21 +72,24 @@ pub fn gen_blocks() -> Vec<BlockPointer> {
     .collect()
 }
 
-pub fn gen_bytes32(rng: &mut impl Rng) -> Bytes32 {
+pub fn gen_bytes32(rng: &mut impl RngCore) -> Bytes32 {
     let mut bytes = [0; 32];
     rng.fill_bytes(&mut bytes);
     Bytes32::try_from(hex::encode(bytes).as_str()).unwrap()
 }
 
-pub fn gen_indexers(max_indexers: usize) -> Vec<Arc<MockIndexer>> {
+pub fn gen_indexers<R>(mut rng: R, max_indexers: usize) -> Vec<Arc<MockIndexer>>
+where
+    R: RngCore + Clone,
+{
     // Generate some deployments and blocks
     let deployments = gen_deployments();
     let blocks = gen_blocks();
 
+    let number_of_indexers = rng.gen_range(0..=max_indexers);
+
     // Generate a random number of indexers
     repeat_with(move || {
-        let mut rng = thread_rng();
-
         let id = rng
             .clone()
             .sample_iter(&Alphanumeric)
@@ -129,6 +132,6 @@ pub fn gen_indexers(max_indexers: usize) -> Vec<Arc<MockIndexer>> {
             fail_proofs_of_indexing: rng.gen_bool(0.1),
         })
     })
-    .take(thread_rng().gen_range(0..=max_indexers))
+    .take(number_of_indexers)
     .collect::<Vec<Arc<MockIndexer>>>()
 }
