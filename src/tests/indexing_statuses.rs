@@ -5,13 +5,15 @@ use futures::{future, stream::FuturesUnordered, StreamExt};
 
 use crate::{indexer::Indexer, indexing_statuses};
 
-use super::gen::*;
+use super::{fast_rng, gen::*};
 
 #[tokio::test]
 async fn indexing_statuses() {
+    let rng = fast_rng();
+
     // Run the test 100 times to increase likelyhood that randomness triggers a bug
     for max_indexers in 0..100 {
-        let indexers = gen_indexers(max_indexers);
+        let indexers = gen_indexers(rng.clone(), max_indexers);
 
         let expected_statuses = indexers
             .iter()
