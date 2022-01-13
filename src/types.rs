@@ -81,8 +81,29 @@ where
     pub diverging_block: Option</* TODO */ ()>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct POIRequestBlock {
+    pub number: u64,
+    pub hash: Option<Bytes32>,
+}
+
+impl From<u64> for POIRequestBlock {
+    fn from(number: u64) -> Self {
+        Self { number, hash: None }
+    }
+}
+
+impl From<BlockPointer> for POIRequestBlock {
+    fn from(ptr: BlockPointer) -> Self {
+        Self {
+            number: ptr.number,
+            hash: Some(ptr.hash),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct POIRequest {
     pub deployment: SubgraphDeployment,
-    pub block: BlockPointer,
+    pub block: POIRequestBlock,
 }

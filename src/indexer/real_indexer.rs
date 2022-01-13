@@ -8,10 +8,13 @@ use tracing::*;
 
 use crate::{
     config::{EnvironmentConfig, IndexerUrls},
-    types::{BlockPointer, IndexingStatus, ProofOfIndexing, SubgraphDeployment},
+    types::{
+        BlockPointer, IndexingStatus, POIRequest, POIRequestBlock, ProofOfIndexing,
+        SubgraphDeployment,
+    },
 };
 
-use super::{Indexer, POIRequest};
+use super::Indexer;
 
 type BigInt = String;
 type Bytes = String;
@@ -79,11 +82,11 @@ impl TryInto<IndexingStatus<RealIndexer>>
 )]
 struct ProofsOfIndexing;
 
-impl Into<proofs_of_indexing::BlockInput> for BlockPointer {
+impl Into<proofs_of_indexing::BlockInput> for POIRequestBlock {
     fn into(self) -> proofs_of_indexing::BlockInput {
         proofs_of_indexing::BlockInput {
             number: self.number.to_string(),
-            hash: self.hash.into(),
+            hash: self.hash.map(|bytes| bytes.into()),
         }
     }
 }

@@ -1,18 +1,13 @@
 use core::hash::Hash;
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use async_trait::async_trait;
 
 use crate::{
     config::IndexerUrls,
-    types::{BlockPointer, IndexingStatus, ProofOfIndexing, SubgraphDeployment},
+    types::{IndexingStatus, POIRequest, ProofOfIndexing},
 };
-
-#[derive(Debug)]
-pub struct POIRequest {
-    pub deployment: SubgraphDeployment,
-    pub block: BlockPointer,
-}
 
 #[async_trait]
 pub trait Indexer: Clone + Sized + Eq + Send + Sync + Hash + Ord {

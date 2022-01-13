@@ -72,8 +72,8 @@ enum Health {
 }
 
 input BlockInput {
-  hash: Bytes!
   number: BigInt!
+  hash: Bytes
 }
 
 input ProofOfIndexingRequest {
