@@ -1,5 +1,6 @@
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, sync::Arc};
 
+use anyhow::anyhow;
 use eventuals::{Eventual, EventualExt};
 use futures::{
     channel::mpsc::{channel, Sender},
@@ -7,81 +8,110 @@ use futures::{
     FutureExt, SinkExt, Stream, StreamExt,
 };
 use itertools::Itertools;
-use tracing::{info, warn};
+use nanoid::nanoid;
+use tracing::{debug, info, warn};
 
 use crate::{
     indexer::Indexer,
-    types::{POICrossCheckReport, ProofOfIndexing},
+    proofs_of_indexing::DivergingBlock,
+    types::{POICrossCheckReport, POIRequest, ProofOfIndexing, SubgraphDeployment},
 };
+
+use super::{bisect_blocks, BisectDecision};
+
+#[derive(Debug, Clone)]
+struct POIBisectContext<I>
+where
+    I: Indexer,
+{
+    indexer1: Arc<I>,
+    indexer2: Arc<I>,
+    deployment: SubgraphDeployment,
+    poi_broadcaster: Sender<ProofOfIndexing<I>>,
+}
 
 pub fn cross_checking<I>(
     pois: Eventual<Vec<ProofOfIndexing<I>>>,
 ) -> (
     impl Stream<Item = ProofOfIndexing<I>>,
-    Eventual<Vec<POICrossCheckReport<I>>>,
+    impl Stream<Item = POICrossCheckReport<I>>,
 )
 where
     I: Indexer + 'static,
 {
     let (poi_broadcaster, poi_receiver) = channel(1000);
+    let (report_broadcaster, report_receiver) = channel(1000);
 
-    let reports = pois.map(move |mut pois| {
-        // Sort POIs (to make everything a little more predictable)
-        pois.sort();
+    let pipe =
+        pois.pipe_async(move |mut pois| {
+            let poi_broadcaster = poi_broadcaster.clone();
+            let report_broadcaster = report_broadcaster.clone();
 
-        // Build a flat, unique list of all deployments we have POIs for
-        let deployments = pois
-            .iter()
-            .map(|poi| &poi.deployment)
-            .collect::<BTreeSet<_>>();
+            async move {
+                // Sort POIs (to make everything a little more predictable)
+                pois.sort();
 
-        // Build a map of deployments to Indexers/POIs
-        deployments
-            .into_iter()
-            .map(|deployment| {
-                (
-                    deployment,
-                    pois.iter()
-                        .filter(|poi| poi.deployment.eq(deployment))
-                        .map(|poi| poi.to_owned())
-                        .collect::<Vec<_>>(),
-                )
-            })
-            .map(|(deployment, pois)| {
-                info!(
-                    deployment = %deployment.as_str(),
-                    "Cross-checking POIs for deployment"
-                );
+                // Build a flat, unique list of all deployments we have POIs for
+                let deployments = pois
+                    .iter()
+                    .map(|poi| &poi.deployment)
+                    .collect::<BTreeSet<_>>();
 
-                // Get all pairs of POIS/indexers to compare against each other
-                let count = pois.len();
-                let combinations = pois
+                // Build a map of deployments to Indexers/POIs
+                let reports = deployments
                     .into_iter()
-                    .tuple_combinations::<(_, _)>()
-                    .collect_vec();
+                    .map(|deployment| {
+                        (
+                            deployment,
+                            pois.iter()
+                                .filter(|poi| poi.deployment.eq(deployment))
+                                .map(|poi| poi.to_owned())
+                                .collect::<Vec<_>>(),
+                        )
+                    })
+                    .map(|(deployment, pois)| {
+                        info!(
+                            deployment = %deployment.as_str(),
+                            "Cross-checking POIs for deployment"
+                        );
 
-                if count > 0 && combinations.len() == 0 {
-                    warn!(
-                        indexers = %count,
-                        deployment = %deployment.as_str(),
-                        "Deployment has POIs but not enough indexers to cross-check",
-                    );
-                    return vec![];
-                }
+                        // Get all pairs of POIS/indexers to compare against each other
+                        let count = pois.len();
+                        let combinations = pois
+                            .into_iter()
+                            .tuple_combinations::<(_, _)>()
+                            .collect_vec();
 
-                combinations
-            })
-            .flatten()
-            .map(|(poi1, poi2)| cross_check_poi(poi1, poi2, poi_broadcaster.clone()))
-            .collect::<FuturesUnordered<_>>()
-            .collect::<Vec<_>>()
-            .map(|reports| reports.into_iter().flatten().collect())
-    });
+                        if count > 0 && combinations.len() == 0 {
+                            warn!(
+                                indexers = %count,
+                                deployment = %deployment.as_str(),
+                                "Deployment has POIs but not enough indexers to cross-check",
+                            );
+                            return vec![];
+                        }
 
-    (poi_receiver, reports)
+                        combinations
+                    })
+                    .flatten()
+                    .map(|(poi1, poi2)| cross_check_poi(poi1, poi2, poi_broadcaster.clone()))
+                    .collect::<FuturesUnordered<_>>();
+
+                reports
+                    .forward(report_broadcaster.clone().sink_map_err(|e| {
+                        anyhow!("Failed to broadcast POI cross-check report: {}", e)
+                    }))
+                    .map(|_| ())
+                    .await
+            }
+        });
+
+    std::mem::forget(pipe);
+
+    (poi_receiver, report_receiver)
 }
 
-async fn cross_check_poi<I>(
+pub async fn cross_check_poi<I>(
     poi1: ProofOfIndexing<I>,
     poi2: ProofOfIndexing<I>,
     mut poi_broadcaster: Sender<ProofOfIndexing<I>>,
@@ -112,6 +142,79 @@ where
         });
     }
 
-    // TODO: Implement cross-checking for POIs that are different
-    todo!()
+    // Bisect to find the first diverging/bad block
+
+    let context = POIBisectContext {
+        indexer1: poi1.indexer.clone(),
+        indexer2: poi2.indexer.clone(),
+        deployment: poi1.deployment.clone(),
+        poi_broadcaster: poi_broadcaster.clone(),
+    };
+
+    let diverging_block = bisect_blocks(
+        nanoid!(),
+        context,
+        DivergingBlock { poi1, poi2 },
+        test_block_number,
+    )
+    .await?;
+
+    info!(
+        indexer1 = %diverging_block.poi1.indexer.id(),
+        indexer2 = %diverging_block.poi2.indexer.id(),
+        diverging_block = %diverging_block.poi1.block,
+    );
+
+    Ok(POICrossCheckReport {
+        poi1: diverging_block.poi1,
+        poi2: diverging_block.poi2,
+        diverging_block: Some(()),
+    })
+}
+
+async fn test_block_number<I>(
+    bisection_id: String,
+    ctx: POIBisectContext<I>,
+    block_number: u64,
+) -> Result<BisectDecision<I>, anyhow::Error>
+where
+    I: Indexer,
+{
+    debug!(
+        %bisection_id,
+        %block_number,
+        "Comparing block",
+    );
+
+    let POIBisectContext {
+        indexer1,
+        indexer2,
+        deployment,
+        mut poi_broadcaster,
+    } = ctx;
+
+    let request = POIRequest {
+        deployment: deployment.clone(),
+        block: block_number.into(),
+    };
+
+    let poi1 = indexer1.proof_of_indexing(request.clone()).await?;
+    let poi2 = indexer2.proof_of_indexing(request.clone()).await?;
+
+    poi_broadcaster.send(poi1.clone()).await?;
+    poi_broadcaster.send(poi2.clone()).await?;
+
+    debug!(
+        %bisection_id,
+        %block_number,
+        poi1 = %poi1.proof_of_indexing,
+        poi2 = %poi2.proof_of_indexing,
+        "Comparing POIs at block"
+    );
+
+    if poi1.proof_of_indexing == poi2.proof_of_indexing {
+        Ok(BisectDecision::Good) as Result<_, anyhow::Error>
+    } else {
+        Ok(BisectDecision::Bad { poi1, poi2 })
+    }
 }

@@ -16,7 +16,8 @@ extern crate diesel;
 extern crate diesel_migrations;
 
 use diesel::{r2d2, PgConnection};
-use std::{path::PathBuf, sync::Arc};
+use eventuals::timer;
+use std::{path::PathBuf, sync::Arc, time::Duration};
 use structopt::StructOpt;
 use tokio;
 use tracing::*;
@@ -74,13 +75,15 @@ async fn main() -> Result<(), anyhow::Error> {
     let (pois, reports) = proofs_of_indexing::cross_checking(pois);
 
     // POIs are a stream that should be written to the POI database
-    db::proofs_of_indexing::write(db_connection_pool, pois);
+    db::proofs_of_indexing::write(db_connection_pool.clone(), pois);
+
+    // Reports are a stream that should be written to the database
+    db::proofs_of_indexing::write_reports(db_connection_pool, reports);
 
     // Temporary loop to keep things running and print the latest results
-    let mut reports = reports.subscribe();
+    let mut ticks = timer(Duration::from_secs(5)).subscribe();
     loop {
-        let reports = reports.next().await.unwrap();
-        info!("Reports: {:?}", reports);
+        ticks.next().await.unwrap();
     }
 
     Ok(())
