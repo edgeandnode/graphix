@@ -36,8 +36,8 @@ graph-ixi --config examples/testing.yml
   - [ ] Indexing
     - [x] Monitor indexing statuses
     - [x] Monitor POIs for common blocks
-    - [ ] Write POIs to a POI database
-    - [ ] Cross-check POIs
+    - [x] Write POIs to a POI database
+    - [x] Cross-check POIs
     - [ ] Generate detailed report data
   - [ ] Querying
     - tbd
