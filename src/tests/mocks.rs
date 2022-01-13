@@ -6,10 +6,7 @@ use async_trait::async_trait;
 use crate::{
     config::IndexerUrls,
     indexer::Indexer,
-    types::{
-        self, BlockPointer, Bytes32, IndexingStatus, POIRequest, ProofOfIndexing,
-        SubgraphDeployment,
-    },
+    types::{self, BlockPointer, Bytes32, IndexingStatus, ProofOfIndexing, SubgraphDeployment},
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
