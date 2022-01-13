@@ -1,7 +1,7 @@
 use std::env;
 
 use once_cell::sync::Lazy;
-use rand::{rngs::SmallRng, SeedableRng};
+use rand::{rngs::OsRng, rngs::SmallRng, RngCore, SeedableRng};
 
 mod gen;
 mod indexing_statuses;
@@ -13,9 +13,8 @@ pub use mocks::*;
 
 pub static TEST_SEED: Lazy<u64> = Lazy::new(|| {
     let seed = env::var("TEST_SEED")
-        .unwrap_or("12345".to_string())
-        .parse()
-        .expect("Invalid TEST_SEED value");
+        .map(|seed| seed.parse().expect("Invalid TEST_SEED value"))
+        .unwrap_or(OsRng.next_u64());
 
     println!("------------------------------------------------------------------------");
     println!("TEST_SEED={}", seed);
