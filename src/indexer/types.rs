@@ -21,4 +21,15 @@ pub trait Indexer: Clone + Sized + Eq + Send + Sync + Hash + Ord {
         self: Arc<Self>,
         requests: Vec<POIRequest>,
     ) -> Result<Vec<ProofOfIndexing<Self>>, anyhow::Error>;
+
+    /// Convenience wrapper around calling `proofs_of_indexing` for a single POI.
+    async fn proof_of_indexing(
+        self: Arc<Self>,
+        request: POIRequest,
+    ) -> Result<ProofOfIndexing<Self>, anyhow::Error> {
+        let mut results = self.proofs_of_indexing(vec![request]).await?;
+        results
+            .pop()
+            .ok_or_else(|| anyhow!("no proof of indexing returned"))
+    }
 }

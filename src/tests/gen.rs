@@ -78,6 +78,20 @@ pub fn gen_bytes32(rng: &mut impl RngCore) -> Bytes32 {
     Bytes32::try_from(hex::encode(bytes).as_str()).unwrap()
 }
 
+pub fn gen_pois(
+    blocks: Vec<BlockPointer>,
+    mut rng: &mut impl RngCore,
+) -> Vec<PartialProofOfIndexing> {
+    blocks
+        .clone()
+        .into_iter()
+        .map(|block| PartialProofOfIndexing {
+            block,
+            proof_of_indexing: gen_bytes32(&mut rng),
+        })
+        .collect()
+}
+
 pub fn gen_indexers<R>(mut rng: R, max_indexers: usize) -> Vec<Arc<MockIndexer>>
 where
     R: RngCore + Clone,
@@ -111,14 +125,7 @@ where
                 deployment,
                 network: "mainnet".into(),
                 latest_block: blocks.iter().choose(&mut rng).unwrap().clone(),
-                canonical_pois: blocks
-                    .clone()
-                    .into_iter()
-                    .map(|block| PartialProofOfIndexing {
-                        block,
-                        proof_of_indexing: gen_bytes32(&mut rng),
-                    })
-                    .collect(),
+                canonical_pois: gen_pois(blocks.clone(), &mut rng),
             })
             .collect();
 
