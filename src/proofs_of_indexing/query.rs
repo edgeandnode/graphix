@@ -9,8 +9,8 @@ use futures::StreamExt;
 use tracing::*;
 
 use crate::{
-    indexer::{Indexer, POIRequest},
-    types::{BlockPointer, IndexingStatus, ProofOfIndexing, SubgraphDeployment},
+    indexer::Indexer,
+    types::{BlockPointer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment},
 };
 
 pub fn proofs_of_indexing<I>(
@@ -88,7 +88,7 @@ where
                 .filter_map(|(deployment, block)| {
                     block.clone().map(|block| POIRequest {
                         deployment: deployment.clone(),
-                        block,
+                        block: block.into(),
                     })
                 })
                 .collect::<Vec<_>>();

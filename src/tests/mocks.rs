@@ -1,10 +1,15 @@
+use std::sync::Arc;
+
 use anyhow::anyhow;
 use async_trait::async_trait;
 
 use crate::{
     config::IndexerUrls,
     indexer::Indexer,
-    types::{BlockPointer, Bytes32, IndexingStatus, ProofOfIndexing, SubgraphDeployment},
+    types::{
+        self, BlockPointer, Bytes32, IndexingStatus, POIRequest, ProofOfIndexing,
+        SubgraphDeployment,
+    },
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -35,8 +40,8 @@ impl Indexer for MockIndexer {
     }
 
     async fn indexing_statuses(
-        self: std::sync::Arc<Self>,
-    ) -> Result<Vec<crate::types::IndexingStatus<Self>>, anyhow::Error> {
+        self: Arc<Self>,
+    ) -> Result<Vec<types::IndexingStatus<Self>>, anyhow::Error> {
         if self.fail_indexing_statuses {
             Err(anyhow!("boo"))
         } else {
@@ -55,9 +60,9 @@ impl Indexer for MockIndexer {
     }
 
     async fn proofs_of_indexing(
-        self: std::sync::Arc<Self>,
-        requests: Vec<crate::indexer::POIRequest>,
-    ) -> Result<Vec<crate::types::ProofOfIndexing<Self>>, anyhow::Error> {
+        self: Arc<Self>,
+        requests: Vec<types::POIRequest>,
+    ) -> Result<Vec<types::ProofOfIndexing<Self>>, anyhow::Error> {
         if self.fail_proofs_of_indexing {
             Err(anyhow!("boo"))
         } else {
@@ -74,7 +79,7 @@ impl Indexer for MockIndexer {
                     detail
                         .canonical_pois
                         .iter()
-                        .find(|poi| poi.block.eq(&request.block))
+                        .find(|poi| poi.block.number.eq(&request.block.number))
                         .map(|poi| (detail, poi))
                 })
                 .map(|(deployment_detail, poi)| ProofOfIndexing {
