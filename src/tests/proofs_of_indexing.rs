@@ -2,9 +2,9 @@ use std::{collections::BTreeSet, sync::Arc};
 use tracing_test::traced_test;
 
 use eventuals::Eventual;
-use futures::{Stream, StreamExt};
+use futures::StreamExt;
 use itertools::Itertools;
-use rand::{prelude::IteratorRandom, thread_rng, Rng};
+use rand::{thread_rng, Rng};
 
 use crate::{
     config::IndexerUrls,
