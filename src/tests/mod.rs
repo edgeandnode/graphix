@@ -24,6 +24,6 @@ pub static TEST_SEED: Lazy<u64> = Lazy::new(|| {
     seed
 });
 
-pub fn fast_rng() -> SmallRng {
-    SmallRng::seed_from_u64(*TEST_SEED)
+pub fn fast_rng(seed_extra: u64) -> SmallRng {
+    SmallRng::seed_from_u64(*TEST_SEED + seed_extra)
 }

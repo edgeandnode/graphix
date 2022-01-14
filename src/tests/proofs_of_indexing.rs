@@ -16,11 +16,12 @@ use super::*;
 
 #[tokio::test]
 async fn proofs_of_indexing() {
-    let rng = fast_rng();
-
     // Run th test 100 times to increase likelyhood that randomness triggers a bug
-    for max_indexers in 0..100 {
-        let indexers = gen_indexers(rng.clone(), max_indexers);
+    for i in 0..100 {
+        let mut rng = fast_rng(i);
+        let max_indexers = i;
+
+        let indexers = gen_indexers(&mut rng, max_indexers as usize);
 
         let (mut indexers_writer, indexers_reader) = Eventual::new();
         indexers_writer.write(indexers.clone());

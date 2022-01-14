@@ -9,11 +9,12 @@ use super::{fast_rng, gen::*};
 
 #[tokio::test]
 async fn indexing_statuses() {
-    let rng = fast_rng();
-
     // Run the test 100 times to increase likelyhood that randomness triggers a bug
-    for max_indexers in 0..100 {
-        let indexers = gen_indexers(rng.clone(), max_indexers);
+    for i in 0..100 {
+        let mut rng = fast_rng(i);
+        let max_indexers = i;
+
+        let indexers = gen_indexers(&mut rng, max_indexers as usize);
 
         let expected_statuses = indexers
             .iter()
