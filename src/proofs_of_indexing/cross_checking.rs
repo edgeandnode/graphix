@@ -106,7 +106,7 @@ where
             }
         });
 
-    std::mem::forget(pipe);
+    pipe.forever();
 
     (poi_receiver, report_receiver)
 }
