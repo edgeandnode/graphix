@@ -50,7 +50,9 @@ async fn proofs_of_indexing() {
     }
 }
 
-fn gen_basic_cross_checking_inputs() -> (
+fn gen_basic_cross_checking_inputs(
+    extra_seed: u64,
+) -> (
     impl Rng,
     SubgraphDeployment,
     Vec<BlockPointer>,
@@ -58,7 +60,7 @@ fn gen_basic_cross_checking_inputs() -> (
     BlockPointer,
     Vec<PartialProofOfIndexing>,
 ) {
-    let mut rng = thread_rng();
+    let mut rng = fast_rng(extra_seed);
 
     let deployment = gen_deployments().get(0).unwrap().clone();
     let blocks = gen_blocks();
@@ -85,8 +87,9 @@ fn gen_basic_cross_checking_inputs() -> (
 #[traced_test]
 async fn cross_check_identical_pois() {
     // Run this test 100 times with a random latest block
-    for _ in 0..100 {
-        let (_, deployment, _, _, latest_block, canonical_pois) = gen_basic_cross_checking_inputs();
+    for i in 0..100 {
+        let (_, deployment, _, _, latest_block, canonical_pois) =
+            gen_basic_cross_checking_inputs(i);
 
         let deployment_details = vec![DeploymentDetails {
             deployment: deployment.clone(),
@@ -168,9 +171,9 @@ async fn cross_check_identical_pois() {
 #[traced_test]
 async fn cross_check_pois_with_mismatch_in_random_block() {
     // Run this test 1000 times with a random latest block and random diverging block
-    for _ in 0..1000 {
+    for i in 0..1000 {
         let (mut rng, deployment, blocks, _, latest_block, canonical_pois) =
-            gen_basic_cross_checking_inputs();
+            gen_basic_cross_checking_inputs(i);
 
         // Create a sequence of POIs that diverges at the very beginning
         let mut diverging_pois = canonical_pois.clone();
