@@ -1,4 +1,5 @@
 CREATE TABLE proofs_of_indexing (
+    timestamp TIMESTAMP,
     indexer VARCHAR(255),
     deployment VARCHAR(46),
     block_number BIGINT,
