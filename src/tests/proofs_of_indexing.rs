@@ -4,7 +4,7 @@ use tracing_test::traced_test;
 use eventuals::Eventual;
 use futures::StreamExt;
 use itertools::Itertools;
-use rand::{thread_rng, Rng};
+use rand::Rng;
 
 use crate::{
     config::IndexerUrls,

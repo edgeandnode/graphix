@@ -88,7 +88,7 @@ where
                 .filter_map(|(deployment, block)| {
                     block.clone().map(|block| POIRequest {
                         deployment: deployment.clone(),
-                        block: block.into(),
+                        block_number: block.number,
                     })
                 })
                 .collect::<Vec<_>>();

@@ -4,7 +4,7 @@ table! {
         indexer -> Varchar,
         deployment -> Varchar,
         block_number -> Int8,
-        block_hash -> Varchar,
+        block_hash -> Nullable<Varchar>,
         proof_of_indexing -> Varchar,
     }
 }
@@ -16,7 +16,7 @@ table! {
          indexer2 -> Varchar,
          deployment-> Varchar,
          block_number -> Int8,
-         block_hash -> Varchar,
+         block_hash -> Nullable<Varchar>,
          proof_of_indexing1 -> Varchar,
          proof_of_indexing2 -> Varchar,
      }

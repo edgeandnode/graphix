@@ -4,6 +4,7 @@ mod indexer;
 pub mod indexing_statuses;
 mod modes;
 pub mod proofs_of_indexing;
+mod server;
 pub mod types;
 
 #[cfg(test)]
@@ -16,8 +17,7 @@ extern crate diesel;
 extern crate diesel_migrations;
 
 use diesel::{r2d2, PgConnection};
-use eventuals::timer;
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use std::{path::PathBuf, sync::Arc};
 use structopt::StructOpt;
 use tokio;
 use tracing::*;
@@ -80,11 +80,6 @@ async fn main() -> Result<(), anyhow::Error> {
     // Reports are a stream that should be written to the database
     db::proofs_of_indexing::write_reports(db_connection_pool, reports);
 
-    // Temporary loop to keep things running and print the latest results
-    let mut ticks = timer(Duration::from_secs(5)).subscribe();
-    loop {
-        ticks.next().await.unwrap();
-    }
-
-    Ok(())
+    // Power up the web server
+    server::run().await
 }

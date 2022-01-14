@@ -195,7 +195,7 @@ where
 
     let request = POIRequest {
         deployment: deployment.clone(),
-        block: block_number.into(),
+        block_number,
     };
 
     let poi1 = indexer1.proof_of_indexing(request.clone()).await?;
