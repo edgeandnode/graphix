@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use chrono::prelude::Utc;
 use diesel::{r2d2, PgConnection, RunQueryDsl};
 use futures::{FutureExt, Stream, StreamExt, TryFutureExt};
 use futures_retry::{FutureRetry, RetryPolicy};
@@ -32,10 +33,11 @@ pub fn write<S, I>(
                                 .clone()
                                 .into_iter()
                                 .map(|poi| ProofOfIndexing {
+                                    timestamp: Utc::now().naive_utc(),
                                     indexer: poi.indexer.id().trim_start_matches("0x").into(),
                                     deployment: poi.deployment.to_string(),
                                     block_number: poi.block.number as i64,
-                                    block_hash: poi.block.hash.into(),
+                                    block_hash: poi.block.hash.map(|hash| hash.into()),
                                     proof_of_indexing: poi.proof_of_indexing.into(),
                                 })
                                 .collect::<Vec<_>>();
@@ -95,6 +97,7 @@ pub fn write_reports<S, I>(
                                 .clone()
                                 .into_iter()
                                 .map(|report| POICrossCheckReport {
+                                    timestamp: Utc::now().naive_utc(),
                                     indexer1: report
                                         .poi1
                                         .indexer
@@ -108,7 +111,7 @@ pub fn write_reports<S, I>(
                                         .trim_start_matches("0x")
                                         .into(),
                                     deployment: report.poi1.deployment.to_string(),
-                                    block_hash: report.poi1.block.hash.to_string(),
+                                    block_hash: report.poi1.block.hash.map(|hash| hash.to_string()),
                                     block_number: report.poi1.block.number as i64,
                                     proof_of_indexing1: report.poi1.proof_of_indexing.to_string(),
                                     proof_of_indexing2: report.poi2.proof_of_indexing.to_string(),

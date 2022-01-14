@@ -1,4 +1,4 @@
-query ProofsOfIndexing($requests: [ProofOfIndexingRequest!]!) {
+query ProofsOfIndexing($requests: [PublicProofOfIndexingRequest!]!) {
   publicProofsOfIndexing(requests: $requests) {
     deployment
     block {

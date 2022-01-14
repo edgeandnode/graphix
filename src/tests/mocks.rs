@@ -76,7 +76,7 @@ impl Indexer for MockIndexer {
                     detail
                         .canonical_pois
                         .iter()
-                        .find(|poi| poi.block.number.eq(&request.block.number))
+                        .find(|poi| poi.block.number.eq(&request.block_number))
                         .map(|poi| (detail, poi))
                 })
                 .map(|(deployment_detail, poi)| ProofOfIndexing {

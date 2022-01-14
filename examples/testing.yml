@@ -1,9 +1,12 @@
 testing:
   databaseUrl: postgres://localhost:5432/graph-ixi
   environments:
-    - id: local-graph-node
+    - id: indexer-1
       urls:
-        status: http://localhost:8030/graphql
-    - id: local-indexer
+        status: http://localhost:8103/graphql
+    - id: indexer-2
       urls:
-        status: http://localhost:7600
+        status: http://localhost:8203/graphql
+    # - id: indexer-3
+    #   urls:
+    #     status: http://localhost:8303/graphql

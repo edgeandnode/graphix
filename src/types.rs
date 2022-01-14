@@ -6,12 +6,19 @@ use crate::indexer::Indexer;
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
 pub struct BlockPointer {
     pub number: u64,
-    pub hash: Bytes32,
+    pub hash: Option<Bytes32>,
 }
 
 impl fmt::Display for BlockPointer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "#{} ({})", self.number, self.hash)
+        write!(
+            f,
+            "#{} ({})",
+            self.number,
+            self.hash
+                .as_ref()
+                .map_or("no hash".to_string(), |hash| format!("{}", hash))
+        )
     }
 }
 
@@ -38,7 +45,7 @@ where
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
-pub struct Bytes32(Vec<u8>);
+pub struct Bytes32(pub Vec<u8>);
 
 impl TryFrom<&str> for Bytes32 {
     type Error = anyhow::Error;
@@ -82,28 +89,7 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub struct POIRequestBlock {
-    pub number: u64,
-    pub hash: Option<Bytes32>,
-}
-
-impl From<u64> for POIRequestBlock {
-    fn from(number: u64) -> Self {
-        Self { number, hash: None }
-    }
-}
-
-impl From<BlockPointer> for POIRequestBlock {
-    fn from(ptr: BlockPointer) -> Self {
-        Self {
-            number: ptr.number,
-            hash: Some(ptr.hash),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 pub struct POIRequest {
     pub deployment: SubgraphDeployment,
-    pub block: POIRequestBlock,
+    pub block_number: u64,
 }

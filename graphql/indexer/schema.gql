@@ -6,8 +6,8 @@ scalar String
 type Query {
   indexingStatuses(subgraphs: [String!]): [SubgraphIndexingStatus!]!
   publicProofsOfIndexing(
-    requests: [ProofOfIndexingRequest!]!
-  ): [ProofOfIndexingResult!]!
+    requests: [PublicProofOfIndexingRequest!]!
+  ): [PublicProofOfIndexingResult!]!
 }
 
 type SubgraphIndexingStatus {
@@ -71,18 +71,18 @@ enum Health {
   failed
 }
 
-input BlockInput {
-  number: BigInt!
+input PublicProofOfIndexingRequest {
+  deployment: String!
+  blockNumber: BigInt!
+}
+
+type PartialBlock {
   hash: Bytes
+  number: BigInt!
 }
 
-input ProofOfIndexingRequest {
+type PublicProofOfIndexingResult {
   deployment: String!
-  block: BlockInput!
-}
-
-type ProofOfIndexingResult {
-  deployment: String!
-  block: Block!
-  proofOfIndexing: Bytes
+  block: PartialBlock!
+  proofOfIndexing: Bytes!
 }

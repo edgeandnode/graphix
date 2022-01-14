@@ -8,10 +8,7 @@ use tracing::*;
 
 use crate::{
     config::{EnvironmentConfig, IndexerUrls},
-    types::{
-        BlockPointer, IndexingStatus, POIRequest, POIRequestBlock, ProofOfIndexing,
-        SubgraphDeployment,
-    },
+    types::{BlockPointer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment},
 };
 
 use super::Indexer;
@@ -54,7 +51,7 @@ impl TryInto<IndexingStatus<RealIndexer>>
             ) => match latest_block {
                 Some(block) => BlockPointer {
                     number: block.number.parse()?,
-                    hash: block.hash.clone().as_str().try_into()?,
+                    hash: Some(block.hash.clone().as_str().try_into()?),
                 },
                 None => {
                     return Err(anyhow!("deployment has not started indexing yet"));
@@ -82,15 +79,6 @@ impl TryInto<IndexingStatus<RealIndexer>>
 )]
 struct ProofsOfIndexing;
 
-impl Into<proofs_of_indexing::BlockInput> for POIRequestBlock {
-    fn into(self) -> proofs_of_indexing::BlockInput {
-        proofs_of_indexing::BlockInput {
-            number: self.number.to_string(),
-            hash: self.hash.map(|bytes| bytes.into()),
-        }
-    }
-}
-
 impl TryInto<ProofOfIndexing<RealIndexer>>
     for (
         Arc<RealIndexer>,
@@ -100,23 +88,19 @@ impl TryInto<ProofOfIndexing<RealIndexer>>
     type Error = anyhow::Error;
 
     fn try_into(self) -> Result<ProofOfIndexing<RealIndexer>, Self::Error> {
-        match self.1.proof_of_indexing {
-            Some(proof_of_indexing) => Ok(ProofOfIndexing {
-                indexer: self.0,
-                deployment: SubgraphDeployment(self.1.deployment.clone()),
-                block: BlockPointer {
-                    number: self.1.block.number.parse()?,
-                    hash: self.1.block.hash.as_str().try_into()?,
-                },
-                proof_of_indexing: proof_of_indexing.as_str().try_into()?,
-            }),
-            None => Err(anyhow!(
-                "no proof of indexing available for deployment {} at block #{} ({})",
-                self.1.deployment,
-                self.1.block.number,
-                self.1.block.hash
-            )),
-        }
+        Ok(ProofOfIndexing {
+            indexer: self.0,
+            deployment: SubgraphDeployment(self.1.deployment.clone()),
+            block: BlockPointer {
+                number: self.1.block.number.parse()?,
+                hash: self
+                    .1
+                    .block
+                    .hash
+                    .and_then(|hash| hash.as_str().try_into().ok()),
+            },
+            proof_of_indexing: self.1.proof_of_indexing.as_str().try_into()?,
+        })
     }
 }
 
@@ -206,9 +190,9 @@ impl Indexer for RealIndexer {
         let request = ProofsOfIndexing::build_query(proofs_of_indexing::Variables {
             requests: requests
                 .into_iter()
-                .map(|query| proofs_of_indexing::ProofOfIndexingRequest {
+                .map(|query| proofs_of_indexing::PublicProofOfIndexingRequest {
                     deployment: query.deployment.to_string(),
-                    block: query.block.into(),
+                    blockNumber: query.block_number.to_string(),
                 })
                 .collect(),
         });
