@@ -1,6 +1,6 @@
 use std::{iter::repeat_with, sync::Arc};
 
-use rand::{distributions::Alphanumeric, seq::IteratorRandom, Rng, RngCore};
+use rand::{distributions::Alphanumeric, seq::IteratorRandom, Rng};
 
 use crate::{
     config::IndexerUrls,
@@ -72,16 +72,19 @@ pub fn gen_blocks() -> Vec<BlockPointer> {
     .collect()
 }
 
-pub fn gen_bytes32(rng: &mut impl RngCore) -> Bytes32 {
+pub fn gen_bytes32<R>(rng: &mut R) -> Bytes32
+where
+    R: Rng,
+{
     let mut bytes = [0; 32];
     rng.fill_bytes(&mut bytes);
     Bytes32::try_from(hex::encode(bytes).as_str()).unwrap()
 }
 
-pub fn gen_pois(
-    blocks: Vec<BlockPointer>,
-    mut rng: &mut impl RngCore,
-) -> Vec<PartialProofOfIndexing> {
+pub fn gen_pois<R>(blocks: Vec<BlockPointer>, mut rng: &mut R) -> Vec<PartialProofOfIndexing>
+where
+    R: Rng,
+{
     blocks
         .clone()
         .into_iter()
@@ -92,9 +95,9 @@ pub fn gen_pois(
         .collect()
 }
 
-pub fn gen_indexers<R>(mut rng: R, max_indexers: usize) -> Vec<Arc<MockIndexer>>
+pub fn gen_indexers<R>(mut rng: &mut R, max_indexers: usize) -> Vec<Arc<MockIndexer>>
 where
-    R: RngCore + Clone,
+    R: Rng,
 {
     // Generate some deployments and blocks
     let deployments = gen_deployments();
@@ -105,7 +108,6 @@ where
     // Generate a random number of indexers
     repeat_with(move || {
         let id = rng
-            .clone()
             .sample_iter(&Alphanumeric)
             .take(30)
             .map(char::from)
