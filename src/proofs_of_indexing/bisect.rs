@@ -56,8 +56,7 @@ where
         info!(%bisection_id, %good, bad = %bad.poi1.block.number, "Bisect step");
 
         // Calculate the block number in the middle between bad and good
-        let current =
-            (good as f64 + (bad.poi1.block.number - good) as f64 / 2.0_f64).round() as u64;
+        let current = good + (bad.poi1.block.number - good) / 2;
 
         // Test if this block is good or bad
         let decision = test_fn(bisection_id.clone(), context.clone(), current).await?;
