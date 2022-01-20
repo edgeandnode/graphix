@@ -1,0 +1,4 @@
+[package]
+name = "graph-ixi-api-server"
+version = "0.1.0"
+authors = [ "Jannis Pohlmann <jannis@edgeandnode.com>" ]

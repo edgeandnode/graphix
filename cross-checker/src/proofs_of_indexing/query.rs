@@ -6,12 +6,10 @@ use std::{
 use eventuals::*;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
-use tracing::*;
-
-use crate::{
-    indexer::Indexer,
-    types::{BlockPointer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment},
+use graph_ixi_common::prelude::{
+    BlockPointer, Indexer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment,
 };
+use tracing::*;
 
 pub fn proofs_of_indexing<I>(
     indexing_statuses: Eventual<Vec<IndexingStatus<I>>>,

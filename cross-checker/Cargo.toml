@@ -1,0 +1,32 @@
+[package]
+name = "graph-ixi-cross-checker"
+version = "0.1.0"
+authors = [ "Jannis Pohlmann <jannis@edgeandnode.com>" ]
+edition = "2021"
+default-run = "graph-ixi-cross-checker"
+
+[[bin]]
+name = "graph-ixi-cross-checker"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.48"
+async-trait = "0.1.52"
+diesel = { version = "1.4", features = ["postgres", "r2d2", "chrono"] }
+diesel_migrations = "1.4"
+eventuals = "0.6.6"
+futures = "0.3.18"
+graph-ixi-common = { path = "../common" }
+itertools = "0.10.3"
+nanoid = "0.4.0"
+structopt = "0.3.25"
+tokio = { version = "1.14.0", features = ["full"] }
+tracing = "0.1.29"
+tracing-subscriber = { version = "0.3.2", features = ["env-filter"] }
+warp = "0.3.2"
+
+[dev-dependencies]
+hex = "0.4.3"
+once_cell = "1.9.0"
+rand = { version = "0.8.4", features = ["small_rng"] }
+tracing-test = "0.2.1"

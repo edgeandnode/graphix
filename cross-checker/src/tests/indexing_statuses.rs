@@ -2,8 +2,9 @@ use std::collections::BTreeSet;
 
 use eventuals::Eventual;
 use futures::{future, stream::FuturesUnordered, StreamExt};
+use graph_ixi_common::prelude::Indexer;
 
-use crate::{indexer::Indexer, indexing_statuses};
+use crate::indexing_statuses;
 
 use super::{fast_rng, gen::*};
 

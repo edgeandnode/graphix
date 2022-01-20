@@ -2,11 +2,9 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use async_trait::async_trait;
-
-use crate::{
-    config::IndexerUrls,
-    indexer::Indexer,
-    types::{self, BlockPointer, Bytes32, IndexingStatus, ProofOfIndexing, SubgraphDeployment},
+use graph_ixi_common::prelude::{
+    BlockPointer, Bytes32, Indexer, IndexerUrls, IndexingStatus, POIRequest, ProofOfIndexing,
+    SubgraphDeployment,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -38,7 +36,7 @@ impl Indexer for MockIndexer {
 
     async fn indexing_statuses(
         self: Arc<Self>,
-    ) -> Result<Vec<types::IndexingStatus<Self>>, anyhow::Error> {
+    ) -> Result<Vec<IndexingStatus<Self>>, anyhow::Error> {
         if self.fail_indexing_statuses {
             Err(anyhow!("boo"))
         } else {
@@ -58,8 +56,8 @@ impl Indexer for MockIndexer {
 
     async fn proofs_of_indexing(
         self: Arc<Self>,
-        requests: Vec<types::POIRequest>,
-    ) -> Result<Vec<types::ProofOfIndexing<Self>>, anyhow::Error> {
+        requests: Vec<POIRequest>,
+    ) -> Result<Vec<ProofOfIndexing<Self>>, anyhow::Error> {
         if self.fail_proofs_of_indexing {
             Err(anyhow!("boo"))
         } else {
