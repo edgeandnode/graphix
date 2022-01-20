@@ -28,8 +28,12 @@ struct Options {
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or(tracing_subscriber::EnvFilter::try_new("info,graph_ixi=debug").unwrap());
+    let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or(
+        tracing_subscriber::EnvFilter::try_new(
+            "info,graph_ixi_common=debug,graph_ixi_cross_checker=debug",
+        )
+        .unwrap(),
+    );
     let defaults = tracing_subscriber::registry().with(filter_layer);
     let fmt_layer = tracing_subscriber::fmt::layer();
     defaults.with(fmt_layer).init();
