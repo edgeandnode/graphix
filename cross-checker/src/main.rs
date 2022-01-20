@@ -1,31 +1,24 @@
-mod config;
-mod db;
-mod indexer;
 pub mod indexing_statuses;
-mod modes;
 pub mod proofs_of_indexing;
 mod server;
-pub mod types;
 
 #[cfg(test)]
 mod tests;
 
-#[macro_use]
 extern crate diesel;
 
 #[macro_use]
 extern crate diesel_migrations;
 
 use diesel::{r2d2, PgConnection};
+use graph_ixi_common::{db, modes, prelude::Config};
 use std::{path::PathBuf, sync::Arc};
 use structopt::StructOpt;
 use tokio;
 use tracing::*;
 use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
-embed_migrations!("migrations/");
-
-use config::Config;
+embed_migrations!("../migrations");
 
 #[derive(StructOpt, Debug)]
 struct Options {

@@ -3,14 +3,13 @@ use tracing_test::traced_test;
 
 use eventuals::Eventual;
 use futures::StreamExt;
+use graph_ixi_common::prelude::{
+    BlockPointer, IndexerUrls, POICrossCheckReport, ProofOfIndexing, SubgraphDeployment,
+};
 use itertools::Itertools;
 use rand::Rng;
 
-use crate::{
-    config::IndexerUrls,
-    indexing_statuses, proofs_of_indexing,
-    types::{BlockPointer, POICrossCheckReport, ProofOfIndexing, SubgraphDeployment},
-};
+use crate::{indexing_statuses, proofs_of_indexing};
 
 use super::*;
 

@@ -7,15 +7,14 @@ use futures::{
     stream::FuturesUnordered,
     FutureExt, SinkExt, Stream, StreamExt,
 };
+use graph_ixi_common::prelude::{
+    Indexer, POICrossCheckReport, POIRequest, ProofOfIndexing, SubgraphDeployment,
+};
 use itertools::Itertools;
 use nanoid::nanoid;
 use tracing::{debug, info, warn};
 
-use crate::{
-    indexer::Indexer,
-    proofs_of_indexing::DivergingBlock,
-    types::{POICrossCheckReport, POIRequest, ProofOfIndexing, SubgraphDeployment},
-};
+use crate::proofs_of_indexing::DivergingBlock;
 
 use super::{bisect_blocks, BisectDecision};
 

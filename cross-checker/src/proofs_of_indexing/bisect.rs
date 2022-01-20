@@ -1,7 +1,6 @@
 use futures::Future;
+use graph_ixi_common::prelude::{Indexer, ProofOfIndexing};
 use tracing::info;
-
-use crate::{indexer::Indexer, types::ProofOfIndexing};
 
 pub struct DivergingBlock<I>
 where
