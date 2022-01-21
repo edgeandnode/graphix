@@ -1,10 +1,16 @@
-use std::convert::Infallible;
+extern crate diesel;
+
+#[macro_use]
+extern crate diesel_migrations;
+
+use std::{convert::Infallible, sync::Arc};
 
 use async_graphql::{
     http::{playground_source, GraphQLPlaygroundConfig},
     Request,
 };
 use async_graphql_warp::{self, GraphQLResponse};
+use diesel::{r2d2, PgConnection};
 use tracing::*;
 use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
 use warp::{
@@ -12,11 +18,15 @@ use warp::{
     Filter,
 };
 
+use crate::schema::APISchemaContext;
+
 mod opt;
 mod schema;
 
+embed_migrations!("../migrations");
+
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), anyhow::Error> {
     let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or(
         tracing_subscriber::EnvFilter::try_new(
             "info,graph_ixi_common=debug,graph_ixi_api_server=debug",
@@ -29,12 +39,23 @@ async fn main() {
 
     let options = opt::options_from_args();
 
+    info!("Connect to database");
+    let db_url = options.database_url.as_str();
+    let db_connection_manager = r2d2::ConnectionManager::<PgConnection>::new(db_url);
+    let db_connection_pool = Arc::new(r2d2::Builder::new().build(db_connection_manager)?);
+
+    info!("Run database migrations");
+    let connection = db_connection_pool.get()?;
+    embedded_migrations::run(&connection)?;
+
     // GET / -> 200 OK
     let health_check_route = warp::path::end().map(|| format!("Ready to roll!"));
 
     // GraphQL API
-    let api = async_graphql_warp::graphql(schema::api_schema()).and_then(
-        |(schema, request): (schema::ApiSchema, Request)| async move {
+    let api_context = APISchemaContext { db_connection_pool };
+    let api_schema = schema::api_schema(api_context);
+    let api = async_graphql_warp::graphql(api_schema).and_then(
+        |(schema, request): (schema::APISchema, Request)| async move {
             Ok::<_, Infallible>(GraphQLResponse::from(schema.execute(request).await))
         },
     );
@@ -63,4 +84,6 @@ async fn main() {
     warp::serve(routes)
         .run(([127, 0, 0, 1], options.port))
         .await;
+
+    Ok(())
 }
