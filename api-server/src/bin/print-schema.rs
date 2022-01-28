@@ -1,9 +1,6 @@
-use async_graphql::{
-    EmptyMutation, EmptySubscription, Schema
-};
+use async_graphql::{EmptyMutation, EmptySubscription, Schema};
 
 use graph_ixi_common::api_schema::QueryRoot;
-
 
 #[tokio::main]
 async fn main() {
