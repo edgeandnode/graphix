@@ -20,10 +20,52 @@ Graph IXI supports three modes:
 2. **Network:** Cross-checks all indexers on The Graph Network.
 3. **Indexer:** Cross-checks one's own indexer with indexers on The Graph Network.
 
-## Usage
+## Build
+
+First, make sure to sync internal API schemas between the different crates:
 
 ```sh
-graph-ixi --config examples/testing.yml
+./scripts/sync-schemas.rs
+```
+
+Then, build and install all executables:
+
+```sh
+cargo install
+
+cd frontend/
+trunk build --release
+cd dist/
+# now copy the HTML and JS from this directory to a web server
+```
+
+## Usage
+
+During development, run the following commands. They will automatically restart
+all processes as you make changes to the code.
+
+```sh
+# Run the cross-checker
+cargo watch -x 'run -p graph-ixi-cross-checker -- --config examples/testing.yml'
+
+# Run the API server
+cargo watch -x 'run -p graph-ixi-api-server -- --port 3030'
+
+# Run the web frontend
+cd frontend && trunk serve
+```
+
+In production, run these:
+
+```sh
+graph-ixi-cross-checker --config /path/to/your/config.yml
+
+graph-ixi-api-server --port <port>
+
+cd frontend/
+trunk build --release
+cd dist/
+# now serve the HTML and JS from this directory somehow
 ```
 
 ## Implementation Status

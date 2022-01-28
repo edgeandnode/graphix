@@ -3,4 +3,5 @@ members = [
     "common",
     "cross-checker",
     "api-server",
+    "frontend"
 ]
