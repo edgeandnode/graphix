@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate diesel;
 
+pub mod api_schema;
 mod config;
 pub mod db;
 mod indexer;

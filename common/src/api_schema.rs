@@ -7,7 +7,8 @@ use diesel::{
     r2d2::{ConnectionManager, Pool},
     ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
 };
-use graph_ixi_common::db::{self, models};
+
+use crate::db::{self, models};
 
 pub struct QueryRoot;
 
@@ -56,7 +57,27 @@ impl From<models::ProofOfIndexing> for ProofOfIndexing {
 
 #[Object]
 impl QueryRoot {
-    async fn pois(
+    async fn deployments(&self, ctx: &Context<'_>) -> Result<Vec<String>, async_graphql::Error> {
+        use db::schema::proofs_of_indexing::dsl::*;
+
+        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let connection = api_ctx.db_connection_pool.get()?;
+
+        let query = proofs_of_indexing.distinct_on(deployment);
+        let pois = query
+            .load::<models::ProofOfIndexing>(&connection)?
+            .into_iter()
+            .map(ProofOfIndexing::from)
+            .collect::<Vec<_>>();
+
+        let mut deployments: Vec<String> = pois.into_iter().map(|poi| poi.deployment).collect();
+        deployments.sort();
+        deployments.dedup();
+
+        Ok(deployments)
+    }
+
+    async fn proofs_of_indexing(
         &self,
         ctx: &Context<'_>,
         request: ProofOfIndexingRequest,

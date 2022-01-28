@@ -11,7 +11,7 @@ pub fn indexing_statuses<I>(indexers: Eventual<Vec<Arc<I>>>) -> Eventual<Vec<Ind
 where
     I: Indexer + 'static,
 {
-    join((indexers, timer(Duration::from_secs(120))))
+    join((indexers, timer(Duration::from_secs(20))))
         .map(|(indexers, _)| query_indexing_statuses(indexers))
 }
 

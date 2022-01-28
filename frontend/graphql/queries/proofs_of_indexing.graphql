@@ -1,0 +1,12 @@
+query ProofsOfIndexing($request: ProofOfIndexingRequest!) {
+  proofsOfIndexing(request: $request) {
+    timestamp
+    deployment
+    indexer
+    block {
+      number
+      hash
+    }
+    proofOfIndexing
+  }
+}
