@@ -405,6 +405,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "css-colors"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22c2bbfc5708f23437b074ba4e699b14fd6d7181a61695bccc8d944b78739236"
+
+[[package]]
 name = "darling"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -961,6 +967,7 @@ name = "graph-ixi-frontend"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "css-colors",
  "gloo 0.6.0",
  "graphql_client",
  "log",

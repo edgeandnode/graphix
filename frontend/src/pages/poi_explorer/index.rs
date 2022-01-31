@@ -102,11 +102,14 @@ impl Component for View {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
             <div class={css!("a, a:link { font-family: monospace; }")}>
-            {
-                for self.deployments.iter().map(|d| {
-                    html!{ <DeploymentLink deployment={d.clone()} /> }
-                })
-            }
+                <h2>{"Deployments"}</h2>
+                <div>
+                {
+                    for self.deployments.iter().map(|d| {
+                        html!{ <DeploymentLink deployment={d.clone()} /> }
+                    })
+                }
+                </div>
             </div>
         }
     }
