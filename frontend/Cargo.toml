@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.53"
+css-colors = "1.0.1"
 gloo = "0.6.0"
 graphql_client = "0.10.0"
 log = "0.4.14"

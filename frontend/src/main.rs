@@ -39,6 +39,7 @@ fn app() -> Html {
 
                     main {
                         padding: 1em;
+                        font-size: 1.01rem;
                     }
                 "#,
                 background_color = &theme.colors.background,

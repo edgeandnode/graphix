@@ -1,5 +1,6 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
+use css_colors::{rgba, Color, Ratio, RGBA};
 use gloo::timers::callback::Interval;
 use graphql_client::{GraphQLQuery, Response as GraphQLResponse};
 use log::warn;
@@ -86,15 +87,17 @@ fn poll_proofs_of_indexing(deployment: String, link: Scope<View>) {
 
 #[derive(Debug)]
 pub enum Cell {
-    POI(POI),
+    POI(POI, RGBA),
     Placeholder,
 }
 
 impl Cell {
     fn render(&self) -> Html {
         match self {
-            Cell::POI(poi) => html! {
-                <td>{&poi.proof_of_indexing}</td>
+            Cell::POI(poi, color) => html! {
+                <td style={format!("background-color: {};", color.to_css())}>
+                  {&poi.proof_of_indexing[..7]}
+                </td>
             },
             Cell::Placeholder => html! {
                 <td>{"-"}</td>
@@ -160,6 +163,8 @@ impl Layout {
         while let Some((block_number, group)) = groups.next() {
             // Create a new row for the block number
             let mut cells = vec![];
+            let mut color = rgba(17, 157, 164, 1.0).lighten(Ratio::from_percentage(40));
+            let mut last_poi = None;
 
             // // Add indexer POIs or placeholders
             for poi in group {
@@ -175,7 +180,12 @@ impl Layout {
                     }
                 }
 
-                cells.push(Cell::POI(poi));
+                if last_poi.is_none() || poi.proof_of_indexing.eq(last_poi.as_ref().unwrap()) {
+                    last_poi = Some(poi.proof_of_indexing.clone());
+                    color = color.darken(Ratio::from_percentage(15));
+                }
+
+                cells.push(Cell::POI(poi, color.clone()));
             }
 
             // Add the row to the layout
@@ -198,8 +208,8 @@ impl Layout {
                 r#"
                   th { text-align: left; }
 
-                  td {
-                    padding: 0.5rem 1rem 0.5rem 0;
+                  th, td {
+                    padding: 0.5rem;
                     font-family: monospace;
                   }
 
@@ -212,7 +222,7 @@ impl Layout {
                   }
                 "#
             )}>
-                <table>
+                <table cellspacing="0">
                     <thead>
                         <tr>
                             <th>{"Block"}</th>
