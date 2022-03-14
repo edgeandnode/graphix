@@ -165,9 +165,9 @@ where
     );
 
     Ok(POICrossCheckReport {
-        poi1: diverging_block.poi1,
-        poi2: diverging_block.poi2,
-        diverging_block: Some(()),
+        poi1: diverging_block.poi1.clone(),
+        poi2: diverging_block.poi2.clone(),
+        diverging_block: Some(diverging_block.into()),
     })
 }
 

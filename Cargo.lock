@@ -457,6 +457,7 @@ dependencies = [
  "diesel_derives",
  "pq-sys",
  "r2d2",
+ "serde_json",
 ]
 
 [[package]]
@@ -933,6 +934,7 @@ dependencies = [
  "hex",
  "reqwest",
  "serde",
+ "serde_json",
  "serde_yaml",
  "tokio",
  "tracing",
