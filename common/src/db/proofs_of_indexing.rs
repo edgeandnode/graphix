@@ -115,6 +115,7 @@ pub fn write_reports<S, I>(
                                     block_number: report.poi1.block.number as i64,
                                     proof_of_indexing1: report.poi1.proof_of_indexing.to_string(),
                                     proof_of_indexing2: report.poi2.proof_of_indexing.to_string(),
+                                    diverging_block: report.diverging_block.map(From::from),
                                 })
                                 .collect::<Vec<_>>();
 
