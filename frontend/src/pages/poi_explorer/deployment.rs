@@ -166,7 +166,7 @@ impl Layout {
             let mut color = rgba(17, 157, 164, 1.0).lighten(Ratio::from_percentage(40));
             let mut last_poi = None;
 
-            // // Add indexer POIs or placeholders
+            // Add indexer POIs or placeholders
             for poi in group {
                 // Identify the indexer column
                 let indexer_column = indexer_columns.get(&poi.indexer).unwrap();
