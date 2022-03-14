@@ -78,6 +78,13 @@ where
     pub proof_of_indexing: Bytes32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
+pub struct DivergingBlock {
+    pub block: BlockPointer,
+    pub proof_of_indexing1: Bytes32,
+    pub proof_of_indexing2: Bytes32,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct POICrossCheckReport<I>
 where
@@ -85,7 +92,7 @@ where
 {
     pub poi1: ProofOfIndexing<I>,
     pub poi2: ProofOfIndexing<I>,
-    pub diverging_block: Option</* TODO */ ()>,
+    pub diverging_block: Option<DivergingBlock>,
 }
 
 #[derive(Debug, Clone)]

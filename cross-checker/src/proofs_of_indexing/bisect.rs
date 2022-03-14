@@ -1,5 +1,5 @@
 use futures::Future;
-use graph_ixi_common::prelude::{Indexer, ProofOfIndexing};
+use graph_ixi_common::prelude::{DivergingBlock as DivergentBlock, Indexer, ProofOfIndexing};
 use tracing::info;
 
 pub struct DivergingBlock<I>
@@ -8,6 +8,19 @@ where
 {
     pub poi1: ProofOfIndexing<I>,
     pub poi2: ProofOfIndexing<I>,
+}
+
+impl<I> From<DivergingBlock<I>> for DivergentBlock
+where
+    I: Indexer,
+{
+    fn from(other: DivergingBlock<I>) -> DivergentBlock {
+        Self {
+            block: other.poi1.block,
+            proof_of_indexing1: other.poi1.proof_of_indexing,
+            proof_of_indexing2: other.poi2.proof_of_indexing,
+        }
+    }
 }
 
 pub enum BisectDecision<I>

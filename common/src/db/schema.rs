@@ -19,5 +19,6 @@ table! {
          block_hash -> Nullable<Varchar>,
          proof_of_indexing1 -> Varchar,
          proof_of_indexing2 -> Varchar,
+         diverging_block -> Nullable<Jsonb>,
      }
 }
