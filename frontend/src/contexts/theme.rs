@@ -1,5 +1,6 @@
 use std::ops::Deref;
 
+use css_colors::{rgba, Color, Ratio};
 use stylist::yew::styled_component;
 use yew::html::ImplicitClone;
 use yew::prelude::*;
@@ -15,6 +16,8 @@ pub struct ThemeColors {
     pub five: String,
     pub link: String,
     pub link_hover: String,
+    pub ok: String,
+    pub error: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -35,6 +38,12 @@ impl Default for Theme {
                 five: "#19647eff".into(),
                 link: "black".into(),
                 link_hover: "#19647eff".into(),
+                ok: rgba(0, 255, 0, 1.0)
+                    .lighten(Ratio::from_percentage(20))
+                    .to_css(),
+                error: rgba(255, 0, 0, 1.0)
+                    .lighten(Ratio::from_percentage(20))
+                    .to_css(),
             },
         }
     }

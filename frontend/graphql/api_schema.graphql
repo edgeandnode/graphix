@@ -2,6 +2,26 @@ input BlockRange {
 	start: Int!
 	end: Int!
 }
+type DivergingBlock {
+	block: PartialBlock!
+	proofOfIndexing1: String!
+	proofOfIndexing2: String!
+}
+type POICrossCheckReport {
+	timestamp: String!
+	indexer1: String!
+	indexer2: String!
+	deployment: String!
+	block: PartialBlock!
+	proofOfIndexing1: String!
+	proofOfIndexing2: String!
+	divergingBlock: DivergingBlock
+}
+input POICrossCheckReportRequest {
+	deployments: [String!]!
+	indexer1: String
+	indexer2: String
+}
 type PartialBlock {
 	number: Int!
 	hash: String
@@ -21,6 +41,7 @@ input ProofOfIndexingRequest {
 type QueryRoot {
 	deployments: [String!]!
 	proofsOfIndexing(request: ProofOfIndexingRequest!): [ProofOfIndexing!]!
+	poiCrossCheckReports(request: POICrossCheckReportRequest!): [POICrossCheckReport!]!
 }
 schema {
 	query: QueryRoot
