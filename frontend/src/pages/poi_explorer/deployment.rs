@@ -180,7 +180,7 @@ impl Layout {
                     }
                 }
 
-                if last_poi.is_none() || poi.proof_of_indexing.eq(last_poi.as_ref().unwrap()) {
+                if last_poi.is_none() || poi.proof_of_indexing.ne(last_poi.as_ref().unwrap()) {
                     last_poi = Some(poi.proof_of_indexing.clone());
                     color = color.darken(Ratio::from_percentage(15));
                 }
@@ -206,10 +206,19 @@ impl Layout {
         html! {
             <div class={css!(
                 r#"
+                  table {
+                    table-layout: fixed;
+                    width: 20rem;
+                  }
+
                   th { text-align: left; }
 
                   th, td {
                     padding: 0.5rem;
+                  }
+
+
+                  td {
                     font-family: monospace;
                   }
 
