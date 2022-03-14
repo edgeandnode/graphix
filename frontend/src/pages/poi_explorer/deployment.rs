@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use css_colors::{rgba, Color, Ratio, RGBA};
 use gloo::timers::callback::Interval;
