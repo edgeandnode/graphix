@@ -27,7 +27,6 @@ pub fn navigation() -> Html {
             "#,
         )}>
             <div>
-                <Link<Route> to={Route::Overview}>{"Overview"}</Link<Route>>
                 <Link<Route> to={Route::POIExplorer}>{"POI Explorer"}</Link<Route>>
                 <Link<Route> to={Route::POIReports}>{"POI Reports"}</Link<Route>>
             </div>
