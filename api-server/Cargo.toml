@@ -1,20 +1,13 @@
 [package]
 name = "graph-ixi-api-server"
 version = "0.1.0"
-authors = [ "Jannis Pohlmann <jannis@edgeandnode.com>" ]
+authors = ["Jannis Pohlmann <jannis@edgeandnode.com>"]
 edition = "2021"
 default-run = "graph-ixi-api-server"
 
 [[bin]]
 name = "graph-ixi-api-server"
-path = "src/bin/api-server/main.rs"
-
-[[bin]]
-name = "graph-ixi-print-api-schema"
-path = "src/bin/print-schema.rs"
-
-[[bin]]
-name = "sync-schemas"
+path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.52"
