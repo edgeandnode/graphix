@@ -260,7 +260,7 @@ async fn cross_check_pois_with_mismatch_in_random_block() {
             vec![POICrossCheckReport {
                 poi1: expected_poi1.clone(),
                 poi2: expected_poi2.clone(),
-                diverging_block: Some(()),
+                diverging_block: None,
             }]
         );
 

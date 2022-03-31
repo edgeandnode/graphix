@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate diesel_migrations;
 
 pub mod api_schema;
 mod config;

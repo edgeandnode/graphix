@@ -927,6 +927,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "diesel",
+ "diesel_migrations",
  "eventuals",
  "futures",
  "futures-retry",
