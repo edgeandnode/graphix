@@ -1,3 +1,4 @@
 /target
 .DS_Store
 /frontend/dist
+frontend/graphql/api_schema.graphql
