@@ -118,11 +118,9 @@ impl Row {
             Row::Block(number, cells) => html! {
                 <tr>
                     <td>{number}</td>
-                    <>
-                        {
-                            for cells.iter().map(Cell::render)
-                        }
-                    </>
+                    {
+                        for cells.iter().map(Cell::render)
+                    }
                 </tr>
             },
             Row::Placeholder => html! {

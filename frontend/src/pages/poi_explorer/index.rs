@@ -57,9 +57,9 @@ pub struct DeploymentLinkProps {
 #[styled_component(DeploymentLink)]
 pub fn deployment_link(props: &DeploymentLinkProps) -> Html {
     html! {
-        <div>
-           <Link<Route> to={Route::POIExplorerDeployment { id: props.deployment.clone() }}>{&props.deployment}</Link<Route>>
-        </div>
+        <Link<Route> to={Route::POIExplorerDeployment { id: props.deployment.clone() }}>
+            {&props.deployment}
+        </Link<Route>>
     }
 }
 
@@ -101,16 +101,20 @@ impl Component for View {
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
-            <div class={css!("a, a:link { font-family: monospace; }")}>
-                <h2>{"Deployments"}</h2>
-                <div>
+            <>
+                <h2 class="pb-2 text-xl font-bold">{"Deployments"}</h2>
+                <ul class="list-disc list-inside">
                 {
                     for self.deployments.iter().map(|d| {
-                        html!{ <DeploymentLink deployment={d.clone()} /> }
+                        html!{
+                            <li class="font-mono">
+                                <DeploymentLink deployment={d.clone()} />
+                            </li>
+                        }
                     })
                 }
-                </div>
-            </div>
+                </ul>
+            </>
         }
     }
 }
