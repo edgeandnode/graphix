@@ -1,9 +1,7 @@
+use crate::db::{models, Store};
 use async_graphql::{
     Context, EmptyMutation, EmptySubscription, InputObject, Object, Schema, SimpleObject,
 };
-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
-
-use crate::db::{self, models, Store};
 
 pub struct QueryRoot;
 
@@ -136,37 +134,13 @@ impl QueryRoot {
         ctx: &Context<'_>,
         request: POICrossCheckReportRequest,
     ) -> Result<Vec<POICrossCheckReport>, async_graphql::Error> {
-        use db::schema::poi_cross_check_reports::dsl::*;
-
         let api_ctx = ctx.data::<APISchemaContext>()?;
-        let connection = api_ctx.db.connection_pool.get()?;
 
-        let mut query = poi_cross_check_reports
-            .distinct_on((block_number, indexer1, indexer2, deployment))
-            .into_boxed();
+        let reports = api_ctx
+            .db
+            .poi_reports(request.indexer1, request.indexer2, 5000)?;
 
-        if let Some(indexer) = request.indexer1 {
-            query = query.filter(indexer1.eq(indexer));
-        }
-
-        if let Some(indexer) = request.indexer2 {
-            query = query.filter(indexer2.eq(indexer));
-        }
-
-        query = query
-            .order_by((
-                block_number.desc(),
-                deployment.asc(),
-                indexer1.asc(),
-                indexer2.asc(),
-            ))
-            .limit(5000);
-
-        Ok(query
-            .load::<models::POICrossCheckReport>(&connection)?
-            .into_iter()
-            .map(POICrossCheckReport::from)
-            .collect())
+        Ok(reports.into_iter().map(POICrossCheckReport::from).collect())
     }
 }
 

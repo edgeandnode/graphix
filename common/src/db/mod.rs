@@ -204,6 +204,39 @@ impl Store {
             .limit(limit as i64)
             .load::<models::ProofOfIndexing>(&connection)?)
     }
+
+    pub fn poi_reports(
+        &self,
+        indexer1: Option<String>,
+        indexer2: Option<String>,
+        limit: usize,
+    ) -> anyhow::Result<Vec<models::POICrossCheckReport>> {
+        use diesel::prelude::*;
+        use schema::poi_cross_check_reports as r;
+
+        let connection = self.connection_pool.get()?;
+
+        let mut query = r::table
+            .distinct_on((r::block_number, r::indexer1, r::indexer2, r::deployment))
+            .into_boxed();
+
+        if let Some(i) = indexer1 {
+            query = query.filter(r::indexer1.eq(i));
+        }
+        if let Some(i) = indexer2 {
+            query = query.filter(r::indexer2.eq(i));
+        }
+
+        Ok(query
+            .order_by((
+                r::block_number.desc(),
+                r::deployment.asc(),
+                r::indexer1.asc(),
+                r::indexer2.asc(),
+            ))
+            .limit(limit as _)
+            .load(&connection)?)
+    }
 }
 
 fn retry_policy<E>(e: E, num_consecutive_errors: &mut u32) -> RetryPolicy<E> {
