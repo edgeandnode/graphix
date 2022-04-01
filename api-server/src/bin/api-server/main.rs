@@ -1,4 +1,4 @@
-use std::{convert::Infallible, sync::Arc};
+use std::convert::Infallible;
 
 use async_graphql::{
     http::{playground_source, GraphQLPlaygroundConfig},
@@ -36,9 +36,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let health_check_route = warp::path::end().map(|| format!("Ready to roll!"));
 
     // GraphQL API
-    let api_context = schema::APISchemaContext {
-        db_connection_pool: Arc::new(db.connection_pool),
-    };
+    let api_context = schema::APISchemaContext { db };
     let api_schema = schema::api_schema(api_context);
     let api = async_graphql_warp::graphql(api_schema).and_then(
         |(schema, request): (schema::APISchema, Request)| async move {
