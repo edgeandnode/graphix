@@ -20,7 +20,7 @@ embed_migrations!("../migrations");
 
 #[derive(Clone)]
 pub struct Store {
-    connection_pool: ConnectionPool,
+    pub connection_pool: ConnectionPool,
 }
 
 impl Store {
