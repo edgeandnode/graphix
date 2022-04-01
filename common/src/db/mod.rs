@@ -171,6 +171,20 @@ impl Store {
             },
         )
     }
+
+    pub fn deployments(&self) -> anyhow::Result<Vec<String>> {
+        use diesel::prelude::*;
+        use schema::proofs_of_indexing::dsl::*;
+
+        let connection = self.connection_pool.get()?;
+        let pois = proofs_of_indexing
+            .select(deployment)
+            .distinct_on(deployment)
+            .order_by(deployment.asc())
+            .load(&connection)?;
+
+        Ok(pois)
+    }
 }
 
 fn retry_policy<E>(e: E, num_consecutive_errors: &mut u32) -> RetryPolicy<E> {
