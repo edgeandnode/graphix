@@ -2,7 +2,7 @@ use chrono::Utc;
 use diesel::{r2d2, PgConnection, RunQueryDsl};
 use futures::{FutureExt, Stream, StreamExt, TryFutureExt};
 use futures_retry::{FutureRetry, RetryPolicy};
-use std::{path::Path, time::Duration};
+use std::{ops::RangeInclusive, path::Path, time::Duration};
 use tracing::{info, warn};
 
 use crate::{indexer::Indexer, types};
@@ -184,6 +184,25 @@ impl Store {
             .load(&connection)?;
 
         Ok(pois)
+    }
+
+    pub fn pois(
+        &self,
+        deployments: &[String],
+        block_range: RangeInclusive<u64>,
+        limit: usize,
+    ) -> anyhow::Result<Vec<models::ProofOfIndexing>> {
+        use diesel::prelude::*;
+        use schema::proofs_of_indexing::dsl::*;
+
+        let connection = self.connection_pool.get()?;
+        Ok(proofs_of_indexing
+            .order_by(block_number.desc())
+            .order_by(timestamp.desc())
+            .filter(deployment.eq_any(deployments))
+            .filter(block_number.between(*block_range.start() as i64, *block_range.end() as i64))
+            .limit(limit as i64)
+            .load::<models::ProofOfIndexing>(&connection)?)
     }
 }
 

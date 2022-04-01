@@ -14,7 +14,7 @@ struct ProofOfIndexingRequest {
     limit: Option<u16>,
 }
 
-#[derive(InputObject)]
+#[derive(InputObject, Copy, Clone)]
 struct BlockRange {
     start: u64,
     end: u64,
@@ -115,33 +115,20 @@ impl QueryRoot {
         ctx: &Context<'_>,
         request: ProofOfIndexingRequest,
     ) -> Result<Vec<ProofOfIndexing>, async_graphql::Error> {
-        use db::schema::proofs_of_indexing::dsl::*;
-
         let api_ctx = ctx.data::<APISchemaContext>()?;
-        let connection = api_ctx.db.connection_pool.get()?;
 
-        let query = proofs_of_indexing
-            .order_by(block_number.desc())
-            .order_by(timestamp.desc())
-            .filter(deployment.eq_any(&request.deployments))
-            .filter(
-                block_number.between(
-                    request
-                        .block_range
-                        .as_ref()
-                        .map_or(0, |range| range.start as i64),
-                    request
-                        .block_range
-                        .map_or(i64::max_value(), |range| range.end as i64),
-                ),
-            )
-            .limit(request.limit.unwrap_or(1000) as i64);
+        let block_range = request
+            .block_range
+            .map(|BlockRange { start, end }| start..=end)
+            .unwrap_or(0..=u64::MAX);
 
-        Ok(query
-            .load::<models::ProofOfIndexing>(&connection)?
-            .into_iter()
-            .map(ProofOfIndexing::from)
-            .collect())
+        let pois = api_ctx.db.pois(
+            &request.deployments[..],
+            block_range,
+            request.limit.unwrap_or(1000) as _,
+        )?;
+
+        Ok(pois.into_iter().map(ProofOfIndexing::from).collect())
     }
 
     async fn poi_cross_check_reports(
