@@ -1,5 +1,5 @@
 table! {
-    proofs_of_indexing (indexer, deployment, block_hash) {
+    proofs_of_indexing (indexer, deployment, block_number) {
         timestamp -> Timestamp,
         indexer -> Varchar,
         deployment -> Varchar,
@@ -10,7 +10,7 @@ table! {
 }
 
 table! {
-     poi_cross_check_reports (indexer1, indexer2, deployment, block_hash) {
+     poi_cross_check_reports (indexer1, indexer2, deployment, block_number) {
          timestamp -> Timestamp,
          indexer1 -> Varchar,
          indexer2 -> Varchar,
