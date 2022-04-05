@@ -70,7 +70,7 @@ where
                     })
                     .map(|(deployment, pois)| {
                         info!(
-                            deployment = %deployment.as_str(),
+                            deployment = %deployment.deployment_id.as_str(),
                             "Cross-checking POIs for deployment"
                         );
 
@@ -84,7 +84,7 @@ where
                         if count > 0 && combinations.len() == 0 {
                             warn!(
                                 indexers = %count,
-                                deployment = %deployment.as_str(),
+                                deployment = %deployment.deployment_id.as_str(),
                                 "Deployment has POIs but not enough indexers to cross-check",
                             );
                             return vec![];
@@ -124,7 +124,7 @@ where
         poi1 = %poi1.proof_of_indexing,
         poi2 = %poi2.proof_of_indexing,
         block = %poi1.block,
-        deployment = %poi1.deployment.as_str(),
+        deployment = %poi1.deployment.deployment_id.as_str(),
         "Cross-check POI"
     );
 

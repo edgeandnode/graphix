@@ -80,10 +80,13 @@ impl Store {
             .map(|poi| models::ProofOfIndexing {
                 timestamp: Utc::now().naive_utc(),
                 indexer: poi.indexer.id().trim_start_matches("0x").into(),
-                deployment: poi.deployment.to_string(),
+                deployment: poi.deployment.deployment_id,
                 block_number: poi.block.number as i64,
                 block_hash: poi.block.hash.map(|hash| hash.into()),
+                block_contents: poi.debug_data.block_contents,
                 proof_of_indexing: poi.proof_of_indexing.into(),
+                entity_updates: serde_json::to_value(poi.debug_data.entity_updates).unwrap(),
+                entity_deletions: serde_json::to_value(poi.debug_data.entity_deletions).unwrap(),
             })
             .collect::<Vec<_>>();
 
@@ -110,7 +113,7 @@ impl Store {
                 timestamp: Utc::now().naive_utc(),
                 indexer1: report.poi1.indexer.id().trim_start_matches("0x").into(),
                 indexer2: report.poi2.indexer.id().trim_start_matches("0x").into(),
-                deployment: report.poi1.deployment.to_string(),
+                deployment: report.poi1.deployment.deployment_id,
                 block_hash: report.poi1.block.hash.map(|hash| hash.to_string()),
                 block_number: report.poi1.block.number as i64,
                 proof_of_indexing1: report.poi1.proof_of_indexing.to_string(),
@@ -236,6 +239,44 @@ impl Store {
             ))
             .limit(limit as _)
             .load(&connection)?)
+    }
+
+    pub fn insert_cached_ethereum_calls(
+        &self,
+        calls: Vec<models::CachedEthereumCall>,
+    ) -> anyhow::Result<()> {
+        let number_of_calls = calls.len();
+        let connection = self.connection_pool.get()?;
+        diesel::insert_into(schema::cached_ethereum_calls::table)
+            .values(calls)
+            .on_conflict_do_nothing()
+            .execute(&connection)?;
+
+        info!(%number_of_calls, "Wrote cached Ethereum calls to database");
+        Ok(())
+    }
+
+    pub fn cached_ethereum_calls(
+        &self,
+        indexer: &str,
+        deployment: &str,
+        block_number: u64,
+        limit: Option<u32>,
+    ) -> anyhow::Result<Vec<models::CachedEthereumCall>> {
+        use diesel::prelude::*;
+        use schema::cached_ethereum_calls as c;
+
+        let query = c::table
+            .filter(
+                (c::indexer.eq(indexer))
+                    .and(c::deployment.eq(deployment))
+                    .and(c::block_number.eq(block_number as i64)),
+            )
+            .limit(limit.unwrap_or(u32::MAX) as _)
+            .order_by(c::id_hash.asc());
+
+        let connection = self.connection_pool.get()?;
+        Ok(query.load(&connection)?)
     }
 }
 

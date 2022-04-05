@@ -22,7 +22,10 @@ pub struct ProofOfIndexing {
     pub deployment: String,
     pub block_number: i64,
     pub block_hash: Option<String>,
+    pub block_contents: serde_json::Value,
     pub proof_of_indexing: String,
+    pub entity_deletions: serde_json::Value,
+    pub entity_updates: serde_json::Value,
 }
 
 #[derive(FromSqlRow, AsExpression, Serialize, Deserialize, Debug, Default)]
@@ -71,4 +74,15 @@ pub struct POICrossCheckReport {
     pub proof_of_indexing1: String,
     pub proof_of_indexing2: String,
     pub diverging_block: Option<DivergingBlock>,
+}
+
+#[derive(Debug, Insertable, Queryable)]
+#[table_name = "cached_ethereum_calls"]
+pub struct CachedEthereumCall {
+    pub indexer: String,
+    pub deployment: String,
+    pub block_number: i64,
+    pub id_hash: Vec<u8>,
+    pub contract_address: Vec<u8>,
+    pub return_value: Vec<u8>,
 }

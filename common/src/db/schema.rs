@@ -5,7 +5,21 @@ table! {
         deployment -> Varchar,
         block_number -> Int8,
         block_hash -> Nullable<Varchar>,
+        block_contents -> Jsonb,
         proof_of_indexing -> Varchar,
+        entity_deletions -> Jsonb,
+        entity_updates -> Jsonb,
+    }
+}
+
+table! {
+    cached_ethereum_calls (id_hash) {
+        indexer -> Varchar,
+        deployment -> Varchar,
+        block_number -> Int8,
+        id_hash -> Binary,
+        contract_address -> Binary,
+        return_value -> Binary,
     }
 }
 

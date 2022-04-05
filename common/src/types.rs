@@ -1,9 +1,9 @@
 use serde::Serialize;
-use std::{fmt, ops::Deref, sync::Arc};
+use std::{collections::HashMap, fmt, sync::Arc};
 
 use crate::indexer::Indexer;
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct BlockPointer {
     pub number: u64,
     pub hash: Option<Bytes32>,
@@ -23,24 +23,24 @@ impl fmt::Display for BlockPointer {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
-pub struct SubgraphDeployment(pub String);
-
-impl Deref for SubgraphDeployment {
-    type Target = String;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+pub struct SubgraphDeployment {
+    pub deployment_id: String,
+    pub network: String,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct EntityChanges {
+    pub updates: HashMap<String, Vec<serde_json::Value>>,
+    pub deletions: HashMap<String, Vec<String>>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IndexingStatus<I>
 where
     I: Indexer,
 {
     pub indexer: Arc<I>,
     pub deployment: SubgraphDeployment,
-    pub network: String,
     pub latest_block: BlockPointer,
 }
 
@@ -67,7 +67,7 @@ impl Into<String> for Bytes32 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProofOfIndexing<I>
 where
     I: Indexer,
@@ -76,9 +76,27 @@ where
     pub deployment: SubgraphDeployment,
     pub block: BlockPointer,
     pub proof_of_indexing: Bytes32,
+    pub debug_data: PoiDebugData,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
+impl<I: Indexer> Ord for ProofOfIndexing<I> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+impl<I: Indexer> PartialOrd for ProofOfIndexing<I> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(
+            self.indexer
+                .cmp(&other.indexer)
+                .then(self.deployment.cmp(&other.deployment))
+                .then(self.block.number.cmp(&other.block.number)),
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DivergingBlock {
     pub block: BlockPointer,
     pub proof_of_indexing1: Bytes32,
@@ -99,4 +117,30 @@ where
 pub struct POIRequest {
     pub deployment: SubgraphDeployment,
     pub block_number: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PoiDebugData {
+    pub entity_updates: HashMap<String, Vec<serde_json::Value>>,
+    pub entity_deletions: HashMap<String, Vec<String>>,
+    pub block_contents: serde_json::Value,
+    pub cached_calls: Vec<CachedEthereumCall>,
+}
+
+impl PoiDebugData {
+    pub fn empty() -> Self {
+        Self {
+            entity_updates: HashMap::new(),
+            entity_deletions: HashMap::new(),
+            block_contents: serde_json::Value::Null,
+            cached_calls: vec![],
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CachedEthereumCall {
+    pub id_hash: Vec<u8>,
+    pub contract_address: Vec<u8>,
+    pub return_value: Vec<u8>,
 }

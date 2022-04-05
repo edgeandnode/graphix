@@ -1,0 +1,27 @@
+query PoiDebugData(
+  $network: String!
+  $subgraph: String!
+  $blockNumber: Int!
+  $blockHash: Bytes!
+) {
+  blockData(network: $network, blockHash: $blockHash)
+  entityChangesInBlock(subgraphId: $subgraph, blockNumber: $blockNumber) {
+    updates {
+      type
+      entities
+    }
+    deletions {
+      type
+      entities
+    }
+  }
+  cachedEthereumCalls(network: $network, blockHash: $blockHash) {
+    idHash
+    block {
+      number
+      hash
+    }
+    contractAddress
+    returnValue
+  }
+}

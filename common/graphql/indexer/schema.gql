@@ -2,12 +2,19 @@ scalar BigInt
 scalar Boolean
 scalar Bytes
 scalar String
+scalar JSONObject
 
 type Query {
   indexingStatuses(subgraphs: [String!]): [SubgraphIndexingStatus!]!
   publicProofsOfIndexing(
     requests: [PublicProofOfIndexingRequest!]!
   ): [PublicProofOfIndexingResult!]!
+  blockData(network: String!, blockHash: Bytes!): JSONObject
+  entityChangesInBlock(subgraphId: String!, blockNumber: Int!): EntityChanges!
+  cachedEthereumCalls(
+    network: String!
+    blockHash: Bytes!
+  ): [CachedEthereumCall!]
 }
 
 type SubgraphIndexingStatus {
@@ -85,4 +92,26 @@ type PublicProofOfIndexingResult {
   deployment: String!
   block: PartialBlock!
   proofOfIndexing: Bytes!
+}
+
+type EntityChanges {
+  updates: [EntityTypeUpdates!]!
+  deletions: [EntityTypeDeletions!]!
+}
+
+type EntityTypeUpdates {
+  type: String!
+  entities: [JSONObject!]!
+}
+
+type EntityTypeDeletions {
+  type: String!
+  entities: [ID!]!
+}
+
+type CachedEthereumCall {
+  idHash: Bytes!
+  block: Block!
+  contractAddress: Bytes!
+  returnValue: Bytes!
 }

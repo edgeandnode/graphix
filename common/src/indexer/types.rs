@@ -6,7 +6,7 @@ use async_trait::async_trait;
 
 use crate::{
     config::IndexerUrls,
-    types::{IndexingStatus, POIRequest, ProofOfIndexing},
+    types::{IndexingStatus, POIRequest, PoiDebugData, ProofOfIndexing},
 };
 
 #[async_trait]
@@ -32,4 +32,12 @@ pub trait Indexer: Clone + Sized + Eq + Send + Sync + Hash + Ord {
             .pop()
             .ok_or_else(|| anyhow!("no proof of indexing returned"))
     }
+
+    async fn poi_debug_data(
+        self: Arc<Self>,
+        network: &str,
+        subgraph: &str,
+        block_number: u64,
+        block_hash: &[u8],
+    ) -> anyhow::Result<PoiDebugData>;
 }
