@@ -185,7 +185,7 @@ impl Layout {
                     color = color.darken(Ratio::from_percentage(15));
                 }
 
-                cells.push(Cell::POI(poi, color.clone()));
+                cells.push(Cell::POI(poi, color));
             }
 
             // Add the row to the layout
