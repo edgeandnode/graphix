@@ -48,7 +48,7 @@ async fn main() -> Result<(), anyhow::Error> {
     embedded_migrations::run(&connection)?;
 
     // GET / -> 200 OK
-    let health_check_route = warp::path::end().map(|| format!("Ready to roll!"));
+    let health_check_route = warp::path::end().map(|| "Ready to roll!".to_owned());
 
     // GraphQL API
     let api_context = schema::APISchemaContext { db_connection_pool };
