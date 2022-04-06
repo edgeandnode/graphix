@@ -79,7 +79,7 @@ where
                         .get(*deployment)
                         .expect("bug in matching deployments to latest blocks and indexers")
                         .iter()
-                        .any(|status| status.indexer.eq(&indexer))
+                        .any(|status| status.indexer.eq(indexer))
                 })
                 .filter_map(|(deployment, block)| {
                     block.clone().map(|block| POIRequest {
