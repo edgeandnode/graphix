@@ -1,4 +1,3 @@
-use anyhow;
 use warp::Filter;
 
 pub async fn run() -> Result<(), anyhow::Error> {

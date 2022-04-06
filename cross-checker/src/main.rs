@@ -14,7 +14,6 @@ use diesel::{r2d2, PgConnection};
 use graph_ixi_common::{db, modes, prelude::Config};
 use std::{path::PathBuf, sync::Arc};
 use structopt::StructOpt;
-use tokio;
 use tracing::*;
 use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
