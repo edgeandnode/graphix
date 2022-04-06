@@ -81,7 +81,7 @@ where
                             .tuple_combinations::<(_, _)>()
                             .collect_vec();
 
-                        if count > 0 && combinations.len() == 0 {
+                        if count > 0 && combinations.is_empty() {
                             warn!(
                                 indexers = %count,
                                 deployment = %deployment.as_str(),
