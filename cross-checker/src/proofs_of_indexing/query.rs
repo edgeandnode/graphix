@@ -58,15 +58,13 @@ where
         HashMap::from_iter(deployments.iter().map(|deployment| {
             (
                 deployment.clone(),
-                statuses_by_deployment
-                    .get(deployment)
-                    .map_or(None, |statuses| {
-                        statuses
-                            .iter()
-                            .map(|status| &status.latest_block)
-                            .min_by_key(|block| block.number)
-                            .map(|block| block.clone())
-                    }),
+                statuses_by_deployment.get(deployment).and_then(|statuses| {
+                    statuses
+                        .iter()
+                        .map(|status| &status.latest_block)
+                        .min_by_key(|block| block.number)
+                        .map(|block| block.clone())
+                }),
             )
         }));
 
