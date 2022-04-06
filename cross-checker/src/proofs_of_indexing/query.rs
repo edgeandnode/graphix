@@ -63,7 +63,7 @@ where
                         .iter()
                         .map(|status| &status.latest_block)
                         .min_by_key(|block| block.number)
-                        .map(|block| block.clone())
+                        .cloned()
                 }),
             )
         }));
