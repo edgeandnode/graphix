@@ -67,10 +67,9 @@ impl QueryRoot {
         let pois = query
             .load::<models::ProofOfIndexing>(&connection)?
             .into_iter()
-            .map(ProofOfIndexing::from)
-            .collect::<Vec<_>>();
+            .map(ProofOfIndexing::from);
 
-        let mut deployments: Vec<String> = pois.into_iter().map(|poi| poi.deployment).collect();
+        let mut deployments: Vec<String> = pois.map(|poi| poi.deployment).collect();
         deployments.sort();
         deployments.dedup();
 

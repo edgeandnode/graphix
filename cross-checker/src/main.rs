@@ -14,7 +14,6 @@ use diesel::{r2d2, PgConnection};
 use graph_ixi_common::{db, modes, prelude::Config};
 use std::{path::PathBuf, sync::Arc};
 use structopt::StructOpt;
-use tokio;
 use tracing::*;
 use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
@@ -28,12 +27,12 @@ struct Options {
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or(
+    let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         tracing_subscriber::EnvFilter::try_new(
             "info,graph_ixi_common=debug,graph_ixi_cross_checker=debug",
         )
-        .unwrap(),
-    );
+        .unwrap()
+    });
     let defaults = tracing_subscriber::registry().with(filter_layer);
     let fmt_layer = tracing_subscriber::fmt::layer();
     defaults.with(fmt_layer).init();

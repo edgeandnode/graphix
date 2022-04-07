@@ -54,7 +54,7 @@ impl TryFrom<&PathBuf> for Config {
 
     fn try_from(path: &PathBuf) -> Result<Config, Self::Error> {
         let file = File::open(path)?;
-        Ok(serde_yaml::from_reader(file)
-            .map_err(|e| Self::Error::new(e).context("invalid config file"))?)
+        serde_yaml::from_reader(file)
+            .map_err(|e| Self::Error::new(e).context("invalid config file"))
     }
 }
