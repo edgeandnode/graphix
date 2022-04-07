@@ -61,9 +61,9 @@ impl fmt::Display for Bytes32 {
     }
 }
 
-impl Into<String> for Bytes32 {
-    fn into(self: Bytes32) -> String {
-        format!("{}", self)
+impl From<Bytes32> for String {
+    fn from(val: Bytes32) -> Self {
+        val.to_string()
     }
 }
 

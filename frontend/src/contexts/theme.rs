@@ -82,7 +82,7 @@ pub struct ThemeProviderProps {
 
 #[styled_component(ThemeProvider)]
 pub fn theme_provider(props: &ThemeProviderProps) -> Html {
-    let theme = use_state(|| Theme::default());
+    let theme = use_state(Theme::default);
     let theme_ctx = ThemeContext::new(theme);
 
     html! {

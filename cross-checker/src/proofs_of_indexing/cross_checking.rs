@@ -68,7 +68,7 @@ where
                                 .collect::<Vec<_>>(),
                         )
                     })
-                    .map(|(deployment, pois)| {
+                    .flat_map(|(deployment, pois)| {
                         info!(
                             deployment = %deployment.as_str(),
                             "Cross-checking POIs for deployment"
@@ -81,7 +81,7 @@ where
                             .tuple_combinations::<(_, _)>()
                             .collect_vec();
 
-                        if count > 0 && combinations.len() == 0 {
+                        if count > 0 && combinations.is_empty() {
                             warn!(
                                 indexers = %count,
                                 deployment = %deployment.as_str(),
@@ -89,10 +89,8 @@ where
                             );
                             return vec![];
                         }
-
                         combinations
                     })
-                    .flatten()
                     .map(|(poi1, poi2)| cross_check_poi(poi1, poi2, poi_broadcaster.clone()))
                     .collect::<FuturesUnordered<_>>();
 

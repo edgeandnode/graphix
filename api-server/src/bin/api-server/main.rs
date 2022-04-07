@@ -26,12 +26,12 @@ embed_migrations!("../migrations");
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or(
+    let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         tracing_subscriber::EnvFilter::try_new(
             "info,graph_ixi_common=debug,graph_ixi_api_server=debug",
         )
-        .unwrap(),
-    );
+        .unwrap()
+    });
     let defaults = tracing_subscriber::registry().with(filter_layer);
     let fmt_layer = tracing_subscriber::fmt::layer();
     defaults.with(fmt_layer).init();
@@ -48,7 +48,7 @@ async fn main() -> Result<(), anyhow::Error> {
     embedded_migrations::run(&connection)?;
 
     // GET / -> 200 OK
-    let health_check_route = warp::path::end().map(|| format!("Ready to roll!"));
+    let health_check_route = warp::path::end().map(|| "Ready to roll!".to_owned());
 
     // GraphQL API
     let api_context = schema::APISchemaContext { db_connection_pool };
