@@ -22,13 +22,7 @@ Graph IXI supports three modes:
 
 ## Build
 
-First, make sure to sync internal API schemas between the different crates:
-
-```sh
-./scripts/sync-schemas.rs
-```
-
-Then, build and install all executables:
+Simply build and install all executables:
 
 ```sh
 cargo install
