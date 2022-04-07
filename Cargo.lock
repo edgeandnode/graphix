@@ -967,8 +967,10 @@ name = "graph-ixi-frontend"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-graphql",
  "css-colors",
  "gloo 0.6.0",
+ "graph-ixi-common",
  "graphql_client",
  "log",
  "once_cell",

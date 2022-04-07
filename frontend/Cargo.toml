@@ -18,3 +18,7 @@ wasm-bindgen-futures = "0.4.29"
 wasm-logger = "0.2.0"
 yew = "0.19.3"
 yew-router = "0.16.0"
+
+[build-dependencies]
+async-graphql = "3.0.22"
+graph-ixi-common = { path = "../common" }
