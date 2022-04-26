@@ -180,6 +180,7 @@ impl Layout {
                     }
                 }
 
+                // Use a different color if the POI is different from the one in the previous column
                 if last_poi.is_none() || poi.proof_of_indexing.ne(last_poi.as_ref().unwrap()) {
                     last_poi = Some(poi.proof_of_indexing.clone());
                     color = color.darken(Ratio::from_percentage(15));
