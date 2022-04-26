@@ -5,7 +5,7 @@ use eventuals::{Eventual, EventualExt};
 use futures::{
     channel::mpsc::{channel, Sender},
     stream::FuturesUnordered,
-    FutureExt, SinkExt, Stream, StreamExt,
+    FutureExt, SinkExt, Stream, StreamExt, TryFutureExt,
 };
 use graph_ixi_common::prelude::{
     Indexer, POICrossCheckReport, POIRequest, ProofOfIndexing, SubgraphDeployment,
@@ -132,12 +132,32 @@ where
 
     // If both POIs are identical, we're done
     if poi1.proof_of_indexing == poi2.proof_of_indexing {
+        info!(
+            indexer1 = %poi1.indexer.id(),
+            indexer2 = %poi2.indexer.id(),
+            poi1 = %poi1.proof_of_indexing,
+            poi2 = %poi2.proof_of_indexing,
+            block = %poi1.block,
+            deployment = %poi1.deployment.as_str(),
+            "POIs are identical",
+        );
+
         return Ok(POICrossCheckReport {
             poi1,
             poi2,
             diverging_block: None,
         });
     }
+
+    warn!(
+        indexer1 = %poi1.indexer.id(),
+        indexer2 = %poi2.indexer.id(),
+        poi1 = %poi1.proof_of_indexing,
+        poi2 = %poi2.proof_of_indexing,
+        block = %poi1.block,
+        deployment = %poi1.deployment.as_str(),
+        "POIs are different"
+    );
 
     // Bisect to find the first diverging/bad block
 
