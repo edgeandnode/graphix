@@ -99,7 +99,18 @@ impl TryInto<ProofOfIndexing<RealIndexer>>
                     .hash
                     .and_then(|hash| hash.as_str().try_into().ok()),
             },
-            proof_of_indexing: self.1.proof_of_indexing.as_str().try_into()?,
+            proof_of_indexing: self
+                .1
+                .proof_of_indexing
+                .ok_or_else(|| {
+                    anyhow!(
+                        "no proof of indexing available for {} at block #{}",
+                        self.1.deployment,
+                        self.1.block.number
+                    )
+                })?
+                .as_str()
+                .try_into()?,
         })
     }
 }
@@ -186,55 +197,65 @@ impl Indexer for RealIndexer {
         self: Arc<Self>,
         requests: Vec<POIRequest>,
     ) -> Result<Vec<ProofOfIndexing<Self>>, anyhow::Error> {
-        let client = reqwest::Client::new();
-        let request = ProofsOfIndexing::build_query(proofs_of_indexing::Variables {
-            requests: requests
-                .into_iter()
-                .map(|query| proofs_of_indexing::PublicProofOfIndexingRequest {
-                    deployment: query.deployment.to_string(),
-                    blockNumber: query.block_number.to_string(),
-                })
-                .collect(),
-        });
-        let response: Response<proofs_of_indexing::ResponseData> = client
-            .post(self.urls.status.clone())
-            .json(&request)
-            .send()
-            .await?
-            .json()
-            .await?;
+        let mut pois = vec![];
 
-        // Log any errors received for debugging
-        if let Some(errors) = response.errors {
-            let errors = errors
-                .iter()
-                .map(|e| e.message.clone())
-                .collect::<Vec<_>>()
-                .join(",");
-            warn!(
-                id = %self.id,
-                url = %self.urls.status.to_string(),
-                %errors,
-                "indexer returned POI errors"
+        // Graph Node implements a limit of 10 POI requests per request, so
+        // split our requests up accordingly.
+        for requests in requests.chunks(10) {
+            let client = reqwest::Client::new();
+            let request = ProofsOfIndexing::build_query(proofs_of_indexing::Variables {
+                requests: requests
+                    .into_iter()
+                    .map(|query| proofs_of_indexing::PublicProofOfIndexingRequest {
+                        deployment: query.deployment.to_string(),
+                        blockNumber: query.block_number.to_string(),
+                    })
+                    .collect(),
+            });
+            let response: Response<proofs_of_indexing::ResponseData> = client
+                .post(self.urls.status.clone())
+                .json(&request)
+                .send()
+                .await?
+                .json()
+                .await?;
+
+            // Log any errors received for debugging
+            if let Some(errors) = response.errors {
+                let errors = errors
+                    .iter()
+                    .map(|e| e.message.clone())
+                    .collect::<Vec<_>>()
+                    .join(",");
+                warn!(
+                    id = %self.id,
+                    url = %self.urls.status.to_string(),
+                    %errors,
+                    "indexer returned POI errors"
+                );
+            }
+
+            // Parse POI results
+            pois.extend(
+                response
+                    .data
+                    .map(|data| {
+                        data.public_proofs_of_indexing
+                        .into_iter()
+                        .map(|result| (self.clone(), result).try_into())
+                        .filter_map(|result| match result {
+                            Ok(v) => Some(v),
+                            Err(error) => {
+                                warn!(id = %self.id, url = %self.urls.status.to_string(), %error);
+                                None
+                            }
+                        })
+                        // .collect::<Vec<_>>()
+                    })
+                    .ok_or_else(|| anyhow!("no proofs of indexing returned"))?,
             );
         }
 
-        // Parse POI results
-        response
-            .data
-            .map(|data| {
-                data.public_proofs_of_indexing
-                    .into_iter()
-                    .map(|result| (self.clone(), result).try_into())
-                    .filter_map(|result| match result {
-                        Ok(v) => Some(v),
-                        Err(error) => {
-                            warn!(id = %self.id, url = %self.urls.status.to_string(), %error);
-                            None
-                        }
-                    })
-                    .collect()
-            })
-            .ok_or_else(|| anyhow!("no proofs of indexing returned"))
+        Ok(pois)
     }
 }
