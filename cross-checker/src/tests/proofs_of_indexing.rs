@@ -4,7 +4,8 @@ use tracing_test::traced_test;
 use eventuals::Eventual;
 use futures::StreamExt;
 use graph_ixi_common::prelude::{
-    BlockPointer, IndexerUrls, POICrossCheckReport, ProofOfIndexing, SubgraphDeployment,
+    BlockPointer, Bytes32, DivergingBlock, IndexerUrls, POICrossCheckReport, ProofOfIndexing,
+    SubgraphDeployment,
 };
 use itertools::Itertools;
 use rand::Rng;
@@ -260,7 +261,21 @@ async fn cross_check_pois_with_mismatch_in_random_block() {
             vec![POICrossCheckReport {
                 poi1: expected_poi1.clone(),
                 poi2: expected_poi2.clone(),
-                diverging_block: Some(()),
+                diverging_block: Some(DivergingBlock {
+                    block: diverging_block.clone(),
+                    proof_of_indexing1: canonical_pois
+                        .iter()
+                        .find(|poi| poi.block.eq(&diverging_block))
+                        .unwrap()
+                        .proof_of_indexing
+                        .clone(),
+                    proof_of_indexing2: diverging_pois
+                        .iter()
+                        .find(|poi| poi.block.eq(&diverging_block))
+                        .unwrap()
+                        .proof_of_indexing
+                        .clone(),
+                }),
             }]
         );
 
