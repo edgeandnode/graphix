@@ -1,0 +1,2 @@
+Touching this file will modify its mtime, triggering the re-download of the
+GraphQL schema file.

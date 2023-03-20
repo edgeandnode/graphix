@@ -99,18 +99,7 @@ impl TryInto<ProofOfIndexing<RealIndexer>>
                     .hash
                     .and_then(|hash| hash.as_str().try_into().ok()),
             },
-            proof_of_indexing: self
-                .1
-                .proof_of_indexing
-                .ok_or_else(|| {
-                    anyhow!(
-                        "no proof of indexing available for {} at block #{}",
-                        self.1.deployment,
-                        self.1.block.number
-                    )
-                })?
-                .as_str()
-                .try_into()?,
+            proof_of_indexing: self.1.proof_of_indexing.as_str().try_into()?,
         })
     }
 }
