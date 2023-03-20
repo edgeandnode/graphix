@@ -5,18 +5,11 @@ mod server;
 #[cfg(test)]
 mod tests;
 
-extern crate diesel;
-
-#[macro_use]
-extern crate diesel_migrations;
-
 use graph_ixi_common::{db, modes, prelude::Config};
 use std::path::PathBuf;
 use structopt::StructOpt;
 use tracing::*;
 use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
-
-embed_migrations!("../migrations");
 
 #[derive(StructOpt, Debug)]
 struct Options {
