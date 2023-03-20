@@ -10,9 +10,8 @@ extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
 
-use diesel::{r2d2, PgConnection};
 use graph_ixi_common::{db, modes, prelude::Config};
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 use structopt::StructOpt;
 use tracing::*;
 use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
