@@ -1,9 +1,7 @@
+use crate::db::{models, Store};
 use async_graphql::{
     Context, EmptyMutation, EmptySubscription, InputObject, Object, Schema, SimpleObject,
 };
-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
-
-use crate::db::{self, models, Store};
 
 pub struct QueryRoot;
 
@@ -15,9 +13,9 @@ struct ProofOfIndexingRequest {
 }
 
 #[derive(InputObject)]
-struct BlockRange {
-    start: u64,
-    end: u64,
+pub struct BlockRange {
+    pub start: u64,
+    pub end: u64,
 }
 
 #[derive(SimpleObject)]
@@ -106,20 +104,8 @@ impl From<models::POICrossCheckReport> for POICrossCheckReport {
 #[Object]
 impl QueryRoot {
     async fn deployments(&self, ctx: &Context<'_>) -> Result<Vec<String>, async_graphql::Error> {
-        use db::schema::proofs_of_indexing::dsl::*;
-
         let api_ctx = ctx.data::<APISchemaContext>()?;
-        let connection = api_ctx.store.conn()?;
-
-        let query = proofs_of_indexing.distinct_on(deployment);
-        let pois = query
-            .load::<models::ProofOfIndexing>(&connection)?
-            .into_iter()
-            .map(ProofOfIndexing::from);
-
-        let mut deployments: Vec<String> = pois.map(|poi| poi.deployment).collect();
-        deployments.sort();
-        deployments.dedup();
+        let deployments = api_ctx.store.deployments()?;
 
         Ok(deployments)
     }
@@ -129,33 +115,12 @@ impl QueryRoot {
         ctx: &Context<'_>,
         request: ProofOfIndexingRequest,
     ) -> Result<Vec<ProofOfIndexing>, async_graphql::Error> {
-        use db::schema::proofs_of_indexing::dsl::*;
-
         let api_ctx = ctx.data::<APISchemaContext>()?;
-        let connection = api_ctx.store.conn()?;
+        let pois = api_ctx
+            .store
+            .pois(&request.deployments, request.block_range, request.limit)?;
 
-        let query = proofs_of_indexing
-            .order_by(block_number.desc())
-            .order_by(timestamp.desc())
-            .filter(deployment.eq_any(&request.deployments))
-            .filter(
-                block_number.between(
-                    request
-                        .block_range
-                        .as_ref()
-                        .map_or(0, |range| range.start as i64),
-                    request
-                        .block_range
-                        .map_or(i64::max_value(), |range| range.end as i64),
-                ),
-            )
-            .limit(request.limit.unwrap_or(1000) as i64);
-
-        Ok(query
-            .load::<models::ProofOfIndexing>(&connection)?
-            .into_iter()
-            .map(ProofOfIndexing::from)
-            .collect())
+        Ok(pois.into_iter().map(ProofOfIndexing::from).collect())
     }
 
     async fn poi_cross_check_reports(
@@ -163,37 +128,12 @@ impl QueryRoot {
         ctx: &Context<'_>,
         request: POICrossCheckReportRequest,
     ) -> Result<Vec<POICrossCheckReport>, async_graphql::Error> {
-        use db::schema::poi_cross_check_reports::dsl::*;
-
         let api_ctx = ctx.data::<APISchemaContext>()?;
-        let connection = api_ctx.store.conn()?;
+        let reports = api_ctx
+            .store
+            .poi_cross_check_reports(request.indexer1.as_deref(), request.indexer2.as_deref())?;
 
-        let mut query = poi_cross_check_reports
-            .distinct_on((block_number, indexer1, indexer2, deployment))
-            .into_boxed();
-
-        if let Some(indexer) = request.indexer1 {
-            query = query.filter(indexer1.eq(indexer));
-        }
-
-        if let Some(indexer) = request.indexer2 {
-            query = query.filter(indexer2.eq(indexer));
-        }
-
-        query = query
-            .order_by((
-                block_number.desc(),
-                deployment.asc(),
-                indexer1.asc(),
-                indexer2.asc(),
-            ))
-            .limit(5000);
-
-        Ok(query
-            .load::<models::POICrossCheckReport>(&connection)?
-            .into_iter()
-            .map(POICrossCheckReport::from)
-            .collect())
+        Ok(reports.into_iter().map(POICrossCheckReport::from).collect())
     }
 }
 

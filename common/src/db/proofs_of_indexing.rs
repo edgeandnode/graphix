@@ -1,14 +1,13 @@
 use std::time::Duration;
 
 use chrono::prelude::Utc;
-use diesel::RunQueryDsl;
 use futures::{FutureExt, Stream, StreamExt, TryFutureExt};
 use futures_retry::{FutureRetry, RetryPolicy};
-use tracing::{info, warn};
+use tracing::warn;
 
 use crate::{db::models::POICrossCheckReport, indexer::Indexer, types};
 
-use super::{models::ProofOfIndexing, schema, Store};
+use super::{models::ProofOfIndexing, Store};
 
 /// Write any POIs that we receive to the database.
 pub fn write<S, I>(store: Store, proofs_of_indexing: S)
@@ -39,17 +38,7 @@ where
                                 })
                                 .collect::<Vec<_>>();
 
-                            let number_of_pois = pois.len();
-
-                            let connection = store.conn()?;
-                            diesel::insert_into(schema::proofs_of_indexing::table)
-                                .values(pois)
-                                .on_conflict_do_nothing()
-                                .execute(&connection)?;
-
-                            info!(%number_of_pois, "Wrote POIs to database");
-
-                            Ok(()) as Result<_, anyhow::Error>
+                            store.write_pois(pois)
                         },
                         |e| {
                             if consecutive_errors >= 5 {
@@ -114,17 +103,7 @@ where
                                 })
                                 .collect::<Vec<_>>();
 
-                            let number_of_reports = reports.len();
-
-                            let connection = store.conn()?;
-                            diesel::insert_into(schema::poi_cross_check_reports::table)
-                                .values(reports)
-                                .on_conflict_do_nothing()
-                                .execute(&connection)?;
-
-                            info!(%number_of_reports, "Wrote POI cross-check reports to database");
-
-                            Ok(()) as Result<_, anyhow::Error>
+                            store.write_poi_cross_check_reports(reports)
                         },
                         |e| {
                             if consecutive_errors >= 5 {
