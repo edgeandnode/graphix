@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use gloo::timers::callback::Interval;
 use graphql_client::{GraphQLQuery, Response as GraphQLResponse};

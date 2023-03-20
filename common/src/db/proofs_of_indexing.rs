@@ -1,8 +1,7 @@
-use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::prelude::Utc;
-use diesel::{r2d2, PgConnection, RunQueryDsl};
+use diesel::RunQueryDsl;
 use futures::{FutureExt, Stream, StreamExt, TryFutureExt};
 use futures_retry::{FutureRetry, RetryPolicy};
 use tracing::{info, warn};

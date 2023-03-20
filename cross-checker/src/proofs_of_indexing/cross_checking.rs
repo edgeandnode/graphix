@@ -5,7 +5,7 @@ use eventuals::{Eventual, EventualExt};
 use futures::{
     channel::mpsc::{channel, Sender},
     stream::FuturesUnordered,
-    FutureExt, SinkExt, Stream, StreamExt, TryFutureExt,
+    FutureExt, SinkExt, Stream, StreamExt,
 };
 use graph_ixi_common::prelude::{
     Indexer, POICrossCheckReport, POIRequest, ProofOfIndexing, SubgraphDeployment,

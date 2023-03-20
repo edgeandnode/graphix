@@ -1,12 +1,7 @@
-use std::sync::Arc;
-
 use async_graphql::{
     Context, EmptyMutation, EmptySubscription, InputObject, Object, Schema, SimpleObject,
 };
-use diesel::{
-    r2d2::{ConnectionManager, Pool},
-    ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
-};
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 
 use crate::db::{self, models, Store};
 

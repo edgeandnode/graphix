@@ -3,15 +3,13 @@ extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
 
-use std::{convert::Infallible, sync::Arc};
+use std::convert::Infallible;
 
 use async_graphql::{
     http::{playground_source, GraphQLPlaygroundConfig},
     Request,
 };
 use async_graphql_warp::{self, GraphQLResponse};
-use diesel::{r2d2, PgConnection};
-use tracing::*;
 use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
 use warp::{
     http::{self, Method},
