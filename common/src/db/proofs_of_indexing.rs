@@ -9,13 +9,11 @@ use tracing::{info, warn};
 
 use crate::{db::models::POICrossCheckReport, indexer::Indexer, types};
 
-use super::{models::ProofOfIndexing, schema};
+use super::{models::ProofOfIndexing, schema, Store};
 
 /// Write any POIs that we receive to the database.
-pub fn write<S, I>(
-    connection_pool: Arc<r2d2::Pool<r2d2::ConnectionManager<PgConnection>>>,
-    proofs_of_indexing: S,
-) where
+pub fn write<S, I>(store: Store, proofs_of_indexing: S)
+where
     S: Stream<Item = types::ProofOfIndexing<I>> + Send + 'static,
     I: Indexer + Send + Sync + 'static,
 {
@@ -23,7 +21,7 @@ pub fn write<S, I>(
         proofs_of_indexing
             .ready_chunks(100)
             .for_each(move |chunk: Vec<types::ProofOfIndexing<I>>| {
-                let connection_pool = connection_pool.clone();
+                let store = store.clone();
                 let mut consecutive_errors = 0;
 
                 async move {
@@ -44,7 +42,7 @@ pub fn write<S, I>(
 
                             let number_of_pois = pois.len();
 
-                            let connection = connection_pool.get()?;
+                            let connection = store.conn()?;
                             diesel::insert_into(schema::proofs_of_indexing::table)
                                 .values(pois)
                                 .on_conflict_do_nothing()
@@ -76,10 +74,8 @@ pub fn write<S, I>(
 }
 
 /// Write any POI cross-check reports that we receive to the database.
-pub fn write_reports<S, I>(
-    connection_pool: Arc<r2d2::Pool<r2d2::ConnectionManager<PgConnection>>>,
-    reports: S,
-) where
+pub fn write_reports<S, I>(store: Store, reports: S)
+where
     S: Stream<Item = types::POICrossCheckReport<I>> + Send + 'static,
     I: Indexer + Send + Sync + 'static,
 {
@@ -87,7 +83,7 @@ pub fn write_reports<S, I>(
         reports
             .ready_chunks(100)
             .for_each(move |chunk: Vec<types::POICrossCheckReport<I>>| {
-                let connection_pool = connection_pool.clone();
+                let store = store.clone();
                 let mut consecutive_errors = 0;
 
                 async move {
@@ -121,7 +117,7 @@ pub fn write_reports<S, I>(
 
                             let number_of_reports = reports.len();
 
-                            let connection = connection_pool.get()?;
+                            let connection = store.conn()?;
                             diesel::insert_into(schema::poi_cross_check_reports::table)
                                 .values(reports)
                                 .on_conflict_do_nothing()

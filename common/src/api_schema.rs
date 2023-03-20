@@ -8,7 +8,7 @@ use diesel::{
     ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
 };
 
-use crate::db::{self, models};
+use crate::db::{self, models, Store};
 
 pub struct QueryRoot;
 
@@ -114,7 +114,7 @@ impl QueryRoot {
         use db::schema::proofs_of_indexing::dsl::*;
 
         let api_ctx = ctx.data::<APISchemaContext>()?;
-        let connection = api_ctx.db_connection_pool.get()?;
+        let connection = api_ctx.store.conn()?;
 
         let query = proofs_of_indexing.distinct_on(deployment);
         let pois = query
@@ -137,7 +137,7 @@ impl QueryRoot {
         use db::schema::proofs_of_indexing::dsl::*;
 
         let api_ctx = ctx.data::<APISchemaContext>()?;
-        let connection = api_ctx.db_connection_pool.get()?;
+        let connection = api_ctx.store.conn()?;
 
         let query = proofs_of_indexing
             .order_by(block_number.desc())
@@ -171,7 +171,7 @@ impl QueryRoot {
         use db::schema::poi_cross_check_reports::dsl::*;
 
         let api_ctx = ctx.data::<APISchemaContext>()?;
-        let connection = api_ctx.db_connection_pool.get()?;
+        let connection = api_ctx.store.conn()?;
 
         let mut query = poi_cross_check_reports
             .distinct_on((block_number, indexer1, indexer2, deployment))
@@ -205,7 +205,7 @@ impl QueryRoot {
 pub type APISchema = Schema<QueryRoot, EmptyMutation, EmptySubscription>;
 
 pub struct APISchemaContext {
-    pub db_connection_pool: Arc<Pool<ConnectionManager<PgConnection>>>,
+    pub store: Store,
 }
 
 pub fn api_schema(ctx: APISchemaContext) -> APISchema {

@@ -13,6 +13,7 @@ embed_migrations!("../migrations");
 
 /// An abstraction over all database operations. It uses [`Arc`] internally, so
 /// it's cheaply cloneable.
+#[derive(Clone)]
 pub struct Store {
     pool: Arc<Pool<ConnectionManager<PgConnection>>>,
 }
