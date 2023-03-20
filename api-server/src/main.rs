@@ -18,7 +18,7 @@ use warp::{
     Filter,
 };
 
-use graph_ixi_common::api_schema as schema;
+use graph_ixi_common::{api_schema as schema, db::Store};
 
 mod opt;
 
@@ -38,20 +38,13 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let options = opt::options_from_args();
 
-    info!("Connect to database");
-    let db_url = options.database_url.as_str();
-    let db_connection_manager = r2d2::ConnectionManager::<PgConnection>::new(db_url);
-    let db_connection_pool = Arc::new(r2d2::Builder::new().build(db_connection_manager)?);
-
-    info!("Run database migrations");
-    let connection = db_connection_pool.get()?;
-    embedded_migrations::run(&connection)?;
+    let store = Store::new(options.database_url.as_str())?;
 
     // GET / -> 200 OK
     let health_check_route = warp::path::end().map(|| format!("Ready to roll!"));
 
     // GraphQL API
-    let api_context = schema::APISchemaContext { db_connection_pool };
+    let api_context = schema::APISchemaContext { store };
     let api_schema = schema::api_schema(api_context);
     let api = async_graphql_warp::graphql(api_schema).and_then(
         |(schema, request): (schema::APISchema, Request)| async move {
