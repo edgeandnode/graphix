@@ -1,7 +1,7 @@
 [package]
 name = "graph-ixi-cross-checker"
 version = "0.1.0"
-authors = [ "Jannis Pohlmann <jannis@edgeandnode.com>" ]
+authors = ["Jannis Pohlmann <jannis@edgeandnode.com>"]
 edition = "2021"
 default-run = "graph-ixi-cross-checker"
 
@@ -12,8 +12,6 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1.0.48"
 async-trait = "0.1.52"
-diesel = { version = "1.4", features = ["postgres", "r2d2", "chrono"] }
-diesel_migrations = "1.4"
 eventuals = "0.6.6"
 futures = "0.3.18"
 graph-ixi-common = { path = "../common" }
