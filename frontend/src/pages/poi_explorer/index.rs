@@ -3,7 +3,7 @@ use gloo::timers::callback::Interval;
 use graphql_client::{GraphQLQuery, Response as GraphQLResponse};
 use log::warn;
 use reqwasm::http::*;
-use stylist::{css, yew::*};
+use stylist::yew::*;
 use wasm_bindgen_futures::spawn_local;
 use yew::{html::Scope, prelude::*};
 use yew_router::prelude::*;

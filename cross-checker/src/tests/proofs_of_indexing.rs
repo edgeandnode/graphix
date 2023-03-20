@@ -4,7 +4,7 @@ use tracing_test::traced_test;
 use eventuals::Eventual;
 use futures::StreamExt;
 use graph_ixi_common::prelude::{
-    BlockPointer, Bytes32, DivergingBlock, IndexerUrls, POICrossCheckReport, ProofOfIndexing,
+    BlockPointer, DivergingBlock, IndexerUrls, POICrossCheckReport, ProofOfIndexing,
     SubgraphDeployment,
 };
 use itertools::Itertools;
