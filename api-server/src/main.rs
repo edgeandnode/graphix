@@ -1,8 +1,3 @@
-extern crate diesel;
-
-#[macro_use]
-extern crate diesel_migrations;
-
 use std::convert::Infallible;
 
 use async_graphql::{
@@ -19,8 +14,6 @@ use warp::{
 use graph_ixi_common::{api_schema as schema, db::Store};
 
 mod opt;
-
-embed_migrations!("../migrations");
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
