@@ -11,7 +11,7 @@ use warp::{
     Filter,
 };
 
-use graph_ixi_common::{api_schema as schema, db::Store};
+use graph_ixi_common::{api_types as schema, db::Store};
 
 mod opt;
 
