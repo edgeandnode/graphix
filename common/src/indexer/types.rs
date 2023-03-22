@@ -11,7 +11,7 @@ use crate::{
 
 #[async_trait]
 pub trait Indexer: Clone + Sized + Eq + Send + Sync + Hash + Ord {
-    fn id(&self) -> &String;
+    fn id(&self) -> &str;
     fn urls(&self) -> &IndexerUrls;
 
     async fn indexing_statuses(self: Arc<Self>)
