@@ -13,8 +13,8 @@ path = "src/main.rs"
 anyhow = "1.0.52"
 async-graphql = "3.0.22"
 async-graphql-warp = "3.0.22"
+clap = { version = "4", features = ["derive"] }
 graph-ixi-common = { path = "../common" }
-structopt = "0.3.26"
 tokio = { version = "1.15.0", features = ["full"] }
 tracing = "0.1.29"
 tracing-subscriber = { version = "0.3.6", features = ["env-filter"] }

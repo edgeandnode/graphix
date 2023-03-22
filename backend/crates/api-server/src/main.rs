@@ -5,6 +5,7 @@ use async_graphql::{
     Request,
 };
 use async_graphql_warp::{self, GraphQLResponse};
+use opt::CliOptions;
 use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
 use warp::{
     http::{self, Method},
@@ -27,7 +28,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let fmt_layer = tracing_subscriber::fmt::layer();
     defaults.with(fmt_layer).init();
 
-    let options = opt::options_from_args();
+    let options = CliOptions::from_args();
 
     let store = Store::new(options.database_url.as_str())?;
 
