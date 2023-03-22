@@ -11,7 +11,7 @@ pub mod models;
 pub mod proofs_of_indexing;
 mod schema;
 
-embed_migrations!("../migrations");
+embed_migrations!("migrations");
 
 /// An abstraction over all database operations. It uses [`Arc`] internally, so
 /// it's cheaply cloneable.
