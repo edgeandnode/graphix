@@ -124,7 +124,7 @@ impl RealIndexer {
 
 #[async_trait]
 impl Indexer for RealIndexer {
-    fn id(&self) -> &String {
+    fn id(&self) -> &str {
         &self.id
     }
 
