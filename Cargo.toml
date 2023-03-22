@@ -1,7 +1,2 @@
 [workspace]
-members = [
-    "common",
-    "cross-checker",
-    "api-server",
-    "frontend"
-]
+members = ["backend/crates/*", "frontend"]
