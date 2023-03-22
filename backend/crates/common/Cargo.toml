@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.48"
-async-graphql = "3.0.22"
+async-graphql = "5"
 async-trait = "0.1.52"
 chrono = "0.4.19"
 diesel = { version = "1.4", features = ["postgres", "r2d2", "chrono", "serde_json"] }
@@ -13,12 +13,12 @@ diesel_migrations = "1.4"
 eventuals = "0.6.6"
 futures = "0.3.18"
 futures-retry = "0.6.0"
-graphql_client = "0.10.0"
+graphql_client = "0.12.0"
 hex = "0.4.3"
 reqwest = { version = "0.11.6", features = ["json"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = "1.0.78"
-serde_yaml = "0.8.21"
+serde_yaml = "0.9"
 tokio = { version = "1.14.0", features = ["full"] }
 tracing = "0.1.29"
 

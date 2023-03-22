@@ -197,7 +197,7 @@ impl Indexer for RealIndexer {
                     .into_iter()
                     .map(|query| proofs_of_indexing::PublicProofOfIndexingRequest {
                         deployment: query.deployment.to_string(),
-                        blockNumber: query.block_number.to_string(),
+                        block_number: query.block_number.to_string(),
                     })
                     .collect(),
             });
