@@ -9,7 +9,7 @@ use crate::{api_types::BlockRange, db::models::ProofOfIndexing};
 
 pub mod models;
 pub mod proofs_of_indexing;
-pub mod schema;
+mod schema;
 
 embed_migrations!("../migrations");
 
