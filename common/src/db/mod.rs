@@ -6,7 +6,7 @@ use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use std::sync::Arc;
 use tracing::info;
 
-use crate::{api_schema::BlockRange, db::models::ProofOfIndexing};
+use crate::{api_types::BlockRange, db::models::ProofOfIndexing};
 
 pub mod models;
 pub mod proofs_of_indexing;
