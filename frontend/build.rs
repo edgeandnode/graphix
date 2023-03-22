@@ -4,7 +4,7 @@ use std::io::*;
 
 use async_graphql::{EmptyMutation, EmptySubscription, Schema};
 
-use graph_ixi_common::api_schema::QueryRoot;
+use graph_ixi_common::api_types::QueryRoot;
 
 fn main() -> Result<()> {
     // We're only interested in re-generating the API schema if build

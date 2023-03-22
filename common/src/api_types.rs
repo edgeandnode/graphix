@@ -1,3 +1,5 @@
+//! GraphQL API types.
+
 use crate::db::{models, Store};
 use async_graphql::{
     Context, EmptyMutation, EmptySubscription, InputObject, Object, Schema, SimpleObject,
@@ -18,6 +20,7 @@ pub struct BlockRange {
     pub end: u64,
 }
 
+/// A block number that may or may not also have an associated hash.
 #[derive(SimpleObject)]
 struct PartialBlock {
     number: i64,
