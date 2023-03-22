@@ -5,7 +5,7 @@ use futures::{FutureExt, Stream, StreamExt, TryFutureExt};
 use futures_retry::{FutureRetry, RetryPolicy};
 use tracing::warn;
 
-use crate::{db::models::POICrossCheckReport, indexer::Indexer, types};
+use crate::{db::models::PoiCrossCheckReport, indexer::Indexer, types};
 
 use super::{models::ProofOfIndexing, Store};
 
@@ -80,7 +80,7 @@ where
                             let reports = chunk
                                 .clone()
                                 .into_iter()
-                                .map(|report| POICrossCheckReport {
+                                .map(|report| PoiCrossCheckReport {
                                     timestamp: Utc::now().naive_utc(),
                                     indexer1: report
                                         .poi1

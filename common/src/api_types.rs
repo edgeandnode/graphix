@@ -79,8 +79,8 @@ struct POICrossCheckReport {
     diverging_block: Option<DivergingBlock>,
 }
 
-impl From<models::POICrossCheckReport> for POICrossCheckReport {
-    fn from(report: models::POICrossCheckReport) -> Self {
+impl From<models::PoiCrossCheckReport> for POICrossCheckReport {
+    fn from(report: models::PoiCrossCheckReport) -> Self {
         Self {
             timestamp: report.timestamp.to_string(),
             indexer1: report.indexer1,
@@ -108,7 +108,7 @@ impl From<models::POICrossCheckReport> for POICrossCheckReport {
 impl QueryRoot {
     async fn deployments(&self, ctx: &Context<'_>) -> Result<Vec<String>, async_graphql::Error> {
         let api_ctx = ctx.data::<APISchemaContext>()?;
-        let deployments = api_ctx.store.deployments()?;
+        let deployments = api_ctx.store.sg_deployments()?;
 
         Ok(deployments)
     }

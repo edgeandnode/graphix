@@ -40,7 +40,8 @@ impl Store {
         Ok(self.pool.get()?)
     }
 
-    pub fn deployments(&self) -> anyhow::Result<Vec<String>> {
+    /// Returns all subgraph deployments that have ever analyzed.
+    pub fn sg_deployments(&self) -> anyhow::Result<Vec<String>> {
         use schema::proofs_of_indexing::dsl::*;
 
         let query = proofs_of_indexing.distinct_on(deployment);
@@ -56,9 +57,11 @@ impl Store {
         Ok(deployments)
     }
 
+    /// Queries the database for proofs of indexing that refer to the specified
+    /// subgraph deployments and in the given [`BlockRange`], if given.
     pub fn pois(
         &self,
-        deployments: &[String],
+        sg_deployments: &[String],
         block_range: Option<BlockRange>,
         limit: Option<u16>,
     ) -> anyhow::Result<Vec<ProofOfIndexing>> {
@@ -67,7 +70,7 @@ impl Store {
         let query = proofs_of_indexing
             .order_by(block_number.desc())
             .order_by(timestamp.desc())
-            .filter(deployment.eq_any(deployments))
+            .filter(deployment.eq_any(sg_deployments))
             .filter(block_number.between(
                 block_range.as_ref().map_or(0, |range| range.start as i64),
                 block_range.map_or(i64::max_value(), |range| range.end as i64),
@@ -85,10 +88,8 @@ impl Store {
         &self,
         indexer1_s: Option<&str>,
         indexer2_s: Option<&str>,
-    ) -> anyhow::Result<Vec<models::POICrossCheckReport>> {
+    ) -> anyhow::Result<Vec<models::PoiCrossCheckReport>> {
         use schema::poi_cross_check_reports::dsl::*;
-
-        let connection = self.conn()?;
 
         let mut query = poi_cross_check_reports
             .distinct_on((block_number, indexer1, indexer2, deployment))
@@ -111,7 +112,7 @@ impl Store {
             ))
             .limit(5000);
 
-        Ok(query.load::<models::POICrossCheckReport>(&connection)?)
+        Ok(query.load::<models::PoiCrossCheckReport>(&self.conn()?)?)
     }
 
     pub fn write_pois(&self, pois: Vec<models::ProofOfIndexing>) -> anyhow::Result<()> {
@@ -127,7 +128,7 @@ impl Store {
 
     pub fn write_poi_cross_check_reports(
         &self,
-        reports: Vec<models::POICrossCheckReport>,
+        reports: Vec<models::PoiCrossCheckReport>,
     ) -> anyhow::Result<()> {
         let len = reports.len();
         diesel::insert_into(schema::poi_cross_check_reports::table)

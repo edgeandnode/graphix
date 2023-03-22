@@ -61,7 +61,7 @@ impl ToSql<Jsonb, Pg> for DivergingBlock {
 
 #[derive(Debug, Insertable, Queryable)]
 #[table_name = "poi_cross_check_reports"]
-pub struct POICrossCheckReport {
+pub struct PoiCrossCheckReport {
     pub timestamp: NaiveDateTime,
     pub indexer1: String,
     pub indexer2: String,
