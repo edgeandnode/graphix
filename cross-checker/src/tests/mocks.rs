@@ -26,7 +26,7 @@ pub struct MockIndexer {
 
 #[async_trait]
 impl Indexer for MockIndexer {
-    fn id(&self) -> &String {
+    fn id(&self) -> &str {
         &self.id
     }
 
