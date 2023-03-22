@@ -5,15 +5,16 @@ mod server;
 #[cfg(test)]
 mod tests;
 
+use clap::Parser;
 use graph_ixi_common::{db, modes, prelude::Config};
 use std::path::PathBuf;
 use structopt::StructOpt;
 use tracing::*;
 use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
-#[derive(StructOpt, Debug)]
-struct Options {
-    #[structopt(long)]
+#[derive(Parser, Debug)]
+struct CliOptions {
+    #[clap(long)]
     config: PathBuf,
 }
 
@@ -30,7 +31,7 @@ async fn main() -> Result<(), anyhow::Error> {
     defaults.with(fmt_layer).init();
 
     info!("Parse options");
-    let options = Options::from_args();
+    let options = CliOptions::from_args();
 
     info!("Load configuration file");
     let config = Config::try_from(&options.config)?;
