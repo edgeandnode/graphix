@@ -44,6 +44,7 @@ where
     pub latest_block: BlockPointer,
 }
 
+/// A 32-byte array that can be easily converted to and from hex strings.
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
 pub struct Bytes32(pub [u8; 32]);
 
