@@ -3,7 +3,6 @@ use diesel::{
     PgConnection,
 };
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
-use std::sync::Arc;
 use tracing::info;
 
 use crate::{api_types::BlockRange, db::models::ProofOfIndexing};
@@ -18,13 +17,13 @@ embed_migrations!("../migrations");
 /// it's cheaply cloneable.
 #[derive(Clone)]
 pub struct Store {
-    pool: Arc<Pool<ConnectionManager<PgConnection>>>,
+    pool: Pool<ConnectionManager<PgConnection>>,
 }
 
 impl Store {
     pub fn new(db_url: &str) -> anyhow::Result<Self> {
         let manager = r2d2::ConnectionManager::<PgConnection>::new(db_url);
-        let pool = Arc::new(r2d2::Builder::new().build(manager)?);
+        let pool = r2d2::Builder::new().build(manager)?;
         let store = Self { pool };
         store.run_migrations()?;
         Ok(store)
