@@ -45,25 +45,19 @@ where
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
-pub struct Bytes32(pub Vec<u8>);
+pub struct Bytes32(pub [u8; 32]);
 
 impl TryFrom<&str> for Bytes32 {
     type Error = anyhow::Error;
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        Ok(Self(hex::decode(s.trim_start_matches("0x"))?))
+        Ok(Self(hex::FromHex::from_hex(s.trim_start_matches("0x"))?))
     }
 }
 
 impl fmt::Display for Bytes32 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", hex::encode(&self.0))
-    }
-}
-
-impl From<Bytes32> for String {
-    fn from(val: Bytes32) -> Self {
-        val.to_string()
     }
 }
 
