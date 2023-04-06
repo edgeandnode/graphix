@@ -1,12 +1,19 @@
+use async_graphql::*;
+use graph_ixi_common::api_types::QueryRoot;
 use std::env;
 use std::fs::File;
 use std::io::*;
 
-use async_graphql::{EmptyMutation, EmptySubscription, Schema};
+struct Query;
 
-use graph_ixi_common::api_types::QueryRoot;
+#[Object]
+impl Query {
+    async fn howdy(&self) -> &'static str {
+        "partner"
+    }
+}
 
-fn main() -> Result<()> {
+fn main() -> std::io::Result<()> {
     // We're only interested in re-generating the API schema if build
     // dependencies change or the build script itself does.
     // See <https://doc.rust-lang.org/cargo/reference/build-scripts.html#change-detection>.

@@ -1,11 +1,11 @@
-use std::convert::Infallible;
-
 use async_graphql::{
     http::{playground_source, GraphQLPlaygroundConfig},
     Request,
 };
 use async_graphql_warp::{self, GraphQLResponse};
+use clap::Parser;
 use opt::CliOptions;
+use std::convert::Infallible;
 use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
 use warp::{
     http::{self, Method},
@@ -28,7 +28,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let fmt_layer = tracing_subscriber::fmt::layer();
     defaults.with(fmt_layer).init();
 
-    let options = CliOptions::from_args();
+    let options = CliOptions::parse();
 
     let store = Store::new(options.database_url.as_str())?;
 

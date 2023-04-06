@@ -1,11 +1,12 @@
+use crate::{api_types::BlockRange, db::models::PoI};
 use diesel::{
     r2d2::{self, ConnectionManager, Pool, PooledConnection},
-    PgConnection,
+    PgConnection, Table,
 };
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use tracing::info;
 
-use crate::{api_types::BlockRange, db::models::ProofOfIndexing};
+use self::models::Filter;
 
 pub mod models;
 pub mod proofs_of_indexing;
@@ -13,7 +14,7 @@ mod schema;
 
 embed_migrations!("migrations");
 
-/// An abstraction over all database operations. It uses [`Arc`] internally, so
+/// An abstraction over all database operations. It uses [`Arc`](std::sync::Arc) internally, so
 /// it's cheaply cloneable.
 #[derive(Clone)]
 pub struct Store {
@@ -42,18 +43,16 @@ impl Store {
 
     /// Returns all subgraph deployments that have ever analyzed.
     pub fn sg_deployments(&self) -> anyhow::Result<Vec<String>> {
-        use schema::proofs_of_indexing::dsl::*;
+        use schema::sg_deployments::dsl::*;
 
-        let query = proofs_of_indexing.distinct_on(deployment);
-        let pois = query
-            .load::<models::ProofOfIndexing>(&self.conn()?)?
+        let mut deployments = sg_deployments::select(deployment)
+            .load::<Vec<u8>>(&self.conn()?)?
             .into_iter()
-            .map(ProofOfIndexing::from);
+            .map(hex::ToHex::encode_hex)
+            .collect();
 
-        let mut deployments: Vec<String> = pois.map(|poi| poi.deployment).collect();
         deployments.sort();
         deployments.dedup();
-
         Ok(deployments)
     }
 
@@ -63,35 +62,49 @@ impl Store {
         &self,
         sg_deployments: &[String],
         block_range: Option<BlockRange>,
-        limit: Option<u16>,
-    ) -> anyhow::Result<Vec<ProofOfIndexing>> {
-        use schema::proofs_of_indexing::dsl::*;
+        limit: Option<u32>,
+    ) -> anyhow::Result<Vec<PoI>> {
+        use schema::blocks::dsl::*;
+        use schema::indexers::dsl::*;
+        use schema::pois::dsl::*;
+        use schema::sg_deployments::dsl::*;
 
-        let query = proofs_of_indexing
-            .order_by(block_number.desc())
-            .order_by(timestamp.desc())
+        let query = pois
+            .select((
+                pois::all_columns(),
+                sg_deployments::all_columns(),
+                indexers::all_columns(),
+                blocks::all_columns(),
+            ))
+            .inner_join(blocks)
+            .inner_join(sg_deployments)
+            .inner_join(indexers)
+            .order_by(number.desc())
+            .order_by(schema::pois::created_at.desc())
             .filter(deployment.eq_any(sg_deployments))
-            .filter(block_number.between(
+            .filter(number.between(
                 block_range.as_ref().map_or(0, |range| range.start as i64),
                 block_range.map_or(i64::max_value(), |range| range.end as i64),
             ))
             .limit(limit.unwrap_or(1000) as i64);
 
         Ok(query
-            .load::<models::ProofOfIndexing>(&self.conn()?)?
+            .load::<models::PoI>(&self.conn()?)?
             .into_iter()
-            .map(ProofOfIndexing::from)
+            .map(PoI::from)
             .collect())
     }
 
-    pub fn poi_cross_check_reports(
+    pub fn poi_divergence_bisect_reports(
         &self,
-        indexer1_s: Option<&str>,
-        indexer2_s: Option<&str>,
-    ) -> anyhow::Result<Vec<models::PoiCrossCheckReport>> {
-        use schema::poi_cross_check_reports::dsl::*;
+        indexer1: Filter,
+        indexer2: Filter,
+    ) -> anyhow::Result<Vec<models::PoiDivergenceBisectReport>> {
+        use schema::poi_divergence_bisect_reports::dsl::*;
 
-        let mut query = poi_cross_check_reports
+        let mut query = poi_divergence_bisect_reports
+            .filter(sql)
+            .filter(poi1_id.eq(foo).and(poi2_id.eq(bar)))
             .distinct_on((block_number, indexer1, indexer2, deployment))
             .into_boxed();
 
@@ -115,9 +128,10 @@ impl Store {
         Ok(query.load::<models::PoiCrossCheckReport>(&self.conn()?)?)
     }
 
-    pub fn write_pois(&self, pois: Vec<models::ProofOfIndexing>) -> anyhow::Result<()> {
+    pub fn write_pois(&self, pois: Vec<models::PoI>) -> anyhow::Result<()> {
         let len = pois.len();
-        diesel::insert_into(schema::proofs_of_indexing::table)
+
+        diesel::insert_into(schema::pois::table)
             .values(pois)
             .on_conflict_do_nothing()
             .execute(&self.conn()?)?;

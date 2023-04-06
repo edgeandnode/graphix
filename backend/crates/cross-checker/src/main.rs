@@ -8,7 +8,6 @@ mod tests;
 use clap::Parser;
 use graph_ixi_common::{db, modes, prelude::Config};
 use std::path::PathBuf;
-use structopt::StructOpt;
 use tracing::*;
 use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
@@ -31,7 +30,7 @@ async fn main() -> Result<(), anyhow::Error> {
     defaults.with(fmt_layer).init();
 
     info!("Parse options");
-    let options = CliOptions::from_args();
+    let options = CliOptions::parse();
 
     info!("Load configuration file");
     let config = Config::try_from(&options.config)?;
