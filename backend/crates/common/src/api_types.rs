@@ -1,11 +1,48 @@
 //! GraphQL API types.
 
 use crate::db::{models, Store};
-use async_graphql::{
-    Context, EmptyMutation, EmptySubscription, InputObject, Object, Schema, SimpleObject,
-};
+use async_graphql::*;
+//use async_graphql::{
+//    Context, EmptyMutation, EmptySubscription, InputObject, Object, Schema, SimpleObject,
+//};
 
 pub struct QueryRoot;
+
+#[Object]
+impl QueryRoot {
+    async fn deployments(&self, ctx: &Context<'_>) -> Result<Vec<String>, async_graphql::Error> {
+        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let deployments = api_ctx.store.sg_deployments()?;
+
+        Ok(deployments)
+    }
+
+    async fn proofs_of_indexing(
+        &self,
+        ctx: &Context<'_>,
+        request: ProofOfIndexingRequest,
+    ) -> Result<Vec<ProofOfIndexing>, async_graphql::Error> {
+        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let pois = api_ctx
+            .store
+            .pois(&request.deployments, request.block_range, request.limit)?;
+
+        Ok(pois.into_iter().map(ProofOfIndexing::from).collect())
+    }
+
+    async fn poi_cross_check_reports(
+        &self,
+        ctx: &Context<'_>,
+        request: POICrossCheckReportRequest,
+    ) -> Result<Vec<POICrossCheckReport>, async_graphql::Error> {
+        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let reports = api_ctx
+            .store
+            .poi_cross_check_reports(request.indexer1.as_deref(), request.indexer2.as_deref())?;
+
+        Ok(reports.into_iter().map(POICrossCheckReport::from).collect())
+    }
+}
 
 #[derive(InputObject)]
 struct ProofOfIndexingRequest {
@@ -101,42 +138,6 @@ impl From<models::PoiCrossCheckReport> for POICrossCheckReport {
                 proof_of_indexing2: block.proof_of_indexing2,
             }),
         }
-    }
-}
-
-#[Object]
-impl QueryRoot {
-    async fn deployments(&self, ctx: &Context<'_>) -> Result<Vec<String>, async_graphql::Error> {
-        let api_ctx = ctx.data::<APISchemaContext>()?;
-        let deployments = api_ctx.store.sg_deployments()?;
-
-        Ok(deployments)
-    }
-
-    async fn proofs_of_indexing(
-        &self,
-        ctx: &Context<'_>,
-        request: ProofOfIndexingRequest,
-    ) -> Result<Vec<ProofOfIndexing>, async_graphql::Error> {
-        let api_ctx = ctx.data::<APISchemaContext>()?;
-        let pois = api_ctx
-            .store
-            .pois(&request.deployments, request.block_range, request.limit)?;
-
-        Ok(pois.into_iter().map(ProofOfIndexing::from).collect())
-    }
-
-    async fn poi_cross_check_reports(
-        &self,
-        ctx: &Context<'_>,
-        request: POICrossCheckReportRequest,
-    ) -> Result<Vec<POICrossCheckReport>, async_graphql::Error> {
-        let api_ctx = ctx.data::<APISchemaContext>()?;
-        let reports = api_ctx
-            .store
-            .poi_cross_check_reports(request.indexer1.as_deref(), request.indexer2.as_deref())?;
-
-        Ok(reports.into_iter().map(POICrossCheckReport::from).collect())
     }
 }
 
