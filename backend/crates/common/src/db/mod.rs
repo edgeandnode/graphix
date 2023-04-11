@@ -6,8 +6,6 @@ use diesel::{
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use tracing::info;
 
-use self::models::Filter;
-
 pub mod models;
 pub mod proofs_of_indexing;
 mod schema;
@@ -43,16 +41,16 @@ impl Store {
 
     /// Returns all subgraph deployments that have ever analyzed.
     pub fn sg_deployments(&self) -> anyhow::Result<Vec<String>> {
-        use schema::sg_deployments::dsl::*;
+        use schema::sg_deployments as sgd;
 
-        let mut deployments = sg_deployments::select(deployment)
+        let mut deployments: Vec<String> = sgd::table
+            .select(sgd::deployment)
             .load::<Vec<u8>>(&self.conn()?)?
             .into_iter()
-            .map(hex::ToHex::encode_hex)
+            .map(|x| hex::ToHex::encode_hex(&x))
             .collect();
 
         deployments.sort();
-        deployments.dedup();
         Ok(deployments)
     }
 
@@ -66,22 +64,22 @@ impl Store {
     ) -> anyhow::Result<Vec<PoI>> {
         use schema::blocks::dsl::*;
         use schema::indexers::dsl::*;
-        use schema::pois::dsl::*;
-        use schema::sg_deployments::dsl::*;
+        use schema::pois;
+        use schema::sg_deployments;
 
-        let query = pois
+        let query = pois::table
+            .inner_join(blocks)
+            .inner_join(sg_deployments::table)
+            .inner_join(indexers)
             .select((
-                pois::all_columns(),
-                sg_deployments::all_columns(),
+                pois::all_columns,
+                sg_deployments::all_columns,
                 indexers::all_columns(),
                 blocks::all_columns(),
             ))
-            .inner_join(blocks)
-            .inner_join(sg_deployments)
-            .inner_join(indexers)
             .order_by(number.desc())
             .order_by(schema::pois::created_at.desc())
-            .filter(deployment.eq_any(sg_deployments))
+            .filter(pois::sg_deployment_id.eq(sg_deployments::id))
             .filter(number.between(
                 block_range.as_ref().map_or(0, |range| range.start as i64),
                 block_range.map_or(i64::max_value(), |range| range.end as i64),
@@ -95,38 +93,38 @@ impl Store {
             .collect())
     }
 
-    pub fn poi_divergence_bisect_reports(
-        &self,
-        indexer1: Filter,
-        indexer2: Filter,
-    ) -> anyhow::Result<Vec<models::PoiDivergenceBisectReport>> {
-        use schema::poi_divergence_bisect_reports::dsl::*;
+    // pub fn poi_divergence_bisect_reports(
+    //     &self,
+    //     indexer1: Filter,
+    //     indexer2: Filter,
+    // ) -> anyhow::Result<Vec<models::PoiDivergenceBisectReport>> {
+    //     use schema::poi_divergence_bisect_reports::dsl::*;
 
-        let mut query = poi_divergence_bisect_reports
-            .filter(sql)
-            .filter(poi1_id.eq(foo).and(poi2_id.eq(bar)))
-            .distinct_on((block_number, indexer1, indexer2, deployment))
-            .into_boxed();
+    //     let mut query = poi_divergence_bisect_reports
+    //         .filter(sql)
+    //         .filter(poi1_id.eq(foo).and(poi2_id.eq(bar)))
+    //         .distinct_on((block_number, indexer1, indexer2, deployment))
+    //         .into_boxed();
 
-        if let Some(indexer) = indexer1_s {
-            query = query.filter(indexer1.eq(indexer));
-        }
+    //     if let Some(indexer) = indexer1_s {
+    //         query = query.filter(indexer1.eq(indexer));
+    //     }
 
-        if let Some(indexer) = indexer2_s {
-            query = query.filter(indexer2.eq(indexer));
-        }
+    //     if let Some(indexer) = indexer2_s {
+    //         query = query.filter(indexer2.eq(indexer));
+    //     }
 
-        query = query
-            .order_by((
-                block_number.desc(),
-                deployment.asc(),
-                indexer1.asc(),
-                indexer2.asc(),
-            ))
-            .limit(5000);
+    //     query = query
+    //         .order_by((
+    //             block_number.desc(),
+    //             deployment.asc(),
+    //             indexer1.asc(),
+    //             indexer2.asc(),
+    //         ))
+    //         .limit(5000);
 
-        Ok(query.load::<models::PoiCrossCheckReport>(&self.conn()?)?)
-    }
+    //     Ok(query.load::<models::PoiCrossCheckReport>(&self.conn()?)?)
+    // }
 
     pub fn write_pois(&self, pois: Vec<models::PoI>) -> anyhow::Result<()> {
         let len = pois.len();
@@ -140,17 +138,17 @@ impl Store {
         Ok(())
     }
 
-    pub fn write_poi_cross_check_reports(
-        &self,
-        reports: Vec<models::PoiCrossCheckReport>,
-    ) -> anyhow::Result<()> {
-        let len = reports.len();
-        diesel::insert_into(schema::poi_cross_check_reports::table)
-            .values(reports)
-            .on_conflict_do_nothing()
-            .execute(&self.conn()?)?;
+    // pub fn write_poi_cross_check_reports(
+    //     &self,
+    //     reports: Vec<models::PoiCrossCheckReport>,
+    // ) -> anyhow::Result<()> {
+    //     let len = reports.len();
+    //     diesel::insert_into(schema::poi_cross_check_reports::table)
+    //         .values(reports)
+    //         .on_conflict_do_nothing()
+    //         .execute(&self.conn()?)?;
 
-        info!(%len, "Wrote POI cross check reports to database");
-        Ok(())
-    }
+    //     info!(%len, "Wrote POI cross check reports to database");
+    //     Ok(())
+    // }
 }
