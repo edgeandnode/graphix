@@ -5,9 +5,9 @@ use futures::{FutureExt, Stream, StreamExt, TryFutureExt};
 use futures_retry::{FutureRetry, RetryPolicy};
 use tracing::warn;
 
-use crate::{db::models::PoiCrossCheckReport, indexer::Indexer, types};
+use crate::{indexer::Indexer, types};
 
-use super::{models::ProofOfIndexing, Store};
+use super::Store;
 
 /// Write any POIs that we receive to the database.
 pub fn write<S, I>(store: Store, proofs_of_indexing: S)

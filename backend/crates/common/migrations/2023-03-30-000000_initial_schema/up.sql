@@ -42,7 +42,7 @@ CREATE TABLE blocks (
   network_id INTEGER NOT NULL REFERENCES networks(id) ON DELETE CASCADE,
   number BIGINT NOT NULL,
   hash BYTEA NOT NULL,
-  UNIQUE (network_id, number, hash)
+  UNIQUE (network_id, hash)
 );
 
 -- Not worth it to index by `network_id` first because we support few

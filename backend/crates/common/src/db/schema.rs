@@ -100,12 +100,12 @@ table! {
     }
 }
 
-joinable!(block_cache_entries -> blocks (block_id));
+// joinable!(block_cache_entries -> blocks (block_id));
+// joinable!(entity_changes_in_block -> blocks (block_id));
+// joinable!(eth_call_cache_entries -> blocks (block_id));
 joinable!(block_cache_entries -> indexers (indexer_id));
 joinable!(blocks -> networks (network_id));
-joinable!(entity_changes_in_block -> blocks (block_id));
 joinable!(entity_changes_in_block -> indexers (indexer_id));
-joinable!(eth_call_cache_entries -> blocks (block_id));
 joinable!(eth_call_cache_entries -> indexers (indexer_id));
 joinable!(live_pois -> pois (poi_id));
 joinable!(poi_divergence_bisect_reports -> blocks (divergence_block_id));
