@@ -3,7 +3,6 @@ use crate::types;
 use chrono::NaiveDateTime;
 use diesel::{
     pg::Pg,
-    query_dsl::methods::FilterDsl,
     serialize::Output,
     sql_types::Jsonb,
     types::{FromSql, ToSql},
@@ -13,20 +12,20 @@ use serde::{Deserialize, Serialize};
 use std::io::Write;
 pub type IntId = i32;
 
-pub type PoIWithId = WithIntId<PoI>;
+// pub type PoIWithId = WithIntId<PoI>;
 
-#[derive(Debug)]
-pub enum Filter<S = String> {
-    None,
-    Id(IntId),
-    Value(S),
-}
+// #[derive(Debug)]
+// pub enum Filter<S = String> {
+//     None,
+//     Id(IntId),
+//     Value(S),
+// }
 
-impl<T> FilterDsl<Filter> for T {
-    type Output = Filter<T>;
+// impl<T> FilterDsl<Filter> for T {
+//     type Output = Filter<T>;
 
-    fn filter(self, predicate: Filter) -> Self::Output {}
-}
+//     fn filter(self, predicate: Filter) -> Self::Output {}
+// }
 
 struct QueryBuilder {
     limit: Option<u32>,
@@ -39,16 +38,16 @@ impl QueryBuilder {
     }
 }
 
-#[derive(Debug, Queryable)]
-pub struct WithIntId<T> {
-    pub id: IntId,
-    pub inner: T,
-}
+// #[derive(Debug, Queryable)]
+// pub struct WithIntId<T> {
+//     pub id: IntId,
+//     pub inner: T,
+// }
 
 #[derive(Debug, Insertable, Queryable)]
 #[table_name = "pois"]
 struct PoIRow {
-    //pub id: IntId,
+    pub id: IntId,
     pub poi: Vec<u8>,
     pub sg_deployment_id: IntId,
     pub indexer_id: IntId,
@@ -57,7 +56,6 @@ struct PoIRow {
 }
 
 #[derive(Debug)]
-#[table_name = "pois"]
 pub struct PoI {
     pub id: IntId,
     pub poi: Vec<u8>,
