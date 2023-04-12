@@ -1,7 +1,7 @@
 use crate::{api_types::BlockRange, db::models::PoI};
 use diesel::{
     r2d2::{self, ConnectionManager, Pool, PooledConnection},
-    PgConnection, Table,
+    PgConnection,
 };
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use tracing::info;
@@ -60,27 +60,33 @@ impl Store {
         &self,
         sg_deployments: &[String],
         block_range: Option<BlockRange>,
-        limit: Option<u32>,
+        limit: Option<u16>,
     ) -> anyhow::Result<Vec<PoI>> {
-        use schema::blocks::dsl::*;
-        use schema::indexers::dsl::*;
+        use schema::blocks;
+        use schema::indexers;
         use schema::pois;
         use schema::sg_deployments;
 
         let query = pois::table
-            .inner_join(blocks)
             .inner_join(sg_deployments::table)
-            .inner_join(indexers)
+            .inner_join(indexers::table)
+            .inner_join(blocks::table)
             .select((
-                pois::all_columns,
-                sg_deployments::all_columns,
-                indexers::all_columns(),
-                blocks::all_columns(),
+                pois::id,
+                pois::poi,
+                pois::created_at,
+                (
+                    sg_deployments::id,
+                    sg_deployments::deployment,
+                    sg_deployments::created_at,
+                ),
+                (indexers::id, indexers::address, indexers::created_at),
+                blocks::all_columns,
             ))
-            .order_by(number.desc())
+            .order_by(blocks::number.desc())
             .order_by(schema::pois::created_at.desc())
             .filter(pois::sg_deployment_id.eq(sg_deployments::id))
-            .filter(number.between(
+            .filter(blocks::number.between(
                 block_range.as_ref().map_or(0, |range| range.start as i64),
                 block_range.map_or(i64::max_value(), |range| range.end as i64),
             ))
@@ -129,10 +135,11 @@ impl Store {
     pub fn write_pois(&self, pois: Vec<models::PoI>) -> anyhow::Result<()> {
         let len = pois.len();
 
-        diesel::insert_into(schema::pois::table)
-            .values(pois)
-            .on_conflict_do_nothing()
-            .execute(&self.conn()?)?;
+        // TODO: Rewrite this
+        // diesel::insert_into(schema::pois::table)
+        //     .values(pois)
+        //     .on_conflict_do_nothing()
+        //     .execute(&self.conn()?)?;
 
         info!(%len, "Wrote POIs to database");
         Ok(())
