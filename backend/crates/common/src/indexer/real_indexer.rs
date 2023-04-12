@@ -128,6 +128,10 @@ impl Indexer for RealIndexer {
         &self.id
     }
 
+    fn address(&self) -> Option<&[u8]> {
+        None
+    }
+
     fn urls(&self) -> &IndexerUrls {
         &self.urls
     }
