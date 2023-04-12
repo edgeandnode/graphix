@@ -3,7 +3,7 @@ use std::{fmt, ops::Deref, sync::Arc};
 
 use crate::indexer::Indexer;
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
 pub struct BlockPointer {
     pub number: u64,
     pub hash: Option<Bytes32>,
@@ -45,7 +45,7 @@ where
 }
 
 /// A 32-byte array that can be easily converted to and from hex strings.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
 pub struct Bytes32(pub [u8; 32]);
 
 impl TryFrom<&str> for Bytes32 {
@@ -53,6 +53,19 @@ impl TryFrom<&str> for Bytes32 {
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         Ok(Self(hex::FromHex::from_hex(s.trim_start_matches("0x"))?))
+    }
+}
+
+impl TryFrom<Vec<u8>> for Bytes32 {
+    type Error = anyhow::Error;
+
+    fn try_from(v: Vec<u8>) -> Result<Self, Self::Error> {
+        if v.len() != 32 {
+            return Err(anyhow::anyhow!("Expected 32 bytes, got {}", v.len()));
+        }
+        let mut bytes = [0u8; 32];
+        bytes.copy_from_slice(&v);
+        Ok(Self(bytes))
     }
 }
 

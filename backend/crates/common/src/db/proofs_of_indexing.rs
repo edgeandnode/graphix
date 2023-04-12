@@ -1,19 +1,18 @@
 use std::time::Duration;
 
-use chrono::prelude::Utc;
 use futures::{FutureExt, Stream, StreamExt, TryFutureExt};
 use futures_retry::{FutureRetry, RetryPolicy};
 use tracing::warn;
 
 use crate::{indexer::Indexer, types};
 
-use super::{models::PoI, Store};
+use super::Store;
 
 /// Write any POIs that we receive to the database.
 pub fn write<S, I>(store: Store, proofs_of_indexing: S)
 where
     S: Stream<Item = types::ProofOfIndexing<I>> + Send + 'static,
-    I: Indexer + Send + Sync + 'static,
+    I: Indexer + 'static,
 {
     tokio::spawn(async move {
         proofs_of_indexing
@@ -25,20 +24,20 @@ where
                 async move {
                     FutureRetry::new(
                         || async {
-                            let pois = chunk
-                                .clone()
-                                .into_iter()
-                                .map(|poi| PoI {
-                                    timestamp: Utc::now().naive_utc(),
-                                    indexer: poi.indexer.id().trim_start_matches("0x").into(),
-                                    deployment: poi.deployment.to_string(),
-                                    block_number: poi.block.number as i64,
-                                    block_hash: poi.block.hash.map(|b| b.to_string()),
-                                    proof_of_indexing: poi.proof_of_indexing.to_string(),
-                                })
-                                .collect::<Vec<_>>();
+                            // let pois = chunk
+                            //     .clone()
+                            //     .into_iter()
+                            //     .map(|poi| PoI {
+                            //         // indexer: poi.indexer.id().trim_start_matches("0x").into(),
+                            //         // deployment: poi.deployment.to_string(),
+                            //         // block_number: poi.block.number as i64,
+                            //         // block_hash: poi.block.hash.map(|b| b.to_string()),
+                            //         // proof_of_indexing: poi.proof_of_indexing.to_string(),
+                            //     })
+                            //     .collect::<Vec<_>>();
 
-                            store.write_pois(pois)
+                            // TODO: Asyncify this instead of blocking
+                            store.write_pois(&chunk)
                         },
                         |e| {
                             if consecutive_errors >= 5 {
@@ -62,7 +61,7 @@ where
 }
 
 /// Write any POI cross-check reports that we receive to the database.
-pub fn write_reports<S, I>(store: Store, reports: S)
+pub fn write_reports<S, I>(_store: Store, _reports: S)
 where
     S: Stream<Item = types::POICrossCheckReport<I>> + Send + 'static,
     I: Indexer + Send + Sync + 'static,

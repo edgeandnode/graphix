@@ -3,8 +3,11 @@
 
 CREATE TABLE indexers (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  address BYTEA NOT NULL UNIQUE,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  name TEXT,
+  address BYTEA UNIQUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+
+  UNIQUE (name, address),
 );
 
 CREATE INDEX ON indexers (address);
@@ -21,7 +24,7 @@ CREATE INDEX ON networks (name);
 
 CREATE TABLE sg_deployments (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  deployment BYTEA NOT NULL UNIQUE,
+  cid TEXT NOT NULL UNIQUE,
   network INTEGER NOT NULL REFERENCES networks(id) ON DELETE CASCADE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

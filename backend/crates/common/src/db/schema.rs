@@ -1,3 +1,5 @@
+use diesel::{allow_tables_to_appear_in_same_query, joinable, table};
+
 table! {
     block_cache_entries (id) {
         id -> Int8,
@@ -41,7 +43,8 @@ table! {
 table! {
     indexers (id) {
         id -> Int4,
-        address -> Bytea,
+        name -> Nullable<Text>,
+        address -> Nullable<Bytea>,
         created_at -> Timestamp,
     }
 }
@@ -85,7 +88,7 @@ table! {
 table! {
     sg_deployments (id) {
         id -> Int4,
-        deployment -> Bytea,
+        cid -> Text,
         network -> Int4,
         created_at -> Timestamp,
     }
