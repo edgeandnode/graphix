@@ -24,18 +24,6 @@ where
                 async move {
                     FutureRetry::new(
                         || async {
-                            // let pois = chunk
-                            //     .clone()
-                            //     .into_iter()
-                            //     .map(|poi| PoI {
-                            //         // indexer: poi.indexer.id().trim_start_matches("0x").into(),
-                            //         // deployment: poi.deployment.to_string(),
-                            //         // block_number: poi.block.number as i64,
-                            //         // block_hash: poi.block.hash.map(|b| b.to_string()),
-                            //         // proof_of_indexing: poi.proof_of_indexing.to_string(),
-                            //     })
-                            //     .collect::<Vec<_>>();
-
                             // TODO: Asyncify this instead of blocking
                             store.write_pois(&chunk)
                         },
