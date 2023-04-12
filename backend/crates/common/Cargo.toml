@@ -8,8 +8,8 @@ anyhow = "1.0.48"
 async-graphql = "5"
 async-trait = "0.1.52"
 chrono = "0.4.19"
-diesel = { version = "1.4", features = ["postgres", "r2d2", "chrono", "serde_json"] }
-diesel_migrations = "1.4"
+diesel = { version = "2.0", features = ["postgres", "r2d2", "chrono", "serde_json"] }
+diesel_migrations = "2.0"
 eventuals = "0.6.6"
 futures = "0.3.18"
 futures-retry = "0.6.0"

@@ -76,14 +76,14 @@ struct ProofOfIndexing {
 impl From<models::PoI> for ProofOfIndexing {
     fn from(poi: models::PoI) -> Self {
         Self {
-            timestamp: poi.timestamp.to_string(),
-            deployment: poi.deployment,
-            indexer: poi.indexer,
+            proof_of_indexing: poi.poi_hex(),
+            timestamp: poi.created_at.to_string(),
+            deployment: poi.sg_deployment.cid,
+            indexer: poi.indexer.address.map(hex::encode).unwrap_or_default(),
             block: PartialBlock {
-                number: poi.block_number,
-                hash: poi.block_hash,
+                number: poi.block.number,
+                hash: Some(hex::encode(poi.block.hash)),
             },
-            proof_of_indexing: poi.proof_of_indexing,
         }
     }
 }

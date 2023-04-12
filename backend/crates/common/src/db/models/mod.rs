@@ -2,14 +2,10 @@ use super::schema::*;
 use crate::types;
 use chrono::NaiveDateTime;
 use diesel::{
-    pg::Pg,
-    serialize::Output,
-    sql_types::Jsonb,
-    types::{FromSql, ToSql},
-    Insertable, Queryable,
+    backend, deserialize::FromSql, pg::Pg, sql_types::Jsonb, AsExpression, FromSqlRow, Insertable,
+    Queryable,
 };
 use serde::{Deserialize, Serialize};
-use std::io::Write;
 pub type IntId = i32;
 
 // pub type PoIWithId = WithIntId<PoI>;
@@ -27,41 +23,13 @@ pub type IntId = i32;
 //     fn filter(self, predicate: Filter) -> Self::Output {}
 // }
 
-struct QueryBuilder {
-    limit: Option<u32>,
-}
-
-impl QueryBuilder {
-    pub fn with_limit(mut self, limit: Option<u32>) -> Self {
-        self.limit = limit;
-        self
-    }
-}
-
-// #[derive(Debug, Queryable)]
-// pub struct WithIntId<T> {
-//     pub id: IntId,
-//     pub inner: T,
-// }
-
-#[derive(Debug, Insertable, Queryable)]
-#[table_name = "pois"]
-struct PoIRow {
-    pub id: IntId,
-    pub poi: Vec<u8>,
-    pub sg_deployment_id: IntId,
-    pub indexer_id: IntId,
-    pub block_id: IntId,
-    pub created_at: NaiveDateTime,
-}
-
 #[derive(Queryable, Debug)]
 pub struct PoI {
     pub id: IntId,
     pub poi: Vec<u8>,
     pub created_at: NaiveDateTime,
     pub sg_deployment: SgDeployment,
-    pub indexer: Indexer,
+    pub indexer: IndexerRow,
     pub block: Block,
 }
 
@@ -71,30 +39,64 @@ impl PoI {
     }
 }
 
-#[derive(Queryable, Debug)]
-pub struct Block {
-    id: IntId,
-    network_id: IntId,
-    number: i64,
-    hash: Vec<u8>,
+#[derive(Insertable, Debug)]
+#[diesel(table_name = pois)]
+pub struct NewPoI {
+    pub poi: Vec<u8>,
+    pub created_at: NaiveDateTime,
+    pub sg_deployment_id: IntId,
+    pub indexer_id: IntId,
+    pub block_id: IntId,
 }
 
-#[derive(Debug, Insertable, Queryable)]
-pub struct Indexer {
+#[derive(Queryable, Debug)]
+pub struct Block {
+    pub(super) id: IntId,
+    _network_id: IntId,
+    pub number: i64,
+    pub hash: Vec<u8>,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = blocks)]
+pub struct NewBlock {
+    pub network_id: IntId,
+    pub number: i64,
+    pub hash: Vec<u8>,
+}
+
+#[derive(Debug, Queryable)]
+pub struct IndexerRow {
     pub id: IntId,
-    pub address: Vec<u8>,
+    pub name: Option<String>,
+    pub address: Option<Vec<u8>>,
     pub created_at: NaiveDateTime,
 }
 
-#[derive(Debug, Insertable, Queryable)]
+#[derive(Debug, Insertable)]
+#[diesel(table_name = indexers)]
+pub struct NewIndexer {
+    pub address: Option<Vec<u8>>,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Queryable)]
 pub struct SgDeployment {
     pub id: IntId,
-    pub deployment: Vec<u8>,
+    pub cid: String,
+    pub network_id: IntId,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = sg_deployments)]
+pub struct NewSgDeployment {
+    pub cid: String,
     pub created_at: NaiveDateTime,
 }
 
 #[derive(FromSqlRow, AsExpression, Serialize, Deserialize, Debug, Default)]
-#[sql_type = "Jsonb"]
+#[diesel(sql_type = Jsonb)]
 pub struct DivergingBlock {
     pub block_number: i64,
     pub block_hash: Option<String>,
@@ -114,21 +116,21 @@ impl From<types::DivergingBlock> for DivergingBlock {
 }
 
 impl FromSql<Jsonb, Pg> for DivergingBlock {
-    fn from_sql(bytes: Option<&[u8]>) -> diesel::deserialize::Result<Self> {
+    fn from_sql(bytes: backend::RawValue<Pg>) -> diesel::deserialize::Result<Self> {
         let value = <serde_json::Value as FromSql<Jsonb, Pg>>::from_sql(bytes)?;
         Ok(serde_json::from_value(value)?)
     }
 }
 
-impl ToSql<Jsonb, Pg> for DivergingBlock {
-    fn to_sql<W: Write>(&self, out: &mut Output<W, Pg>) -> diesel::serialize::Result {
-        let value = serde_json::to_value(self)?;
-        <serde_json::Value as ToSql<Jsonb, Pg>>::to_sql(&value, out)
-    }
-}
+// impl ToSql<Jsonb, Pg> for DivergingBlock {
+//     fn to_sql(&self, out: &mut Output<Pg>) -> diesel::serialize::Result {
+//         let value = serde_json::to_value(self)?;
+//         <serde_json::Value as ToSql<Jsonb, Pg>>::to_sql(&value, out)
+//     }
+// }
 
 #[derive(Debug, Insertable, Queryable)]
-#[table_name = "poi_divergence_bisect_reports"]
+#[diesel(table_name = poi_divergence_bisect_reports)]
 pub struct PoiDivergenceBisectReport {
     pub id: IntId,
     pub poi1_id: IntId,
