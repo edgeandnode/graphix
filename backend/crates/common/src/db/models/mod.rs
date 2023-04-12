@@ -55,20 +55,28 @@ struct PoIRow {
     pub created_at: NaiveDateTime,
 }
 
-#[derive(Debug)]
+#[derive(Queryable, Debug)]
 pub struct PoI {
     pub id: IntId,
     pub poi: Vec<u8>,
+    pub created_at: NaiveDateTime,
     pub sg_deployment: SgDeployment,
     pub indexer: Indexer,
-    pub block_id: IntId,
-    pub created_at: NaiveDateTime,
+    pub block: Block,
 }
 
 impl PoI {
     pub fn poi_hex(&self) -> String {
         hex::encode(&self.poi)
     }
+}
+
+#[derive(Queryable, Debug)]
+pub struct Block {
+    id: IntId,
+    network_id: IntId,
+    number: i64,
+    hash: Vec<u8>,
 }
 
 #[derive(Debug, Insertable, Queryable)]
