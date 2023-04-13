@@ -1,0 +1,170 @@
+version: "3"
+services:
+  grafana:
+    image: grafana/grafana-oss
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/:/etc/grafana/
+
+  prometheus:
+    image: prom/prometheus
+    entrypoint:
+      - /bin/prometheus
+      - --log.level=info
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+
+  ipfs:
+    image: ipfs/kubo:v0.19.1
+    restart: always
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./data/ipfs:/data/ipfs
+    healthcheck:
+      test: nc -z localhost 5001 || exit 1
+      interval: 1s
+      timeout: 1s
+      retries: 1000
+
+  graphix-cross-checker:
+    image: edgeandnode/graphix-cross-checker
+    build:
+      context: ../..
+      dockerfile: ops/cross-checker.dockerfile
+    depends_on:
+      postgres-graphix:
+        condition: service_healthy
+    volumes:
+      - ./graphix/:/config/
+    command: ["--config", "/config/config.yml"]
+  graphix-api-server:
+    image: edgeandnode/graphix-api-server
+    build:
+      context: ../..
+      dockerfile: ops/api-server.dockerfile
+    ports:
+      - "3030:3030"
+    depends_on:
+      postgres-graphix:
+        condition: service_healthy
+    volumes:
+      - ./graphix/:/config/
+    command:
+      [
+        "--database-url",
+        "postgres://graphix:password@postgres-graphix:5432/graphix",
+        "--port",
+        "3030",
+      ]
+
+  graph-node-1:
+    image: graphprotocol/graph-node
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+      - "8020:8020"
+      - "8030:8030"
+      - "8040:8040"
+    depends_on:
+      ipfs:
+        condition: service_healthy
+      postgres-graph-node-1:
+        condition: service_healthy
+    environment:
+      ipfs: "ipfs:5001"
+      GRAPH_NODE_CONFIG: /config/graph-node-1.toml
+      GRAPH_LOG: info
+    volumes:
+      - ./graph-node/:/config/
+  graph-node-2:
+    image: graphprotocol/graph-node
+    ports:
+      - "8005:8000"
+      - "8006:8001"
+      - "8025:8020"
+      - "8035:8030"
+      - "8045:8040"
+    depends_on:
+      ipfs:
+        condition: service_healthy
+      postgres-graph-node-2:
+        condition: service_healthy
+    environment:
+      ipfs: "ipfs:5001"
+      GRAPH_NODE_CONFIG: /config/graph-node-2.toml
+      GRAPH_LOG: info
+    volumes:
+      - ./graph-node/:/config/
+
+  postgres-graphix:
+    image: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: graphix
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: graphix
+      # FIXME: remove this env. var. which we shouldn't need. Introduced by
+      # <https://github.com/graphprotocol/graph-node/pull/3511>, maybe as a
+      # workaround for https://github.com/docker/for-mac/issues/6270?
+      PGDATA: "/var/lib/postgresql/data"
+    healthcheck:
+      test: psql -U graphix -c '\q' || exit 1
+      interval: 1s
+      timeout: 1s
+      retries: 1000
+    volumes:
+      - ./data/postgres-graphix:/var/lib/postgresql/data
+  postgres-graph-node-1:
+    image: postgres
+    restart: always
+    ports:
+      - "5436:5432"
+    command: postgres -cshared_preload_libraries=pg_stat_statements
+    environment:
+      POSTGRES_USER: graph-node-1
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: graph-node-1
+      # FIXME: remove this env. var. which we shouldn't need. Introduced by
+      # <https://github.com/graphprotocol/graph-node/pull/3511>, maybe as a
+      # workaround for https://github.com/docker/for-mac/issues/6270?
+      PGDATA: "/var/lib/postgresql/data"
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+    healthcheck:
+      test: psql -U graph-node-1 -c '\q' || exit 1
+      interval: 1s
+      timeout: 1s
+      retries: 1000
+    volumes:
+      - ./data/postgres-graph-node-1:/var/lib/postgresql/data
+  postgres-graph-node-2:
+    image: postgres
+    ports:
+      - "5437:5432"
+    command: postgres -cshared_preload_libraries=pg_stat_statements
+    environment:
+      POSTGRES_USER: graph-node-2
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: graph-node-2
+      # FIXME: remove this env. var. which we shouldn't need. Introduced by
+      # <https://github.com/graphprotocol/graph-node/pull/3511>, maybe as a
+      # workaround for https://github.com/docker/for-mac/issues/6270?
+      PGDATA: "/var/lib/postgresql/data"
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+    healthcheck:
+      test: psql -U graph-node-2 -c '\q' || exit 1
+      interval: 1s
+      timeout: 1s
+      retries: 1000
+    volumes:
+      - ./data/postgres-graph-node-2:/var/lib/postgresql/data
