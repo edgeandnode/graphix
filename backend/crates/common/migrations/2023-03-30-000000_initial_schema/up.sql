@@ -7,7 +7,7 @@ CREATE TABLE indexers (
   address BYTEA UNIQUE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 
-  UNIQUE (name, address),
+  UNIQUE (name, address)
 );
 
 CREATE INDEX ON indexers (address);
@@ -29,7 +29,7 @@ CREATE TABLE sg_deployments (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX ON sg_deployments (deployment);
+CREATE INDEX ON sg_deployments (cid);
 
 CREATE TABLE sg_names (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -80,7 +80,7 @@ CREATE TABLE live_pois (
 CREATE TABLE poi_divergence_bisect_reports (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   poi1_id INTEGER NOT NULL REFERENCES pois(id) ON DELETE RESTRICT,
-  poi2_id INTEGER NOT NULL REFERENCES pois(id) ON DELETE RESTRICT
+  poi2_id INTEGER NOT NULL REFERENCES pois(id) ON DELETE RESTRICT,
   divergence_block_id INTEGER NOT NULL REFERENCES blocks(id),
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE (poi1_id, poi2_id),
