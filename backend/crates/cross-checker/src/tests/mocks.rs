@@ -30,6 +30,10 @@ impl Indexer for MockIndexer {
         &self.id
     }
 
+    fn address(&self) -> Option<&[u8]> {
+        None
+    }
+
     fn urls(&self) -> &IndexerUrls {
         &self.urls
     }
