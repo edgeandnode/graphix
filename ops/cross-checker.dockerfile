@@ -18,4 +18,5 @@ COPY --from=builder /app/examples/testing.yml /app/config.yml
 
 EXPOSE 14265
 
+ENTRYPOINT [ "graph-ixi-cross-checker" ]
 CMD ["graph-ixi-cross-checker", "--config", "/app/config.yml"]

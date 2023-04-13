@@ -15,4 +15,5 @@ COPY --from=builder /app/target/release/graph-ixi-api-server /usr/local/bin
 
 EXPOSE 3030
 
+ENTRYPOINT [ "graph-ixi-api-server" ]
 CMD ["graph-ixi-api-server", "--port", "3030"]
