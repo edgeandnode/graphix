@@ -1,0 +1,18 @@
+[store]
+[store.primary]
+connection = "postgresql://graph-node-2:password@postgres-graph-node-2:5432/graph-node-2"
+pool_size = 10
+
+[deployment]
+[[deployment.rule]]
+store = "primary"
+indexers = [ "default" ]
+
+[chains]
+ingestor = "default"
+
+[chains.mainnet]
+shard = "primary"
+provider = [
+  { label = "mainnet-0", url="https://eth-mainnet.g.alchemy.com/v2/iemhQFg2k89zAO1-gSngWqkLHTZ-Byc_", features = ["archive"] }
+]
