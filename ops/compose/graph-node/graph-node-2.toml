@@ -6,13 +6,11 @@ pool_size = 10
 [deployment]
 [[deployment.rule]]
 store = "primary"
-indexers = [ "default" ]
+indexers = ["default"]
 
 [chains]
 ingestor = "default"
 
 [chains.mainnet]
 shard = "primary"
-provider = [
-  { label = "mainnet-0", url="https://eth-mainnet.g.alchemy.com/v2/$ALCHEMY_MAINNET_KEY", features = ["archive"] }
-]
+provider = [{ label = "mainnet-0", url = "https://eth-mainnet.g.alchemy.com/v2/$ALCHEMY_MAINNET_KEY", features = ["archive"] }]
