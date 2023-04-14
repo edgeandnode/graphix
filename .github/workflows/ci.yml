@@ -1,8 +1,16 @@
-name: CI
+name: CI pipeline
+
 on:
   push:
-    branches: main
+    branches: [master]
   pull_request:
+    types: [opened, synchronize, reopened]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: full
+  THEGRAPH_STORE_POSTGRES_DIESEL_URL: "postgresql://postgres:postgres@localhost:5432/graph_node_test"
+
 
 jobs:
   rustfmt:
@@ -14,13 +22,6 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Cache cargo registry
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: rustfmt-cargo-${{ hashFiles('**/Cargo.toml') }}
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -33,6 +34,43 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
+
+  docker-api-server:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      #- name: Login to Docker Hub
+      #  uses: docker/login-action@v2
+      #  with:
+      #    username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #    password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          push: false
+          tags: edgeandnode/graphix-api-server:latest
+          file: "{{context}}/ops/api-server.dockerfile"
+  docker-cross-checker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      #- name: Login to Docker Hub
+      #  uses: docker/login-action@v2
+      #  with:
+      #    username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #    password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          push: false
+          tags: edgeandnode/graphix-cross-checker:latest
+          file: "{{context}}/ops/cross-checker.dockerfile"
 
   build:
     name: Build
