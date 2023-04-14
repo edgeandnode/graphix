@@ -1,5 +1,5 @@
 use async_graphql::*;
-use graph_ixi_common::api_types::QueryRoot;
+use graphix_common::api_types::QueryRoot;
 use std::env;
 use std::fs::File;
 use std::io::*;

@@ -12,7 +12,7 @@ use warp::{
     Filter,
 };
 
-use graph_ixi_common::{api_types as schema, db::Store};
+use graphix_common::{api_types as schema, db::Store};
 
 mod opt;
 
@@ -20,7 +20,7 @@ mod opt;
 async fn main() -> Result<(), anyhow::Error> {
     let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or(
         tracing_subscriber::EnvFilter::try_new(
-            "info,graph_ixi_common=debug,graph_ixi_api_server=debug",
+            "info,graphix_common=debug,graphix_api_server=debug",
         )
         .unwrap(),
     );

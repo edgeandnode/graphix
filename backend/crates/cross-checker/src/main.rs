@@ -6,7 +6,7 @@ mod server;
 mod tests;
 
 use clap::Parser;
-use graph_ixi_common::{db, modes, prelude::Config};
+use graphix_common::{db, modes, prelude::Config};
 use std::path::PathBuf;
 use tracing::*;
 use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
@@ -21,7 +21,7 @@ struct CliOptions {
 async fn main() -> Result<(), anyhow::Error> {
     let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         tracing_subscriber::EnvFilter::try_new(
-            "info,graph_ixi_common=debug,graph_ixi_cross_checker=debug",
+            "info,graphix_common=debug,graphix_cross_checker=debug",
         )
         .unwrap()
     });

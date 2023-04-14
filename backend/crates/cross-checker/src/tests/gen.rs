@@ -1,6 +1,6 @@
 use std::{iter::repeat_with, sync::Arc};
 
-use graph_ixi_common::prelude::{BlockPointer, Bytes32, IndexerUrls, SubgraphDeployment};
+use graphix_common::prelude::{BlockPointer, Bytes32, IndexerUrls, SubgraphDeployment};
 use rand::{distributions::Alphanumeric, seq::IteratorRandom, Rng};
 
 use super::{DeploymentDetails, MockIndexer, PartialProofOfIndexing};
