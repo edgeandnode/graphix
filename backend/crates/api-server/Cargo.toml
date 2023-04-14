@@ -1,12 +1,12 @@
 [package]
-name = "graph-ixi-api-server"
+name = "graphix-api-server"
 version = "0.1.0"
 authors = ["Jannis Pohlmann <jannis@edgeandnode.com>"]
 edition = "2021"
-default-run = "graph-ixi-api-server"
+default-run = "graphix-api-server"
 
 [[bin]]
-name = "graph-ixi-api-server"
+name = "graphix-api-server"
 path = "src/main.rs"
 
 [dependencies]
@@ -14,7 +14,7 @@ anyhow = "1.0.52"
 async-graphql = "5"
 async-graphql-warp = "5"
 clap = { version = "4", features = ["derive"] }
-graph-ixi-common = { path = "../common" }
+graphix-common = { path = "../common" }
 tokio = { version = "1.15.0", features = ["full"] }
 tracing = "0.1.29"
 tracing-subscriber = { version = "0.3.6", features = ["env-filter"] }

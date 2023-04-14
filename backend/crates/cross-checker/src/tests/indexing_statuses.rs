@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use eventuals::Eventual;
 use futures::{future, stream::FuturesUnordered, StreamExt};
-use graph_ixi_common::prelude::Indexer;
+use graphix_common::prelude::Indexer;
 
 use crate::indexing_statuses;
 

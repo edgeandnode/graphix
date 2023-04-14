@@ -3,7 +3,7 @@ use tracing_test::traced_test;
 
 use eventuals::Eventual;
 use futures::StreamExt;
-use graph_ixi_common::prelude::{
+use graphix_common::prelude::{
     BlockPointer, DivergingBlock, IndexerUrls, POICrossCheckReport, ProofOfIndexing,
     SubgraphDeployment,
 };

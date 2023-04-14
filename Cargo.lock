@@ -754,14 +754,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "graph-ixi-api-server"
+name = "graphix-api-server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-graphql",
  "async-graphql-warp",
  "clap",
- "graph-ixi-common",
+ "graphix-common",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -769,7 +769,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "graph-ixi-common"
+name = "graphix-common"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -792,7 +792,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "graph-ixi-cross-checker"
+name = "graphix-cross-checker"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -800,7 +800,7 @@ dependencies = [
  "clap",
  "eventuals",
  "futures",
- "graph-ixi-common",
+ "graphix-common",
  "hex",
  "itertools",
  "nanoid",

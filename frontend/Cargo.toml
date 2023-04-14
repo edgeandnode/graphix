@@ -1,5 +1,5 @@
 [package]
-name = "graph-ixi-frontend"
+name = "graphix-frontend"
 version = "0.1.0"
 edition = "2021"
 
@@ -21,4 +21,4 @@ yew-router = "0.16.0"
 
 [build-dependencies]
 async-graphql = "3.0.22"
-graph-ixi-common = { path = "../backend/crates/common" }
+graphix-common = { path = "../backend/crates/common" }

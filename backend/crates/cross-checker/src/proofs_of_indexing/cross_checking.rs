@@ -7,7 +7,7 @@ use futures::{
     stream::FuturesUnordered,
     FutureExt, SinkExt, Stream, StreamExt,
 };
-use graph_ixi_common::prelude::{
+use graphix_common::prelude::{
     Indexer, POICrossCheckReport, POIRequest, ProofOfIndexing, SubgraphDeployment,
 };
 use itertools::Itertools;

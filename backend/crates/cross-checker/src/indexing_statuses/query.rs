@@ -4,7 +4,7 @@ use std::time::Duration;
 use eventuals::*;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
-use graph_ixi_common::prelude::{Indexer, IndexingStatus};
+use graphix_common::prelude::{Indexer, IndexingStatus};
 use tracing::*;
 
 pub fn indexing_statuses<I>(indexers: Eventual<Vec<Arc<I>>>) -> Eventual<Vec<IndexingStatus<I>>>
