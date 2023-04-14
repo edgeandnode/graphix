@@ -47,7 +47,7 @@ jobs:
       #  with:
       #    username: ${{ secrets.DOCKERHUB_USERNAME }}
       #    password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push
+      - name: docker build
         uses: docker/build-push-action@v4
         with:
           push: false
@@ -65,7 +65,7 @@ jobs:
       #  with:
       #    username: ${{ secrets.DOCKERHUB_USERNAME }}
       #    password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push
+      - name: docker build
         uses: docker/build-push-action@v4
         with:
           push: false
