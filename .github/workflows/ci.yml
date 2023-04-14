@@ -52,7 +52,7 @@ jobs:
         with:
           push: false
           tags: edgeandnode/graphix-api-server:latest
-          file: "{{defaultContext}}/ops/api-server.dockerfile"
+          file: ops/api-server.dockerfile
   docker-cross-checker:
     runs-on: ubuntu-latest
     steps:
@@ -70,7 +70,7 @@ jobs:
         with:
           push: false
           tags: edgeandnode/graphix-cross-checker:latest
-          file: "{{defaultContext}}/ops/cross-checker.dockerfile"
+          file: ops/cross-checker.dockerfile
 
   build:
     name: Build
