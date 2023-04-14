@@ -1,5 +1,5 @@
 testing:
-  databaseUrl: postgres://localhost:5432/graph-ixi
+  databaseUrl: postgres://localhost:5432/graphix
   environments:
     - id: indexer-1
       urls:

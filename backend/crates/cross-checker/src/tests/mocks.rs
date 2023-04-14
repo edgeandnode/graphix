@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use async_trait::async_trait;
-use graph_ixi_common::prelude::{
+use graphix_common::prelude::{
     BlockPointer, Bytes32, Indexer, IndexerUrls, IndexingStatus, POIRequest, ProofOfIndexing,
     SubgraphDeployment,
 };

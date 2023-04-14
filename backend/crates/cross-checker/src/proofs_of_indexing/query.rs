@@ -6,7 +6,7 @@ use std::{
 use eventuals::*;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
-use graph_ixi_common::prelude::{
+use graphix_common::prelude::{
     BlockPointer, Indexer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment,
 };
 use tracing::*;

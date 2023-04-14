@@ -1,4 +1,4 @@
-# Graph IXI
+# Graphix
 
 **Note: This software is under heavy development right now. Things can break at
 any time.**
@@ -14,7 +14,7 @@ results both at a glance using high-level views as well as in-depth using
 detailed reports that are intended to make debugging and dispute resolution
 easy.
 
-Graph IXI supports three modes:
+Graphix supports three modes:
 
 1. **Testing:** Cross-checks specific environments, like local Graph Nodes or specific indexers.
 2. **Network:** Cross-checks all indexers on The Graph Network.
@@ -40,10 +40,10 @@ all processes as you make changes to the code.
 
 ```sh
 # Run the cross-checker
-cargo watch -x 'run -p graph-ixi-cross-checker -- --config examples/testing.yml'
+cargo watch -x 'run -p graphix-cross-checker -- --config examples/testing.yml'
 
 # Run the API server
-cargo watch -x 'run -p graph-ixi-api-server -- --port 3030'
+cargo watch -x 'run -p graphix-api-server -- --port 3030'
 
 # Run the web frontend
 cd frontend && trunk serve
@@ -52,9 +52,9 @@ cd frontend && trunk serve
 In production, run these:
 
 ```sh
-graph-ixi-cross-checker --config /path/to/your/config.yml
+graphix-cross-checker --config /path/to/your/config.yml
 
-graph-ixi-api-server --port <port>
+graphix-api-server --port <port>
 
 cd frontend/
 trunk build --release
@@ -91,7 +91,7 @@ cd dist/
 
 &copy; 2021 Edge & Node Ventures, Inc.
 
-Graph IXI is dual-licensed under the MIT license and the Apache License, Version
+Graphix is dual-licensed under the MIT license and the Apache License, Version
 2.0.
 
 Unless required by applicable law or agreed to in writing, software distributed
