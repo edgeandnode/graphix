@@ -21,6 +21,15 @@ serde_json = "1.0.78"
 serde_yaml = "0.9"
 tokio = { version = "1.14.0", features = ["full"] }
 tracing = "0.1.29"
+rand = { version = "0.8.4", features = ["small_rng"], optional = true }
+once_cell = { version = "1.9.0", optional = true }
+
+[features]
+tests = ["rand", "once_cell"]
 
 [build-dependencies]
 reqwest = { version = "0.11", features = ["blocking"] }
+
+[dev-dependencies]
+rand = { version = "0.8.4", features = ["small_rng"] }
+once_cell = { version = "1.9.0" }

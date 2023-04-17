@@ -14,9 +14,7 @@ use itertools::Itertools;
 use nanoid::nanoid;
 use tracing::{debug, info, warn};
 
-use crate::proofs_of_indexing::DivergingBlock;
-
-use super::{bisect_blocks, BisectDecision};
+use crate::bisect::{bisect_blocks, BisectDecision, DivergingBlock};
 
 #[derive(Debug, Clone)]
 struct POIBisectContext<I>

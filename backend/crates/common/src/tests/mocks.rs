@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use anyhow::anyhow;
-use async_trait::async_trait;
-use graphix_common::prelude::{
+use crate::prelude::{
     BlockPointer, Bytes32, Indexer, IndexerUrls, IndexingStatus, POIRequest, ProofOfIndexing,
     SubgraphDeployment,
 };
+use anyhow::anyhow;
+use async_trait::async_trait;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DeploymentDetails {

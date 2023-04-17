@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::{fmt, ops::Deref, sync::Arc};
 
-use crate::indexer::Indexer;
+use crate::{db::models::WritablePoI, indexer::Indexer};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
 pub struct BlockPointer {
@@ -84,6 +84,28 @@ where
     pub deployment: SubgraphDeployment,
     pub block: BlockPointer,
     pub proof_of_indexing: Bytes32,
+}
+
+impl<I: Indexer> WritablePoI for ProofOfIndexing<I> {
+    fn deployment_cid(&self) -> &str {
+        self.deployment.as_str()
+    }
+
+    fn indexer_id(&self) -> &str {
+        self.indexer.id()
+    }
+
+    fn indexer_address(&self) -> Option<&[u8]> {
+        self.indexer.address().map(AsRef::as_ref)
+    }
+
+    fn block(&self) -> BlockPointer {
+        self.block.clone()
+    }
+
+    fn proof_of_indexing(&self) -> &[u8] {
+        &self.proof_of_indexing.0
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
