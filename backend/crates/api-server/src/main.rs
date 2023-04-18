@@ -68,9 +68,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .or(graphql_route);
 
     // Run the API server
-    warp::serve(routes)
-        .run(([127, 0, 0, 1], options.port))
-        .await;
+    warp::serve(routes).run(([0, 0, 0, 0], options.port)).await;
 
     Ok(())
 }
