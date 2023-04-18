@@ -6,8 +6,12 @@ services:
       - prometheus
     ports:
       - "3000:3000"
+    environment:
+      # Plugin to create panels from GraphQL queries: https://github.com/fifemon/graphql-datasource
+      - GF_INSTALL_PLUGINS=fifemon-graphql-datasource
     volumes:
-      - ./grafana/:/etc/grafana/
+      - ./grafana/config/:/etc/grafana/
+      - grafana-data:/var/lib/grafana/
 
   prometheus:
     image: prom/prometheus
@@ -172,3 +176,6 @@ services:
       retries: 1000
     volumes:
       - ./data/postgres-graph-node-2:/var/lib/postgresql/data
+
+volumes:
+  grafana-data:

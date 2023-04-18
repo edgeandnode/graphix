@@ -7,4 +7,5 @@ environments:
       status: http://graph-node-1:8030/graphql
   - id: graph-node-2
     urls:
-      status: http://graph-node-2:8035/graphql
+      status: http://graph-node-2:8030/graphql
+
