@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use crate::prelude::{Indexer, IndexingStatus};
 use eventuals::*;
-use futures::stream::FuturesUnordered;
+use futures::stream::FuturesOrdered;
 use futures::StreamExt;
 use tracing::*;
 
@@ -24,7 +24,7 @@ where
     indexers
         .iter()
         .map(|indexer| indexer.clone().indexing_statuses())
-        .collect::<FuturesUnordered<_>>()
+        .collect::<FuturesOrdered<_>>()
         .collect::<Vec<_>>()
         .await
         .into_iter()
