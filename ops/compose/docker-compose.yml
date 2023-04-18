@@ -41,6 +41,8 @@ services:
     build:
       context: ../..
       dockerfile: ops/cross-checker.dockerfile
+      args:
+        CARGO_PROFILE: dev
     depends_on:
       postgres-graphix:
         condition: service_healthy
@@ -52,6 +54,8 @@ services:
     build:
       context: ../..
       dockerfile: ops/api-server.dockerfile
+      args:
+        CARGO_PROFILE: dev
     ports:
       - "3030:3030"
     depends_on:
