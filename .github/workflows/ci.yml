@@ -2,14 +2,13 @@ name: CI pipeline
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
     types: [opened, synchronize, reopened]
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
-  THEGRAPH_STORE_POSTGRES_DIESEL_URL: "postgresql://postgres:postgres@localhost:5432/graph_node_test"
 
 
 jobs:
