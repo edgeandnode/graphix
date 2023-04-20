@@ -6,22 +6,8 @@ use diesel::{
     Queryable,
 };
 use serde::{Deserialize, Serialize};
+use types::BlockPointer;
 pub type IntId = i32;
-
-// pub type PoIWithId = WithIntId<PoI>;
-
-// #[derive(Debug)]
-// pub enum Filter<S = String> {
-//     None,
-//     Id(IntId),
-//     Value(S),
-// }
-
-// impl<T> FilterDsl<Filter> for T {
-//     type Output = Filter<T>;
-
-//     fn filter(self, predicate: Filter) -> Self::Output {}
-// }
 
 #[derive(Queryable, Debug)]
 pub struct PoI {
@@ -47,6 +33,14 @@ pub struct NewPoI {
     pub sg_deployment_id: IntId,
     pub indexer_id: IntId,
     pub block_id: IntId,
+}
+
+pub trait WritablePoI {
+    fn deployment_cid(&self) -> &str;
+    fn indexer_id(&self) -> &str;
+    fn indexer_address(&self) -> Option<&[u8]>;
+    fn block(&self) -> BlockPointer;
+    fn proof_of_indexing(&self) -> &[u8];
 }
 
 #[derive(Queryable, Debug)]
@@ -77,6 +71,7 @@ pub struct IndexerRow {
 #[diesel(table_name = indexers)]
 pub struct NewIndexer {
     pub address: Option<Vec<u8>>,
+    pub name: Option<String>,
     pub created_at: NaiveDateTime,
 }
 
@@ -92,6 +87,7 @@ pub struct SgDeployment {
 #[diesel(table_name = sg_deployments)]
 pub struct NewSgDeployment {
     pub cid: String,
+    pub network: IntId,
     pub created_at: NaiveDateTime,
 }
 

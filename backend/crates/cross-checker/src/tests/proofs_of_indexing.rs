@@ -3,16 +3,21 @@ use tracing_test::traced_test;
 
 use eventuals::Eventual;
 use futures::StreamExt;
-use graphix_common::prelude::{
-    BlockPointer, DivergingBlock, IndexerUrls, POICrossCheckReport, ProofOfIndexing,
-    SubgraphDeployment,
+use graphix_common::{
+    prelude::{
+        BlockPointer, DivergingBlock, IndexerUrls, POICrossCheckReport, ProofOfIndexing,
+        SubgraphDeployment,
+    },
+    tests::{
+        fast_rng,
+        gen::{gen_blocks, gen_bytes32, gen_deployments, gen_indexers, gen_pois},
+        mocks::{DeploymentDetails, MockIndexer, PartialProofOfIndexing},
+    },
 };
 use itertools::Itertools;
 use rand::Rng;
 
-use crate::{indexing_statuses, proofs_of_indexing};
-
-use super::*;
+use crate::{cross_checking::cross_checking, indexing_statuses, proofs_of_indexing};
 
 #[tokio::test]
 async fn proofs_of_indexing() {
@@ -126,7 +131,7 @@ async fn cross_check_identical_pois() {
             proofs_of_indexing::proofs_of_indexing(indexing_statuses_reader);
 
         let (proofs_of_indexing_reader, reports_reader) =
-            proofs_of_indexing::cross_checking(proofs_of_indexing_reader.clone());
+            cross_checking(proofs_of_indexing_reader.clone());
 
         let reports = reports_reader.take(1).collect::<Vec<_>>().await;
 
@@ -229,7 +234,7 @@ async fn cross_check_pois_with_mismatch_in_random_block() {
             proofs_of_indexing::proofs_of_indexing(indexing_statuses_reader);
 
         let (mut proofs_of_indexing_reader, reports_reader) =
-            proofs_of_indexing::cross_checking(proofs_of_indexing_reader.clone());
+            crate::cross_checking::cross_checking(proofs_of_indexing_reader.clone());
 
         let reports = reports_reader.take(1).collect::<Vec<_>>().await;
 

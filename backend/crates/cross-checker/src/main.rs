@@ -1,12 +1,12 @@
-pub mod indexing_statuses;
-pub mod proofs_of_indexing;
+pub(crate) mod bisect;
+pub(crate) mod cross_checking;
 mod server;
 
 #[cfg(test)]
 mod tests;
 
 use clap::Parser;
-use graphix_common::{db, modes, prelude::Config};
+use graphix_common::{db, indexing_statuses, modes, prelude::Config, proofs_of_indexing};
 use std::path::PathBuf;
 use tracing::*;
 use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
@@ -54,7 +54,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let pois = proofs_of_indexing::proofs_of_indexing(indexing_statuses);
 
     info!("Start POI cross checking");
-    let (pois, reports) = proofs_of_indexing::cross_checking(pois);
+    let (pois, reports) = cross_checking::cross_checking(pois);
 
     // POIs are a stream that should be written to the POI database
     db::proofs_of_indexing::write(store.clone(), pois);

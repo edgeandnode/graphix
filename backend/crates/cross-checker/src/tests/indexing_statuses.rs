@@ -6,7 +6,7 @@ use graphix_common::prelude::Indexer;
 
 use crate::indexing_statuses;
 
-use super::{fast_rng, gen::*};
+use graphix_common::tests::{fast_rng, gen::*};
 
 #[tokio::test]
 async fn indexing_statuses() {

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::prelude::{Indexer, IndexingStatus};
 use eventuals::*;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
-use graphix_common::prelude::{Indexer, IndexingStatus};
 use tracing::*;
 
 pub fn indexing_statuses<I>(indexers: Eventual<Vec<Arc<I>>>) -> Eventual<Vec<IndexingStatus<I>>>
