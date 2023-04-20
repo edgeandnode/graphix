@@ -37,18 +37,6 @@ impl Store {
         let pool = r2d2::Builder::new().build(manager)?;
         let store = Self { pool };
         store.run_migrations()?;
-
-        // TODO: Figure out networks.
-        //
-        // For now we insert a fake network because `write_pois` assumes a network with id 1 exists.
-        store.conn()?.transaction::<_, Error, _>(|conn| {
-            if schema::networks::table.count().get_result::<i64>(conn)? == 0i64 {
-                diesel::insert_into(schema::networks::table)
-                    .values(schema::networks::name.eq("fake_network"))
-                    .execute(conn)?;
-            }
-            Ok(())
-        })?;
         Ok(store)
     }
 

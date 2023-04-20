@@ -67,7 +67,7 @@ pub(super) fn write_pois(conn: &mut PgConnection, pois: &[impl WritablePoI]) -> 
                 // If the sg_deployment doesn't exist, insert a new one and return its id
                 let new_sg_deployment = NewSgDeployment {
                     cid: poi.deployment_cid().to_string(),
-                    network: 1, // TODO: work out networks
+                    network: 1, // Network assumed to be mainnet, see also: hardcoded-mainnet
                     created_at: Utc::now().naive_utc(),
                 };
                 diesel::insert_into(sg_deployments::table)
@@ -118,9 +118,7 @@ pub(super) fn write_pois(conn: &mut PgConnection, pois: &[impl WritablePoI]) -> 
                 let new_block = models::NewBlock {
                     number: poi.block().number as i64,
                     hash: poi.block().hash.unwrap().0.to_vec(),
-
-                    // TODO: handle networks properly
-                    network_id: 1,
+                    network_id: 1, // Network assumed to be mainnet, see also: hardcoded-mainnet,
                 };
                 diesel::insert_into(blocks::table)
                     .values(&new_block)
