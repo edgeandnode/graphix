@@ -20,6 +20,10 @@ CREATE TABLE networks (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+-- Insert the "mainnet" network with id == 1.
+-- See also: hardcoded-mainnet
+insert into networks (name) values ('mainnet');
+
 CREATE INDEX ON networks (name);
 
 CREATE TABLE sg_deployments (

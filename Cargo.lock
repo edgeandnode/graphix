@@ -783,6 +783,8 @@ dependencies = [
  "futures-retry",
  "graphql_client",
  "hex",
+ "once_cell",
+ "rand",
  "reqwest",
  "serde",
  "serde_json",

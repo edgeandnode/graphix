@@ -3,12 +3,12 @@ use std::{
     sync::Arc,
 };
 
+use crate::prelude::{
+    BlockPointer, Indexer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment,
+};
 use eventuals::*;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
-use graphix_common::prelude::{
-    BlockPointer, Indexer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment,
-};
 use tracing::*;
 
 pub fn proofs_of_indexing<I>(
