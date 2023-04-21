@@ -1,5 +1,4 @@
 use core::hash::Hash;
-use std::sync::Arc;
 
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -15,17 +14,16 @@ pub trait Indexer: Clone + Sized + Eq + Send + Sync + Hash + Ord + Send + Sync {
     fn address(&self) -> Option<&[u8]>;
     fn urls(&self) -> &IndexerUrls;
 
-    async fn indexing_statuses(self: Arc<Self>)
-        -> Result<Vec<IndexingStatus<Self>>, anyhow::Error>;
+    async fn indexing_statuses(self) -> Result<Vec<IndexingStatus<Self>>, anyhow::Error>;
 
     async fn proofs_of_indexing(
-        self: Arc<Self>,
+        self,
         requests: Vec<POIRequest>,
     ) -> Result<Vec<ProofOfIndexing<Self>>, anyhow::Error>;
 
     /// Convenience wrapper around calling `proofs_of_indexing` for a single POI.
     async fn proof_of_indexing(
-        self: Arc<Self>,
+        self,
         request: POIRequest,
     ) -> Result<ProofOfIndexing<Self>, anyhow::Error> {
         let mut results = self.proofs_of_indexing(vec![request]).await?;

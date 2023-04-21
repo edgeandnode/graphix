@@ -1,7 +1,4 @@
-use std::{
-    collections::{hash_map::RandomState, HashMap, HashSet},
-    sync::Arc,
-};
+use std::collections::{hash_map::RandomState, HashMap, HashSet};
 
 use crate::prelude::{
     BlockPointer, Indexer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment,
@@ -32,7 +29,7 @@ where
     let indexers = indexing_statuses
         .iter()
         .map(|status| status.indexer.clone())
-        .collect::<HashSet<Arc<I>, RandomState>>();
+        .collect::<HashSet<I, RandomState>>();
 
     // Identify all deployments
     let deployments: HashSet<SubgraphDeployment, RandomState> = HashSet::from_iter(
@@ -103,10 +100,7 @@ where
 }
 
 fn skip_errors<I>(
-    result: (
-        Result<Vec<ProofOfIndexing<I>>, anyhow::Error>,
-        Arc<impl Indexer>,
-    ),
+    result: (Result<Vec<ProofOfIndexing<I>>, anyhow::Error>, I),
 ) -> Option<Vec<ProofOfIndexing<I>>>
 where
     I: Indexer,

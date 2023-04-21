@@ -29,7 +29,7 @@ struct IndexingStatuses;
 
 impl TryInto<IndexingStatus<RealIndexer>>
     for (
-        Arc<RealIndexer>,
+        RealIndexer,
         indexing_statuses::IndexingStatusesIndexingStatuses,
     )
 {
@@ -81,7 +81,7 @@ struct ProofsOfIndexing;
 
 impl TryInto<ProofOfIndexing<RealIndexer>>
     for (
-        Arc<RealIndexer>,
+        RealIndexer,
         proofs_of_indexing::ProofsOfIndexingPublicProofsOfIndexing,
     )
 {
@@ -107,25 +107,28 @@ impl TryInto<ProofOfIndexing<RealIndexer>>
 /// Indexer
 
 #[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub struct RealIndexer {
-    pub id: String,
-    pub urls: IndexerUrls,
+pub struct RealIndexer(Arc<Inner>);
+
+#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+struct Inner {
+    id: String,
+    urls: IndexerUrls,
 }
 
 impl RealIndexer {
     #[instrument(skip(env))]
-    pub fn new(env: &EnvironmentConfig) -> Result<Self, anyhow::Error> {
-        Ok(Self {
+    pub fn new(env: &EnvironmentConfig) -> Self {
+        Self(Arc::new(Inner {
             id: env.id.clone(),
             urls: env.urls.clone(),
-        })
+        }))
     }
 }
 
 #[async_trait]
 impl Indexer for RealIndexer {
     fn id(&self) -> &str {
-        &self.id
+        &self.0.id
     }
 
     fn address(&self) -> Option<&[u8]> {
@@ -133,17 +136,15 @@ impl Indexer for RealIndexer {
     }
 
     fn urls(&self) -> &IndexerUrls {
-        &self.urls
+        &self.0.urls
     }
 
     #[instrument]
-    async fn indexing_statuses(
-        self: Arc<Self>,
-    ) -> Result<Vec<IndexingStatus<Self>>, anyhow::Error> {
+    async fn indexing_statuses(self) -> Result<Vec<IndexingStatus<Self>>, anyhow::Error> {
         let client = reqwest::Client::new();
         let request = IndexingStatuses::build_query(indexing_statuses::Variables);
         let response: Response<indexing_statuses::ResponseData> = client
-            .post(self.urls.status.clone())
+            .post(self.urls().status.clone())
             .json(&request)
             .send()
             .await?
@@ -158,7 +159,7 @@ impl Indexer for RealIndexer {
                 .collect::<Vec<_>>()
                 .join(",");
             warn!(
-                url = %self.urls.status.to_string(),
+                url = %self.urls().status.to_string(),
                 %errors,
                 "Indexer returned indexing status errors"
             );
@@ -174,7 +175,7 @@ impl Indexer for RealIndexer {
                     Ok(status) => statuses.push(status),
                     Err(e) => {
                         warn!(
-                            url = %self.urls.status.to_string(),
+                            url = %self.urls().status.to_string(),
                             %e,
                             %deployment,
                             "Failed to parse indexing status, skipping deployment"
@@ -187,7 +188,7 @@ impl Indexer for RealIndexer {
     }
 
     async fn proofs_of_indexing(
-        self: Arc<Self>,
+        self,
         requests: Vec<POIRequest>,
     ) -> Result<Vec<ProofOfIndexing<Self>>, anyhow::Error> {
         let mut pois = vec![];
@@ -206,7 +207,7 @@ impl Indexer for RealIndexer {
                     .collect(),
             });
             let response: Response<proofs_of_indexing::ResponseData> = client
-                .post(self.urls.status.clone())
+                .post(self.urls().status.clone())
                 .json(&request)
                 .send()
                 .await?
@@ -221,8 +222,8 @@ impl Indexer for RealIndexer {
                     .collect::<Vec<_>>()
                     .join(",");
                 warn!(
-                    id = %self.id,
-                    url = %self.urls.status.to_string(),
+                    id = %self.id(),
+                    url = %self.urls().status.to_string(),
                     %errors,
                     "indexer returned POI errors"
                 );
@@ -239,7 +240,7 @@ impl Indexer for RealIndexer {
                         .filter_map(|result| match result {
                             Ok(v) => Some(v),
                             Err(error) => {
-                                warn!(id = %self.id, url = %self.urls.status.to_string(), %error);
+                                warn!(id = %self.id(), url = %self.urls().status.to_string(), %error);
                                 None
                             }
                         })

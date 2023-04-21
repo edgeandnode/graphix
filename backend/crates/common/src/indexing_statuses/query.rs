@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::time::Duration;
 
 use crate::prelude::{Indexer, IndexingStatus};
@@ -7,7 +6,7 @@ use futures::stream::FuturesOrdered;
 use futures::StreamExt;
 use tracing::*;
 
-pub fn indexing_statuses<I>(indexers: Eventual<Vec<Arc<I>>>) -> Eventual<Vec<IndexingStatus<I>>>
+pub fn indexing_statuses<I>(indexers: Eventual<Vec<I>>) -> Eventual<Vec<IndexingStatus<I>>>
 where
     I: Indexer + 'static,
 {
@@ -15,7 +14,7 @@ where
         .map(|(indexers, _)| query_indexing_statuses(indexers))
 }
 
-pub async fn query_indexing_statuses<I>(indexers: Vec<Arc<I>>) -> Vec<IndexingStatus<I>>
+pub async fn query_indexing_statuses<I>(indexers: Vec<I>) -> Vec<IndexingStatus<I>>
 where
     I: Indexer,
 {
@@ -35,7 +34,7 @@ where
 }
 
 fn skip_errors<I>(
-    result: (Result<Vec<IndexingStatus<I>>, anyhow::Error>, Arc<I>),
+    result: (Result<Vec<IndexingStatus<I>>, anyhow::Error>, I),
 ) -> Option<Vec<IndexingStatus<I>>>
 where
     I: Indexer,
