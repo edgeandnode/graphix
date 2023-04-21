@@ -1,0 +1,5 @@
+data/*
+
+# No need to backup the Grafana plugins, they'll just get re-installed at
+# startup.
+grafana/data/plugins/*

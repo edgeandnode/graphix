@@ -6,7 +6,11 @@ mod server;
 mod tests;
 
 use clap::Parser;
-use graphix_common::{db, indexing_statuses, modes, prelude::Config, proofs_of_indexing};
+use eventuals::EventualExt;
+use futures::channel::mpsc::channel;
+use futures::SinkExt;
+use graphix_common::{db, modes, prelude::Config};
+use graphix_common::{indexing_statuses, proofs_of_indexing};
 use std::path::PathBuf;
 use tracing::*;
 use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
@@ -53,14 +57,28 @@ async fn main() -> Result<(), anyhow::Error> {
     info!("Monitor proofs of indexing");
     let pois = proofs_of_indexing::proofs_of_indexing(indexing_statuses);
 
-    info!("Start POI cross checking");
-    let (pois, reports) = cross_checking::cross_checking(pois);
+    //info!("Start POI cross checking");
+    //let (pois, reports) = proofs_of_indexing::cross_checking(pois);
+
+    let (poi_broadcaster, poi_receiver) = channel(1000);
+
+    let pipe = pois.pipe_async(move |pois| {
+        let mut poi_broadcaster = poi_broadcaster.clone();
+
+        async move {
+            for poi in pois {
+                poi_broadcaster.send(poi).await.unwrap();
+            }
+        }
+    });
+
+    pipe.forever();
 
     // POIs are a stream that should be written to the POI database
-    db::proofs_of_indexing::write(store.clone(), pois);
+    db::proofs_of_indexing::write(store.clone(), poi_receiver);
 
     // Reports are a stream that should be written to the database
-    db::proofs_of_indexing::write_reports(store, reports);
+    //db::proofs_of_indexing::write_reports(store, reports);
 
     // Power up the web server
     server::run().await
