@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::{fmt, ops::Deref, sync::Arc};
+use std::{fmt, ops::Deref};
 
 use crate::{db::models::WritablePoI, indexer::Indexer};
 
@@ -34,11 +34,8 @@ impl Deref for SubgraphDeployment {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
-pub struct IndexingStatus<I>
-where
-    I: Indexer,
-{
-    pub indexer: Arc<I>,
+pub struct IndexingStatus<I> {
+    pub indexer: I,
     pub deployment: SubgraphDeployment,
     pub network: String,
     pub latest_block: BlockPointer,
@@ -76,11 +73,8 @@ impl fmt::Display for Bytes32 {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
-pub struct ProofOfIndexing<I>
-where
-    I: Indexer,
-{
-    pub indexer: Arc<I>,
+pub struct ProofOfIndexing<I> {
+    pub indexer: I,
     pub deployment: SubgraphDeployment,
     pub block: BlockPointer,
     pub proof_of_indexing: Bytes32,

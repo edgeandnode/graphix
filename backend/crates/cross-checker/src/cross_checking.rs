@@ -21,8 +21,8 @@ struct POIBisectContext<I>
 where
     I: Indexer,
 {
-    indexer1: Arc<I>,
-    indexer2: Arc<I>,
+    indexer1: I,
+    indexer2: I,
     deployment: SubgraphDeployment,
     poi_broadcaster: Sender<ProofOfIndexing<I>>,
 }
