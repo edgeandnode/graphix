@@ -20,11 +20,11 @@ CREATE TABLE networks (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX ON networks (name);
+
 -- Insert the "mainnet" network with id == 1.
 -- See also: hardcoded-mainnet
-insert into networks (name) values ('mainnet');
-
-CREATE INDEX ON networks (name);
+INSERT INTO networks (name) VALUES ('mainnet');
 
 CREATE TABLE sg_deployments (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -126,3 +126,4 @@ CREATE TABLE entity_changes_in_block (
 );
 
 CREATE INDEX ON entity_changes_in_block (indexer_id, block_id);
+

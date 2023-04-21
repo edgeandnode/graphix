@@ -1,7 +1,10 @@
 version: "3"
 services:
   grafana:
-    image: grafana/grafana-oss
+    image: grafana/grafana-enterprise
+    restart: always
+    # https://community.grafana.com/t/new-docker-install-with-persistent-storage-permission-problem/10896/16
+    user: "$UID:$GID"
     depends_on:
       - prometheus
     ports:
@@ -11,10 +14,11 @@ services:
       - GF_INSTALL_PLUGINS=fifemon-graphql-datasource
     volumes:
       - ./grafana/config/:/etc/grafana/
-      - grafana-data:/var/lib/grafana/
+      - ./grafana/data:/var/lib/grafana/
 
   prometheus:
     image: prom/prometheus
+    restart: always
     entrypoint:
       - /bin/prometheus
       - --log.level=info
@@ -176,6 +180,3 @@ services:
       retries: 1000
     volumes:
       - ./data/postgres-graph-node-2:/var/lib/postgresql/data
-
-volumes:
-  grafana-data:
