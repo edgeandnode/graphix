@@ -27,6 +27,12 @@ pub struct EnvironmentConfig {
 pub struct TestingConfig {
     pub database_url: String,
     pub environments: Vec<EnvironmentConfig>,
+    #[serde(default = "default_polling_period_in_seconds")]
+    pub polling_period_in_seconds: u64,
+}
+
+fn default_polling_period_in_seconds() -> u64 {
+    120
 }
 
 #[derive(Debug, Deserialize)]

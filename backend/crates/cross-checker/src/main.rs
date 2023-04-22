@@ -9,7 +9,7 @@ use graphix_common::{db, modes, prelude::Config};
 use graphix_common::{indexing_statuses, proofs_of_indexing};
 use std::path::PathBuf;
 use tracing::*;
-use tracing_subscriber::{self};
+use tracing_subscriber;
 
 #[derive(Parser, Debug)]
 struct CliOptions {
@@ -44,7 +44,10 @@ async fn main() -> Result<(), anyhow::Error> {
 
         store.write_pois(&pois)?;
 
-        tokio::time::sleep(std::time::Duration::from_secs(120)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(
+            config.polling_period_in_seconds,
+        ))
+        .await;
     }
 }
 
