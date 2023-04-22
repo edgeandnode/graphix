@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-use eventuals::Eventual;
 use futures::{future, stream::FuturesUnordered, StreamExt};
 use graphix_common::prelude::Indexer;
 
@@ -31,14 +30,8 @@ async fn indexing_statuses() {
             .flatten()
             .collect::<BTreeSet<_>>();
 
-        let (mut indexers_writer, indexers_reader) = Eventual::new();
-        indexers_writer.write(indexers);
-
-        let queried_statuses = indexing_statuses::indexing_statuses(indexers_reader)
-            .subscribe()
-            .next()
+        let queried_statuses = indexing_statuses::query_indexing_statuses(indexers)
             .await
-            .unwrap()
             .into_iter()
             .collect();
 

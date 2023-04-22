@@ -1,18 +1,7 @@
-use std::time::Duration;
-
 use crate::prelude::{Indexer, IndexingStatus};
-use eventuals::*;
 use futures::stream::FuturesOrdered;
 use futures::StreamExt;
 use tracing::*;
-
-pub fn indexing_statuses<I>(indexers: Eventual<Vec<I>>) -> Eventual<Vec<IndexingStatus<I>>>
-where
-    I: Indexer + 'static,
-{
-    join((indexers, timer(Duration::from_secs(20))))
-        .map(|(indexers, _)| query_indexing_statuses(indexers))
-}
 
 pub async fn query_indexing_statuses<I>(indexers: Vec<I>) -> Vec<IndexingStatus<I>>
 where

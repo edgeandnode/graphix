@@ -5,7 +5,6 @@ use crate::{
     indexer::Indexer,
 };
 use diesel::Connection;
-use eventuals::Eventual;
 
 use crate::tests::{fast_rng, gen::gen_indexers};
 
@@ -16,20 +15,10 @@ fn test_db_url() -> String {
 #[tokio::test]
 async fn poi_db_roundtrip() {
     let mut rng = fast_rng(0);
-
     let indexers = gen_indexers(&mut rng, 100);
 
-    let (mut indexers_writer, indexers_reader) = Eventual::new();
-    indexers_writer.write(indexers.clone());
-
-    let indexing_statuses_reader = crate::indexing_statuses::indexing_statuses(indexers_reader);
-    let proofs_of_indexing_reader =
-        crate::proofs_of_indexing::proofs_of_indexing(indexing_statuses_reader);
-
-    let pois = {
-        let pois = proofs_of_indexing_reader.subscribe().next().await.unwrap();
-        pois.into_iter().collect::<Vec<_>>()
-    };
+    let indexing_statuses = crate::indexing_statuses::query_indexing_statuses(indexers).await;
+    let pois = crate::proofs_of_indexing::query_proofs_of_indexing(indexing_statuses).await;
 
     let store = Store::new(&test_db_url()).unwrap();
     let mut conn = store.test_conn();
