@@ -3,8 +3,11 @@ use diesel::prelude::*;
 use tracing::info;
 
 use super::models::WritablePoI;
+use super::PoiLiveness;
 use crate::api_types::BlockRange;
-use crate::db::models::{self, IndexerRow, NewIndexer, NewPoI, NewSgDeployment, SgDeployment};
+use crate::db::models::{
+    self, IndexerRow, NewIndexer, NewLivePoi, NewPoI, NewSgDeployment, SgDeployment,
+};
 use crate::db::schema;
 
 // This is a single SQL statement, a transaction is not necessary.
@@ -44,9 +47,14 @@ pub(super) fn pois(
 }
 
 // The caller must make sure that `conn` is within a transaction.
-pub(super) fn write_pois(conn: &mut PgConnection, pois: &[impl WritablePoI]) -> anyhow::Result<()> {
+pub(super) fn write_pois(
+    conn: &mut PgConnection,
+    pois: &[impl WritablePoI],
+    live: PoiLiveness,
+) -> anyhow::Result<()> {
     use schema::blocks;
     use schema::indexers;
+    use schema::live_pois;
     use schema::pois;
     use schema::sg_deployments;
 
@@ -93,7 +101,6 @@ pub(super) fn write_pois(conn: &mut PgConnection, pois: &[impl WritablePoI]) -> 
                 let new_indexer = NewIndexer {
                     address: poi.indexer_address().map(ToOwned::to_owned),
                     name: Some(poi.indexer_id().to_string()),
-                    created_at: Utc::now().naive_utc(),
                 };
                 diesel::insert_into(indexers::table)
                     .values(&new_indexer)
@@ -135,10 +142,18 @@ pub(super) fn write_pois(conn: &mut PgConnection, pois: &[impl WritablePoI]) -> 
             created_at: Utc::now().naive_utc(),
         };
 
-        diesel::insert_into(pois::table)
+        let poi_id = diesel::insert_into(pois::table)
             .values(new_poi)
+            .returning(pois::id)
             .on_conflict_do_nothing()
-            .execute(conn)?;
+            .get_result::<i32>(conn)?;
+
+        if live == PoiLiveness::Live {
+            diesel::insert_into(live_pois::table)
+                .values(NewLivePoi { poi_id })
+                .on_conflict_do_nothing()
+                .execute(conn)?;
+        }
     }
 
     info!(%len, "Wrote POIs to database");

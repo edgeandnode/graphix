@@ -12,7 +12,7 @@ use tracing::*;
 use tracing_subscriber;
 
 #[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
+async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     info!("Parse options");
@@ -36,7 +36,7 @@ async fn main() -> Result<(), anyhow::Error> {
         info!("Monitor proofs of indexing");
         let pois = proofs_of_indexing::query_proofs_of_indexing(indexing_statuses).await;
 
-        store.write_pois(&pois)?;
+        store.write_pois(&pois, db::PoiLiveness::Live)?;
 
         tokio::time::sleep(std::time::Duration::from_secs(
             config.polling_period_in_seconds,

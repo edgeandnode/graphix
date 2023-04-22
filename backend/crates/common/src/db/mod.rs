@@ -85,9 +85,9 @@ impl Store {
         diesel_queries::pois(&mut conn, sg_deployments, block_range, limit)
     }
 
-    pub fn write_pois(&self, pois: &[impl WritablePoI]) -> anyhow::Result<()> {
+    pub fn write_pois(&self, pois: &[impl WritablePoI], live: PoiLiveness) -> anyhow::Result<()> {
         self.conn()?
-            .transaction::<_, Error, _>(|conn| diesel_queries::write_pois(conn, pois))
+            .transaction::<_, Error, _>(|conn| diesel_queries::write_pois(conn, pois, live))
     }
 
     // pub fn poi_divergence_bisect_reports(
@@ -136,4 +136,10 @@ impl Store {
     //     info!(%len, "Wrote POI cross check reports to database");
     //     Ok(())
     // }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PoiLiveness {
+    Live,
+    NotLive,
 }
