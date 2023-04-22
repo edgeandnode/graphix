@@ -1,5 +1,5 @@
+use crate::prelude::{DivergingBlock as DivergentBlock, Indexer, ProofOfIndexing};
 use futures::Future;
-use graphix_common::prelude::{DivergingBlock as DivergentBlock, Indexer, ProofOfIndexing};
 use tracing::info;
 
 pub struct DivergingBlock<I>

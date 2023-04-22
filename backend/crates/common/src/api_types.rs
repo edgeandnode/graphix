@@ -2,9 +2,6 @@
 
 use crate::db::{models, Store};
 use async_graphql::*;
-//use async_graphql::{
-//    Context, EmptyMutation, EmptySubscription, InputObject, Object, Schema, SimpleObject,
-//};
 
 pub struct QueryRoot;
 
@@ -42,6 +39,36 @@ impl QueryRoot {
 
     //     Ok(reports.into_iter().map(POICrossCheckReport::from).collect())
     // }
+}
+
+pub struct MutationRoot;
+
+#[Object]
+impl MutationRoot {
+    async fn launch_cross_check_report(
+        &self,
+        ctx: &Context<'_>,
+        req: DivergenceInvestigationRequest,
+    ) -> Result<bool> {
+        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let store = &api_ctx.store;
+
+        let _poi1 = store.poi(&req.poi1)?;
+        let _poi2 = store.poi(&req.poi2)?;
+
+        // TODO
+
+        Ok(true)
+    }
+}
+
+#[derive(InputObject)]
+struct DivergenceInvestigationRequest {
+    poi1: String,
+    poi2: String,
+    query_block_caches: bool,
+    query_eth_call_caches: bool,
+    query_entity_changes: bool,
 }
 
 #[derive(InputObject)]
@@ -141,14 +168,14 @@ struct POICrossCheckReport {
 //     }
 // }
 
-pub type APISchema = Schema<QueryRoot, EmptyMutation, EmptySubscription>;
+pub type APISchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
 pub struct APISchemaContext {
     pub store: Store,
 }
 
 pub fn api_schema(ctx: APISchemaContext) -> APISchema {
-    Schema::build(QueryRoot, EmptyMutation, EmptySubscription)
+    Schema::build(QueryRoot, MutationRoot, EmptySubscription)
         .data(ctx)
         .finish()
 }

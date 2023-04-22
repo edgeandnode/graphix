@@ -73,6 +73,11 @@ impl Store {
         Ok(deployments)
     }
 
+    pub fn poi(&self, poi: &str) -> anyhow::Result<Option<PoI>> {
+        let mut conn = self.conn()?;
+        diesel_queries::poi(&mut conn, poi)
+    }
+
     /// Queries the database for proofs of indexing that refer to the specified
     /// subgraph deployments and in the given [`BlockRange`], if given.
     pub fn pois(
