@@ -6,7 +6,7 @@ use tracing::warn;
 
 use crate::{indexer::Indexer, types};
 
-use super::Store;
+use super::{PoiLiveness, Store};
 
 /// Write any POIs that we receive to the database.
 pub fn write<S, I>(store: Store, proofs_of_indexing: S)
@@ -25,7 +25,7 @@ where
                     FutureRetry::new(
                         || async {
                             // TODO: Asyncify this instead of blocking
-                            store.write_pois(&chunk)
+                            store.write_pois(&chunk, PoiLiveness::NotLive)
                         },
                         |e| {
                             if consecutive_errors >= 5 {

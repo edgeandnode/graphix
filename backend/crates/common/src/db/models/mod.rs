@@ -72,7 +72,6 @@ pub struct IndexerRow {
 pub struct NewIndexer {
     pub address: Option<Vec<u8>>,
     pub name: Option<String>,
-    pub created_at: NaiveDateTime,
 }
 
 #[derive(Debug, Queryable)]
@@ -89,6 +88,12 @@ pub struct NewSgDeployment {
     pub cid: String,
     pub network: IntId,
     pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = live_pois)]
+pub struct NewLivePoi {
+    pub poi_id: IntId,
 }
 
 #[derive(FromSqlRow, AsExpression, Serialize, Deserialize, Debug, Default)]

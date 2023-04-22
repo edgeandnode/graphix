@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use crate::{
-    db::{diesel_queries, Store},
+    db::{diesel_queries, PoiLiveness, Store},
     indexer::Indexer,
 };
 use diesel::Connection;
@@ -23,7 +23,7 @@ async fn poi_db_roundtrip() {
     let store = Store::new(&test_db_url()).unwrap();
     let mut conn = store.test_conn();
     conn.test_transaction::<_, (), _>(|conn| {
-        diesel_queries::write_pois(conn, &pois.clone()).unwrap();
+        diesel_queries::write_pois(conn, &pois.clone(), PoiLiveness::NotLive).unwrap();
         let all_deployments: Vec<String> =
             pois.iter().map(|poi| poi.deployment.0.clone()).collect();
         let read_pois = diesel_queries::pois(conn, &all_deployments, None, None).unwrap();
