@@ -17,7 +17,7 @@ where
     indexing_statuses.map(query_proofs_of_indexing)
 }
 
-async fn query_proofs_of_indexing<I>(
+pub async fn query_proofs_of_indexing<I>(
     indexing_statuses: Vec<IndexingStatus<I>>,
 ) -> Vec<ProofOfIndexing<I>>
 where

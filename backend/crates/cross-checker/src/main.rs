@@ -1,14 +1,10 @@
 pub(crate) mod bisect;
 pub(crate) mod cross_checking;
-mod server;
 
 #[cfg(test)]
 mod tests;
 
 use clap::Parser;
-use eventuals::EventualExt;
-use futures::channel::mpsc::channel;
-use futures::SinkExt;
 use graphix_common::{db, modes, prelude::Config};
 use graphix_common::{indexing_statuses, proofs_of_indexing};
 use std::path::PathBuf;
@@ -48,38 +44,21 @@ async fn main() -> Result<(), anyhow::Error> {
     info!("Initialize inputs (indexers, indexing statuses etc.)");
     let indexers = match config {
         Config::Testing(testing) => modes::testing_indexers(testing.clone()),
-        _ => todo!(),
+        _ => todo!("Only testing mode supported for now"),
     };
 
-    info!("Monitor indexing statuses");
-    let indexing_statuses = indexing_statuses::indexing_statuses(indexers);
+    loop {
+        info!("Monitor indexing statuses");
+        let indexing_statuses = indexing_statuses::query_indexing_statuses(indexers.clone()).await;
 
-    info!("Monitor proofs of indexing");
-    let pois = proofs_of_indexing::proofs_of_indexing(indexing_statuses);
+        info!("Monitor proofs of indexing");
+        let pois = proofs_of_indexing::query_proofs_of_indexing(indexing_statuses).await;
 
-    //info!("Start POI cross checking");
-    //let (pois, reports) = proofs_of_indexing::cross_checking(pois);
+        store.write_pois(&pois)?;
 
-    let (poi_broadcaster, poi_receiver) = channel(1000);
+        // Reports are a stream that should be written to the database
+        //db::proofs_of_indexing::write_reports(store, reports);
 
-    let pipe = pois.pipe_async(move |pois| {
-        let mut poi_broadcaster = poi_broadcaster.clone();
-
-        async move {
-            for poi in pois {
-                poi_broadcaster.send(poi).await.unwrap();
-            }
-        }
-    });
-
-    pipe.forever();
-
-    // POIs are a stream that should be written to the POI database
-    db::proofs_of_indexing::write(store.clone(), poi_receiver);
-
-    // Reports are a stream that should be written to the database
-    //db::proofs_of_indexing::write_reports(store, reports);
-
-    // Power up the web server
-    server::run().await
+        tokio::time::sleep(std::time::Duration::from_secs(120)).await;
+    }
 }
