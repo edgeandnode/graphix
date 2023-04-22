@@ -1,4 +1,5 @@
 pub mod api_types;
+pub mod bisect;
 mod config;
 pub mod db;
 mod indexer;

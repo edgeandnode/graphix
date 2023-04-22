@@ -7,14 +7,13 @@ use futures::{
     stream::FuturesUnordered,
     FutureExt, SinkExt, Stream, StreamExt,
 };
+use graphix_common::bisect::{bisect_blocks, BisectDecision, DivergingBlock};
 use graphix_common::prelude::{
     Indexer, POICrossCheckReport, POIRequest, ProofOfIndexing, SubgraphDeployment,
 };
 use itertools::Itertools;
 use nanoid::nanoid;
 use tracing::{debug, info, warn};
-
-use crate::bisect::{bisect_blocks, BisectDecision, DivergingBlock};
 
 #[derive(Debug, Clone)]
 struct POIBisectContext<I>

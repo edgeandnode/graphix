@@ -10,6 +10,31 @@ use crate::db::models::{
 };
 use crate::db::schema;
 
+pub(super) fn poi(conn: &mut PgConnection, poi: &str) -> anyhow::Result<Option<models::PoI>> {
+    use schema::blocks;
+    use schema::indexers;
+    use schema::pois;
+    use schema::sg_deployments;
+
+    let poi = hex::decode(poi)?;
+
+    let query = pois::table
+        .inner_join(sg_deployments::table)
+        .inner_join(indexers::table)
+        .inner_join(blocks::table)
+        .select((
+            pois::id,
+            pois::poi,
+            pois::created_at,
+            sg_deployments::all_columns,
+            indexers::all_columns,
+            blocks::all_columns,
+        ))
+        .filter(pois::poi.eq(poi));
+
+    Ok(query.get_result::<models::PoI>(conn).optional()?)
+}
+
 // This is a single SQL statement, a transaction is not necessary.
 pub(super) fn pois(
     conn: &mut PgConnection,

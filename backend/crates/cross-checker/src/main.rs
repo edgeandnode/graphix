@@ -1,4 +1,3 @@
-pub(crate) mod bisect;
 pub(crate) mod cross_checking;
 
 #[cfg(test)]
