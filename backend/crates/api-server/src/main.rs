@@ -4,34 +4,26 @@ use async_graphql::{
 };
 use async_graphql_warp::{self, GraphQLResponse};
 use clap::Parser;
-use opt::CliOptions;
+use graphix_common::{api_types as schema, db::Store};
 use std::convert::Infallible;
-use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
 use warp::{
     http::{self, Method},
     Filter,
 };
 
-use graphix_common::{api_types as schema, db::Store};
-
-mod opt;
-
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or(
-        tracing_subscriber::EnvFilter::try_new(
-            "info,graphix_common=debug,graphix_api_server=debug",
-        )
-        .unwrap(),
-    );
-    let defaults = tracing_subscriber::registry().with(filter_layer);
-    let fmt_layer = tracing_subscriber::fmt::layer();
-    defaults.with(fmt_layer).init();
+    init_tracing();
 
-    let options = CliOptions::parse();
+    let cli_options = CliOptions::parse();
+    let store = Store::new(cli_options.database_url.as_str())?;
 
-    let store = Store::new(options.database_url.as_str())?;
+    run_api_server(cli_options, store).await;
 
+    Ok(())
+}
+
+async fn run_api_server(options: CliOptions, store: Store) {
     // GET / -> 200 OK
     let health_check_route = warp::path::end().map(|| format!("Ready to roll!"));
 
@@ -67,8 +59,18 @@ async fn main() -> Result<(), anyhow::Error> {
         .or(graphql_playground_route)
         .or(graphql_route);
 
-    // Run the API server
     warp::serve(routes).run(([0, 0, 0, 0], options.port)).await;
+}
 
-    Ok(())
+fn init_tracing() {
+    tracing_subscriber::fmt::init();
+}
+
+#[derive(Parser, Debug)]
+pub struct CliOptions {
+    #[clap(long, default_value = "80")]
+    pub port: u16,
+
+    #[clap(long, default_value = "postgresql://localhost:5432/graphix")]
+    pub database_url: String,
 }
