@@ -11,12 +11,6 @@ use std::path::PathBuf;
 use tracing::*;
 use tracing_subscriber;
 
-#[derive(Parser, Debug)]
-struct CliOptions {
-    #[clap(long)]
-    config: PathBuf,
-}
-
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     init_tracing();
@@ -30,7 +24,7 @@ async fn main() -> Result<(), anyhow::Error> {
         _ => todo!("Only testing mode supported for now"),
     };
 
-    let store = db::Store::new(config.database_url.as_str())?;
+    let store = db::Store::new(&config.database_url)?;
 
     info!("Initialize inputs (indexers, indexing statuses etc.)");
     let indexers = modes::testing_indexers(config.clone());
@@ -53,4 +47,10 @@ async fn main() -> Result<(), anyhow::Error> {
 
 fn init_tracing() {
     tracing_subscriber::fmt::init();
+}
+
+#[derive(Parser, Debug)]
+struct CliOptions {
+    #[clap(long)]
+    config: PathBuf,
 }
