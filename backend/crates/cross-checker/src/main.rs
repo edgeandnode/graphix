@@ -9,7 +9,7 @@ use graphix_common::{db, modes, prelude::Config};
 use graphix_common::{indexing_statuses, proofs_of_indexing};
 use std::path::PathBuf;
 use tracing::*;
-use tracing_subscriber::{self, layer::SubscriberExt as _, util::SubscriberInitExt as _};
+use tracing_subscriber::{self};
 
 #[derive(Parser, Debug)]
 struct CliOptions {
@@ -19,33 +19,21 @@ struct CliOptions {
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-        tracing_subscriber::EnvFilter::try_new(
-            "info,graphix_common=debug,graphix_cross_checker=debug",
-        )
-        .unwrap()
-    });
-    let defaults = tracing_subscriber::registry().with(filter_layer);
-    let fmt_layer = tracing_subscriber::fmt::layer();
-    defaults.with(fmt_layer).init();
+    init_tracing();
 
     info!("Parse options");
     let options = CliOptions::parse();
 
     info!("Load configuration file");
-    let config = Config::try_from(&options.config)?;
-
-    let db_url = match &config {
-        Config::Testing(testing) => testing.database_url.as_str(),
-        _ => todo!(),
-    };
-    let store = db::Store::new(db_url)?;
-
-    info!("Initialize inputs (indexers, indexing statuses etc.)");
-    let indexers = match config {
-        Config::Testing(testing) => modes::testing_indexers(testing.clone()),
+    let config = match Config::try_from(&options.config)? {
+        Config::Testing(c) => c,
         _ => todo!("Only testing mode supported for now"),
     };
+
+    let store = db::Store::new(config.database_url.as_str())?;
+
+    info!("Initialize inputs (indexers, indexing statuses etc.)");
+    let indexers = modes::testing_indexers(config.clone());
 
     loop {
         info!("Monitor indexing statuses");
@@ -56,9 +44,10 @@ async fn main() -> Result<(), anyhow::Error> {
 
         store.write_pois(&pois)?;
 
-        // Reports are a stream that should be written to the database
-        //db::proofs_of_indexing::write_reports(store, reports);
-
         tokio::time::sleep(std::time::Duration::from_secs(120)).await;
     }
+}
+
+fn init_tracing() {
+    tracing_subscriber::fmt::init();
 }
