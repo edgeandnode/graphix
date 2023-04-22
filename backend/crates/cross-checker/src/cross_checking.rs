@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, sync::Arc};
+use std::collections::BTreeSet;
 
 use anyhow::anyhow;
 use eventuals::{Eventual, EventualExt};
