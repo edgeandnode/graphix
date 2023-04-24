@@ -12,7 +12,7 @@ table! {
 
 table! {
     blocks (id) {
-        id -> Int4,
+        id -> Int8,
         network_id -> Int4,
         number -> Int8,
         hash -> Bytea,
@@ -69,7 +69,7 @@ table! {
         id -> Int4,
         poi1_id -> Int4,
         poi2_id -> Int4,
-        divergence_block_id -> Int4,
+        divergence_block_id -> Int8,
         created_at -> Timestamp,
     }
 }
@@ -80,7 +80,7 @@ table! {
         poi -> Bytea,
         sg_deployment_id -> Int4,
         indexer_id -> Int4,
-        block_id -> Int4,
+        block_id -> Int8,
         created_at -> Timestamp,
     }
 }

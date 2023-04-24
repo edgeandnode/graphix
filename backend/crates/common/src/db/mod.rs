@@ -13,7 +13,7 @@ mod diesel_queries;
 #[cfg(tests)]
 pub use diesel_queries;
 
-use self::models::WritablePoI;
+use self::models::{BigIntId, IndexerRef, IntId, WritablePoI};
 
 pub mod models;
 pub mod proofs_of_indexing;
@@ -22,7 +22,42 @@ mod schema;
 #[cfg(test)]
 mod tests;
 
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
+macro_rules! indexer_ref {
+    ( $indexer:expr ) => {{
+        match $indexer {
+            IndexerRef::Id(i) => indexers::table
+                .select(indexers::id)
+                .filter(indexers::id.eq(i))
+                .into_boxed(),
+            IndexerRef::Address(addr) => indexers::table
+                .select(indexers::id)
+                .filter(indexers::address.eq(addr))
+                .into_boxed(),
+        }
+        .single_value()
+        .assume_not_null()
+    }};
+}
+
+macro_rules! get_block_id {
+    ( $block_hash:expr, $network:expr ) => {{
+        blocks::table
+            .select(blocks::id)
+            .filter(
+                blocks::hash.eq($block_hash).and(
+                    blocks::network_id.eq(networks::table
+                        .select(networks::id)
+                        .filter(networks::name.eq($network))
+                        .single_value()
+                        .assume_not_null()),
+                ),
+            )
+            .single_value()
+            .assume_not_null()
+    }};
+}
+
+const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 /// An abstraction over all database operations. It uses [`Arc`](std::sync::Arc) internally, so
 /// it's cheaply cloneable.
@@ -93,6 +128,109 @@ impl Store {
     pub fn write_pois(&self, pois: &[impl WritablePoI], live: PoiLiveness) -> anyhow::Result<()> {
         self.conn()?
             .transaction::<_, Error, _>(|conn| diesel_queries::write_pois(conn, pois, live))
+    }
+
+    pub fn write_divergence_bisect_report(
+        &self,
+        poi1: &str,
+        poi2: &str,
+        divergence_block: BigIntId,
+    ) -> anyhow::Result<IntId> {
+        use schema::{blocks, poi_divergence_bisect_reports as reports};
+
+        let poi1_id = self.poi(poi1)?.unwrap().id;
+        let poi2_id = self.poi(poi2)?.unwrap().id;
+
+        // Normalize pairing order to avoid duplicates.
+        let (poi1_id, poi2_id) = if poi1_id < poi2_id {
+            (poi1_id, poi2_id)
+        } else {
+            (poi2_id, poi1_id)
+        };
+
+        let id = diesel::insert_into(reports::table)
+            .values((
+                reports::poi1_id.eq(poi1_id),
+                reports::poi2_id.eq(poi2_id),
+                reports::divergence_block_id.eq(blocks::table
+                    .select(blocks::id)
+                    .filter(blocks::id.eq(divergence_block))
+                    .single_value()
+                    .assume_not_null()),
+            ))
+            .returning(reports::id)
+            .get_result(&mut self.conn()?)?;
+
+        Ok(id)
+    }
+
+    pub fn write_block_cache_entry(
+        &self,
+        indexer: IndexerRef,
+        network: &str,
+        block_hash: &[u8],
+        block_data_json: serde_json::Value,
+    ) -> anyhow::Result<BigIntId> {
+        use schema::{block_cache_entries as entries, blocks, indexers, networks};
+
+        let id = diesel::insert_into(entries::table)
+            .values((
+                entries::indexer_id.eq(indexer_ref!(indexer)),
+                entries::block_id.eq(get_block_id!(block_hash, network)),
+                entries::block_data.eq(block_data_json),
+            ))
+            .returning(entries::id)
+            .get_result(&mut self.conn()?)?;
+
+        Ok(id)
+    }
+
+    pub fn write_eth_call_cache_entry(
+        &self,
+        indexer: IndexerRef,
+        network: &str,
+        block_hash: &[u8],
+        eth_call_data: serde_json::Value,
+        eth_call_result: serde_json::Value,
+    ) -> anyhow::Result<BigIntId> {
+        use schema::{blocks, eth_call_cache_entries as entries, indexers, networks};
+
+        let id = diesel::insert_into(entries::table)
+            .values((
+                entries::indexer_id.eq(indexer_ref!(indexer)),
+                entries::block_id.eq(get_block_id!(block_hash, network)),
+                entries::eth_call_data.eq(eth_call_data),
+                entries::eth_call_result.eq(eth_call_result),
+            ))
+            .returning(entries::id)
+            .get_result(&mut self.conn()?)?;
+
+        Ok(id)
+    }
+
+    pub fn write_entity_changes_in_block(
+        &self,
+        indexer: IndexerRef,
+        network: &str,
+        block_hash: &[u8],
+        entity_changes: serde_json::Value,
+    ) -> anyhow::Result<BigIntId> {
+        use schema::{blocks, entity_changes_in_block as changes, indexers, networks};
+
+        let id = diesel::insert_into(changes::table)
+            .values((
+                changes::indexer_id.eq(indexer_ref!(indexer)),
+                changes::block_id.eq(get_block_id!(block_hash, network)),
+                changes::entity_change_data.eq(entity_changes),
+            ))
+            .returning(changes::id)
+            .get_result(&mut self.conn()?)?;
+
+        Ok(id)
+    }
+
+    pub fn read_report_metadata(&self, _poi1: &str, _poi2: &str) -> anyhow::Result<()> {
+        todo!("read_report_metadata")
     }
 
     // pub fn poi_divergence_bisect_reports(

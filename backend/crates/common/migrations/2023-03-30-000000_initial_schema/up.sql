@@ -45,7 +45,7 @@ CREATE TABLE sg_names (
 CREATE INDEX ON sg_names (sg_deployment_id);
 
 CREATE TABLE blocks (
-  id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   network_id INTEGER NOT NULL REFERENCES networks(id) ON DELETE CASCADE,
   number BIGINT NOT NULL,
   hash BYTEA NOT NULL,
@@ -85,7 +85,7 @@ CREATE TABLE poi_divergence_bisect_reports (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   poi1_id INTEGER NOT NULL REFERENCES pois(id) ON DELETE RESTRICT,
   poi2_id INTEGER NOT NULL REFERENCES pois(id) ON DELETE RESTRICT,
-  divergence_block_id INTEGER NOT NULL REFERENCES blocks(id),
+  divergence_block_id INTEGER REFERENCES blocks(id),
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE (poi1_id, poi2_id),
   -- We always "normalize" the ordering between PoI 1 & 2.

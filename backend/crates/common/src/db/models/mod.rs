@@ -7,7 +7,9 @@ use diesel::{
 };
 use serde::{Deserialize, Serialize};
 use types::BlockPointer;
+
 pub type IntId = i32;
+pub type BigIntId = i64;
 
 #[derive(Queryable, Debug)]
 pub struct PoI {
@@ -25,6 +27,12 @@ impl PoI {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum IndexerRef<'a> {
+    Id(IntId),
+    Address(&'a [u8]),
+}
+
 #[derive(Insertable, Debug)]
 #[diesel(table_name = pois)]
 pub struct NewPoI {
@@ -32,7 +40,7 @@ pub struct NewPoI {
     pub created_at: NaiveDateTime,
     pub sg_deployment_id: IntId,
     pub indexer_id: IntId,
-    pub block_id: IntId,
+    pub block_id: BigIntId,
 }
 
 pub trait WritablePoI {
@@ -43,9 +51,25 @@ pub trait WritablePoI {
     fn proof_of_indexing(&self) -> &[u8];
 }
 
+#[derive(Insertable, Debug)]
+#[diesel(table_name = block_cache_entries)]
+pub struct NewBlockCacheEntry {
+    pub indexer_id: IntId,
+    pub block_id: BigIntId,
+    pub block_data: serde_json::Value,
+}
+
+#[derive(Insertable, Debug)]
+#[diesel(table_name = poi_divergence_bisect_reports)]
+pub struct NewCrossCheckReport {
+    pub poi1_id: IntId,
+    pub poi2_id: IntId,
+    pub divergence_block_id: BigIntId,
+}
+
 #[derive(Queryable, Debug)]
 pub struct Block {
-    pub(super) id: IntId,
+    pub(super) id: BigIntId,
     _network_id: IntId,
     pub number: i64,
     pub hash: Vec<u8>,
@@ -136,6 +160,6 @@ pub struct PoiDivergenceBisectReport {
     pub id: IntId,
     pub poi1_id: IntId,
     pub poi2_id: IntId,
-    pub divergence_block_id: IntId,
+    pub divergence_block_id: BigIntId,
     pub created_at: NaiveDateTime,
 }
