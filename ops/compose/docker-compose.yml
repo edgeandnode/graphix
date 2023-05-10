@@ -46,19 +46,23 @@ services:
 
   graphix-cross-checker:
     image: edgeandnode/graphix-cross-checker
+    restart: on-failure
     build:
       context: ../..
       dockerfile: ops/cross-checker.dockerfile
       args:
         CARGO_PROFILE: dev
     depends_on:
-      graphix-api-server:
+      postgres-graphix:
         condition: service_healthy
+    environment:
+      RUST_LOG: trace
     volumes:
       - ./graphix/:/config/
     command: ["--config", "/config/config.yml"]
   graphix-api-server:
     image: edgeandnode/graphix-api-server
+    restart: on-failure
     build:
       context: ../..
       dockerfile: ops/api-server.dockerfile
@@ -66,14 +70,11 @@ services:
         CARGO_PROFILE: dev
     ports:
       - "3030:3030"
+    environment:
+      RUST_LOG: trace
     depends_on:
       postgres-graphix:
         condition: service_healthy
-    healthcheck:
-      test: nc -z localhost 3030 || exit 1
-      interval: 1s
-      timeout: 1s
-      retries: 1000
     volumes:
       - ./graphix/:/config/
     command:

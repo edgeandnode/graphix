@@ -68,6 +68,7 @@ pub struct Store {
 
 impl Store {
     pub fn new(db_url: &str) -> anyhow::Result<Self> {
+        info!("Initializing database connection pool");
         let manager = r2d2::ConnectionManager::<PgConnection>::new(db_url);
         let pool = r2d2::Builder::new().build(manager)?;
         let store = Self { pool };
