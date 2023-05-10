@@ -96,6 +96,7 @@ services:
       ipfs: "ipfs:5001"
       GRAPH_NODE_CONFIG: /config/graph-node-1.toml
       GRAPH_LOG: info
+      MAINNET_RPC_URL: "${MAINNET_RPC_URL}"
     volumes:
       - ./graph-node/:/config/
   graph-node-2:
@@ -115,6 +116,7 @@ services:
       ipfs: "ipfs:5001"
       GRAPH_NODE_CONFIG: /config/graph-node-2.toml
       GRAPH_LOG: info
+      MAINNET_RPC_URL: "${MAINNET_RPC_URL}"
     volumes:
       - ./graph-node/:/config/
 
