@@ -52,7 +52,7 @@ services:
       args:
         CARGO_PROFILE: dev
     depends_on:
-      postgres-graphix:
+      graphix-api-server:
         condition: service_healthy
     volumes:
       - ./graphix/:/config/
@@ -69,6 +69,11 @@ services:
     depends_on:
       postgres-graphix:
         condition: service_healthy
+    healthcheck:
+      test: nc -z localhost 3030 || exit 1
+      interval: 1s
+      timeout: 1s
+      retries: 1000
     volumes:
       - ./graphix/:/config/
     command:
