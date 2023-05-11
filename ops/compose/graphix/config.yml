@@ -4,7 +4,7 @@ databaseUrl: postgres://graphix:password@postgres-graphix:5432/graphix
 environments:
   - id: graph-node-1
     urls:
-      status: http://graph-node-1:8020/graphql
+      status: http://graph-node-1:8030/graphql
   - id: graph-node-2
     urls:
-      status: http://graph-node-2:8025/graphql
+      status: http://graph-node-2:8030/graphql
