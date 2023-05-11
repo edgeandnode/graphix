@@ -7,11 +7,14 @@ pub struct QueryRoot;
 
 #[Object]
 impl QueryRoot {
-    async fn deployments(&self, ctx: &Context<'_>) -> Result<Vec<String>, async_graphql::Error> {
+    async fn deployments(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<Vec<Deployment>, async_graphql::Error> {
         let api_ctx = ctx.data::<APISchemaContext>()?;
         let deployments = api_ctx.store.sg_deployments()?;
 
-        Ok(deployments)
+        Ok(deployments.into_iter().map(Deployment::from).collect())
     }
 
     async fn proofs_of_indexing(
@@ -89,6 +92,17 @@ pub struct BlockRange {
 struct PartialBlock {
     number: i64,
     hash: Option<String>,
+}
+
+#[derive(SimpleObject)]
+struct Deployment {
+    id: String,
+}
+
+impl From<String> for Deployment {
+    fn from(s: String) -> Self {
+        Self { id: s }
+    }
 }
 
 #[derive(SimpleObject)]
