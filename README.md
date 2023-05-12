@@ -62,6 +62,51 @@ cd dist/
 # now serve the HTML and JS from this directory somehow
 ```
 
+## Local docker-compose setup
+
+### Setup environment
+Spin up the docker-compose environment
+```sh
+cd ops/compose
+docker compose build
+UID=(id -u) GID=(id -g) docker compose up
+```
+
+Deploy at least 1 subgraph to the test graph-nodes
+```sh 
+# Clone subgraph repo locally and navigate to root directory
+
+# Create and deploy subgraph on graph-node-1
+graph create subgraph-name-1 --node http://127.0.0.1:8020
+graph deploy subgraph-name-1 --ipfs http://127.0.0.1:5001 --node http://127.0.0.1:8020
+
+# Create and deploy subgraph on graph-node-2
+graph create subgraph-name-1 --node http://127.0.0.1:8025
+graph deploy subgraph-name-1 --ipfs http://127.0.0.1:5001 --node http://127.0.0.1:8025
+```
+
+### Access points
+Navigate to the following URLs in a browser to query the corresponding components GraphQL endpoint
+- **graphix api-server** - http://localhost:3030/graphql
+- **grafana** - http://localhost:3000/
+- **prometheus** 
+  - metrics - http://localhost:9090/metrics
+  - graph - http://localhost:9090/graph
+- **graph-node-1** 
+  - indexing statuses - http://localhost:8030/graphql/
+  - specific subgraph query API - http://localhost:8000/subgraphs/name/subgraph-name-1/graphql 
+  - metrics - http://localhost:8040
+- **graph-node-2** 
+  - indexing statuses - http://localhost:8035/graphql/
+  - specific subgraph query API - http://localhost:8005/subgraphs/name/subgraph-name-1/graphql
+  - metrics - http://localhost:8045
+  
+The PostgreSQL instances for each graph-node can be accesses using the `psql` CLI
+- **graph-node-1** - `psql -h 127.0.0.1 -p 5436 -d graph-node-1 -U graph-node-1` 
+  - (password = password)
+- **graph-node-2** - ```shpsql -h 127.0.0.1 -p 5437 -d graph-node-2 -U graph-node-2```
+  - (password = password)
+
 ## Implementation Status
 
 - [ ] Mode configuration files
