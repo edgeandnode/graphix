@@ -2,6 +2,8 @@
 
 use crate::db::{models, Store};
 use async_graphql::*;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 pub struct QueryRoot;
 
@@ -52,26 +54,29 @@ impl MutationRoot {
         &self,
         ctx: &Context<'_>,
         req: DivergenceInvestigationRequest,
-    ) -> Result<bool> {
+    ) -> Result<String> {
         let api_ctx = ctx.data::<APISchemaContext>()?;
         let store = &api_ctx.store;
 
-        let _poi1 = store.poi(&req.poi1)?;
-        let _poi2 = store.poi(&req.poi2)?;
+        let id = store.queue_cross_check_report(req)?;
 
-        // TODO
-
-        Ok(true)
+        Ok(id.to_string())
     }
 }
 
-#[derive(InputObject)]
-struct DivergenceInvestigationRequest {
-    poi1: String,
-    poi2: String,
-    query_block_caches: bool,
-    query_eth_call_caches: bool,
-    query_entity_changes: bool,
+#[derive(InputObject, Serialize, Deserialize, Debug, Clone)]
+pub struct DivergenceInvestigationRequest {
+    pub poi1: String,
+    pub poi2: String,
+    pub query_block_caches: bool,
+    pub query_eth_call_caches: bool,
+    pub query_entity_changes: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DivergenceInvestigationRequestWithUuid {
+    pub uuid: Uuid,
+    pub req: DivergenceInvestigationRequest,
 }
 
 #[derive(InputObject)]
