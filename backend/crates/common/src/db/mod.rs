@@ -1,3 +1,4 @@
+use crate::api_types::{DivergenceInvestigationRequest, DivergenceInvestigationRequestWithUuid};
 use crate::{api_types::BlockRange, db::models::PoI};
 use anyhow::Error;
 use diesel::prelude::*;
@@ -12,6 +13,7 @@ use tracing::info;
 mod diesel_queries;
 #[cfg(tests)]
 pub use diesel_queries;
+use uuid::Uuid;
 
 use self::models::{BigIntId, IndexerRef, IntId, WritablePoI};
 
@@ -129,6 +131,20 @@ impl Store {
     pub fn write_pois(&self, pois: &[impl WritablePoI], live: PoiLiveness) -> anyhow::Result<()> {
         self.conn()?
             .transaction::<_, Error, _>(|conn| diesel_queries::write_pois(conn, pois, live))
+    }
+
+    pub fn queue_cross_check_report(
+        &self,
+        req: DivergenceInvestigationRequest,
+    ) -> anyhow::Result<Uuid> {
+        let uuid = Uuid::new_v4();
+        let with_uuid = DivergenceInvestigationRequestWithUuid { uuid, req };
+
+        diesel::dsl::sql_query("SELECT pg_notify('cross_check_reports', $1);")
+            .bind::<diesel::sql_types::Text, _>(serde_json::to_string(&with_uuid)?)
+            .execute(&mut self.conn()?)?;
+
+        Ok(uuid)
     }
 
     pub fn write_divergence_bisect_report(
