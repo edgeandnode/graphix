@@ -143,13 +143,18 @@ impl Indexer for RealIndexer {
     async fn indexing_statuses(self) -> Result<Vec<IndexingStatus<Self>>, anyhow::Error> {
         let client = reqwest::Client::new();
         let request = IndexingStatuses::build_query(indexing_statuses::Variables);
-        let response: Response<indexing_statuses::ResponseData> = client
+        let response_raw = client
             .post(self.urls().status.clone())
             .json(&request)
             .send()
-            .await?
-            .json()
             .await?;
+
+        debug!(
+            url = %self.urls().status.to_string(),
+            response = ?response_raw,
+            "Indexer returned a response"
+        );
+        let response: Response<indexing_statuses::ResponseData> = response_raw.json().await?;
 
         // Log any errors received for debugging
         if let Some(errors) = response.errors {
