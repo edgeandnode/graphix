@@ -1,6 +1,6 @@
-use diesel::{allow_tables_to_appear_in_same_query, joinable, table};
+// @generated automatically by Diesel CLI.
 
-table! {
+diesel::table! {
     block_cache_entries (id) {
         id -> Int8,
         indexer_id -> Int4,
@@ -10,7 +10,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     blocks (id) {
         id -> Int8,
         network_id -> Int4,
@@ -19,7 +19,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     entity_changes_in_block (id) {
         id -> Int8,
         indexer_id -> Int4,
@@ -29,7 +29,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     eth_call_cache_entries (id) {
         id -> Int8,
         indexer_id -> Int4,
@@ -40,7 +40,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     indexers (id) {
         id -> Int4,
         name -> Nullable<Text>,
@@ -49,32 +49,33 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     live_pois (id) {
         id -> Int4,
         poi_id -> Int4,
     }
 }
 
-table! {
+diesel::table! {
     networks (id) {
         id -> Int4,
         name -> Text,
         created_at -> Timestamp,
+        caip2 -> Nullable<Text>,
     }
 }
 
-table! {
+diesel::table! {
     poi_divergence_bisect_reports (id) {
         id -> Int4,
         poi1_id -> Int4,
         poi2_id -> Int4,
-        divergence_block_id -> Int8,
+        divergence_block_id -> Nullable<Int8>,
         created_at -> Timestamp,
     }
 }
 
-table! {
+diesel::table! {
     pois (id) {
         id -> Int4,
         poi -> Bytea,
@@ -85,16 +86,16 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     sg_deployments (id) {
         id -> Int4,
-        cid -> Text,
+        ipfs_cid -> Text,
         network -> Int4,
         created_at -> Timestamp,
     }
 }
 
-table! {
+diesel::table! {
     sg_names (id) {
         id -> Int4,
         sg_deployment_id -> Int4,
@@ -103,22 +104,22 @@ table! {
     }
 }
 
-// joinable!(block_cache_entries -> blocks (block_id));
-// joinable!(entity_changes_in_block -> blocks (block_id));
-// joinable!(eth_call_cache_entries -> blocks (block_id));
-joinable!(block_cache_entries -> indexers (indexer_id));
-joinable!(blocks -> networks (network_id));
-joinable!(entity_changes_in_block -> indexers (indexer_id));
-joinable!(eth_call_cache_entries -> indexers (indexer_id));
-joinable!(live_pois -> pois (poi_id));
-joinable!(poi_divergence_bisect_reports -> blocks (divergence_block_id));
-joinable!(pois -> blocks (block_id));
-joinable!(pois -> indexers (indexer_id));
-joinable!(pois -> sg_deployments (sg_deployment_id));
-joinable!(sg_deployments -> networks (network));
-joinable!(sg_names -> sg_deployments (sg_deployment_id));
+diesel::joinable!(block_cache_entries -> blocks (block_id));
+diesel::joinable!(block_cache_entries -> indexers (indexer_id));
+diesel::joinable!(blocks -> networks (network_id));
+diesel::joinable!(entity_changes_in_block -> blocks (block_id));
+diesel::joinable!(entity_changes_in_block -> indexers (indexer_id));
+diesel::joinable!(eth_call_cache_entries -> blocks (block_id));
+diesel::joinable!(eth_call_cache_entries -> indexers (indexer_id));
+diesel::joinable!(live_pois -> pois (poi_id));
+diesel::joinable!(poi_divergence_bisect_reports -> blocks (divergence_block_id));
+diesel::joinable!(pois -> blocks (block_id));
+diesel::joinable!(pois -> indexers (indexer_id));
+diesel::joinable!(pois -> sg_deployments (sg_deployment_id));
+diesel::joinable!(sg_deployments -> networks (network));
+diesel::joinable!(sg_names -> sg_deployments (sg_deployment_id));
 
-allow_tables_to_appear_in_same_query!(
+diesel::allow_tables_to_appear_in_same_query!(
     block_cache_entries,
     blocks,
     entity_changes_in_block,

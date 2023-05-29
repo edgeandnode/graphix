@@ -109,7 +109,7 @@ pub struct SgDeployment {
 #[derive(Debug, Insertable)]
 #[diesel(table_name = sg_deployments)]
 pub struct NewSgDeployment {
-    pub cid: String,
+    pub ipfs_cid: String,
     pub network: IntId,
     pub created_at: NaiveDateTime,
 }

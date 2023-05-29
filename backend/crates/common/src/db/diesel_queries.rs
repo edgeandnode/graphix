@@ -4,7 +4,7 @@ use tracing::info;
 
 use super::models::WritablePoI;
 use super::PoiLiveness;
-use crate::api_types::BlockRange;
+use crate::api_types::BlockRangeInput;
 use crate::db::models::{
     self, IndexerRow, NewIndexer, NewLivePoi, NewPoI, NewSgDeployment, SgDeployment,
 };
@@ -39,7 +39,7 @@ pub(super) fn poi(conn: &mut PgConnection, poi: &str) -> anyhow::Result<Option<m
 pub(super) fn pois(
     conn: &mut PgConnection,
     sg_deployments: &[String],
-    block_range: Option<BlockRange>,
+    block_range: Option<BlockRangeInput>,
     limit: Option<u16>,
 ) -> anyhow::Result<Vec<models::PoI>> {
     use schema::blocks;
@@ -61,11 +61,19 @@ pub(super) fn pois(
         ))
         .order_by(blocks::number.desc())
         .order_by(schema::pois::created_at.desc())
-        .filter(sg_deployments::cid.eq_any(sg_deployments))
-        .filter(blocks::number.between(
-            block_range.as_ref().map_or(0, |range| range.start as i64),
-            block_range.map_or(i64::max_value(), |range| range.end as i64),
-        ))
+        .filter(sg_deployments::ipfs_cid.eq_any(sg_deployments))
+        .filter(
+            blocks::number.between(
+                block_range
+                    .as_ref()
+                    .and_then(|b| b.start)
+                    .map_or(0, |start| start as i64),
+                block_range
+                    .as_ref()
+                    .and_then(|b| b.end)
+                    .map_or(i64::max_value(), |end| end as i64),
+            ),
+        )
         .limit(limit.unwrap_or(1000) as i64);
 
     Ok(query.load::<models::PoI>(conn)?)
@@ -89,7 +97,7 @@ pub(super) fn write_pois(
         let sg_deployment_id = {
             // First, attempt to find the existing sg_deployment by the deployment field
             let existing_sg_deployment: Option<SgDeployment> = sg_deployments::table
-                .filter(sg_deployments::cid.eq(poi.deployment_cid()))
+                .filter(sg_deployments::ipfs_cid.eq(poi.deployment_cid()))
                 .get_result(conn)
                 .optional()?;
 
@@ -99,7 +107,7 @@ pub(super) fn write_pois(
             } else {
                 // If the sg_deployment doesn't exist, insert a new one and return its id
                 let new_sg_deployment = NewSgDeployment {
-                    cid: poi.deployment_cid().to_string(),
+                    ipfs_cid: poi.deployment_cid().to_string(),
                     network: 1, // Network assumed to be mainnet, see also: hardcoded-mainnet
                     created_at: Utc::now().naive_utc(),
                 };

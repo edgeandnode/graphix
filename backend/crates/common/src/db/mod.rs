@@ -1,5 +1,5 @@
 use crate::api_types::{DivergenceInvestigationRequest, DivergenceInvestigationRequestWithUuid};
-use crate::{api_types::BlockRange, db::models::PoI};
+use crate::{api_types::BlockRangeInput, db::models::PoI};
 use anyhow::Error;
 use diesel::prelude::*;
 use diesel::{
@@ -101,7 +101,7 @@ impl Store {
         use schema::sg_deployments as sgd;
 
         let mut deployments: Vec<String> = sgd::table
-            .select(sgd::cid)
+            .select(sgd::ipfs_cid)
             .load::<String>(&mut self.conn()?)?
             .into_iter()
             .map(|x| hex::ToHex::encode_hex(&x))
@@ -121,7 +121,7 @@ impl Store {
     pub fn pois(
         &self,
         sg_deployments: &[String],
-        block_range: Option<BlockRange>,
+        block_range: Option<BlockRangeInput>,
         limit: Option<u16>,
     ) -> anyhow::Result<Vec<PoI>> {
         let mut conn = self.conn()?;
@@ -172,8 +172,7 @@ impl Store {
                 reports::divergence_block_id.eq(blocks::table
                     .select(blocks::id)
                     .filter(blocks::id.eq(divergence_block))
-                    .single_value()
-                    .assume_not_null()),
+                    .single_value()),
             ))
             .returning(reports::id)
             .get_result(&mut self.conn()?)?;
