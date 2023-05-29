@@ -34,7 +34,8 @@ FROM debian:bullseye-slim
 WORKDIR /app
 
 RUN apt-get update && \
-	apt-get install -y libpq-dev
+	apt-get install -y libpq-dev ca-certificates && \
+	apt-get clean
 
 COPY --from=builder /usr/local/bin/graphix-cross-checker /usr/local/bin
 COPY --from=builder /app/examples/testing.yml /app/config.yml
