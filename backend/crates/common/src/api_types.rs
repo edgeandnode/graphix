@@ -5,6 +5,8 @@ use async_graphql::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+type HexBytesWith0xPrefix = String;
+
 pub struct QueryRoot;
 
 #[Object]
@@ -16,7 +18,13 @@ impl QueryRoot {
         let api_ctx = ctx.data::<APISchemaContext>()?;
         let deployments = api_ctx.store.sg_deployments()?;
 
-        Ok(deployments.into_iter().map(Deployment::from).collect())
+        Ok(deployments
+            .into_iter()
+            .map(|id| Deployment {
+                id,
+                pois_count: None,
+            })
+            .collect())
     }
 
     async fn proofs_of_indexing(
@@ -82,14 +90,27 @@ pub struct DivergenceInvestigationRequestWithUuid {
 #[derive(InputObject)]
 struct ProofOfIndexingRequest {
     deployments: Vec<String>,
-    block_range: Option<BlockRange>,
+    block_range: Option<BlockRangeInput>,
     limit: Option<u16>,
 }
 
 #[derive(InputObject)]
-pub struct BlockRange {
-    pub start: u64,
-    pub end: u64,
+pub struct BlockRangeInput {
+    pub start: Option<u64>,
+    pub end: Option<u64>,
+}
+
+#[derive(SimpleObject)]
+pub struct Network {
+    pub name: String,
+    pub caip2: Option<String>,
+}
+
+#[derive(SimpleObject)]
+pub struct Block {
+    pub network: Network,
+    pub number: u64,
+    pub hash: HexBytesWith0xPrefix,
 }
 
 /// A block number that may or may not also have an associated hash.
@@ -102,34 +123,42 @@ struct PartialBlock {
 #[derive(SimpleObject)]
 struct Deployment {
     id: String,
-}
-
-impl From<String> for Deployment {
-    fn from(s: String) -> Self {
-        Self { id: s }
-    }
+    pois_count: Option<u64>,
 }
 
 #[derive(SimpleObject)]
 struct ProofOfIndexing {
-    timestamp: String,
-    deployment: String,
-    indexer: String,
-    proof_of_indexing: String,
-    block: PartialBlock,
+    block: Block,
+    hash: String,
+    deployment: Deployment,
+    allocated_tokens: Option<u64>,
+    indexers: Vec<Indexer>,
+}
+
+#[derive(SimpleObject)]
+struct Indexer {
+    id: HexBytesWith0xPrefix,
+    allocated_tokens: Option<u64>,
 }
 
 impl From<models::PoI> for ProofOfIndexing {
     fn from(poi: models::PoI) -> Self {
         Self {
-            proof_of_indexing: poi.poi_hex(),
-            timestamp: poi.created_at.to_string(),
-            deployment: poi.sg_deployment.cid,
-            indexer: poi.indexer.address.map(hex::encode).unwrap_or_default(),
-            block: PartialBlock {
-                number: poi.block.number,
-                hash: Some(hex::encode(poi.block.hash)),
+            allocated_tokens: None,
+            deployment: Deployment {
+                id: poi.sg_deployment.cid.clone(),
+                pois_count: None,
             },
+            hash: poi.poi_hex(),
+            block: Block {
+                network: Network {
+                    name: "mainnet".to_string(),
+                    caip2: None,
+                },
+                number: poi.block.number as u64,
+                hash: hex::encode(poi.block.hash),
+            },
+            indexers: vec![],
         }
     }
 }

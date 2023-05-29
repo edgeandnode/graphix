@@ -28,12 +28,12 @@ INSERT INTO networks (name) VALUES ('mainnet');
 
 CREATE TABLE sg_deployments (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  cid TEXT NOT NULL UNIQUE,
+  ipfs_cid TEXT NOT NULL UNIQUE,
   network INTEGER NOT NULL REFERENCES networks(id) ON DELETE CASCADE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX ON sg_deployments (cid);
+CREATE INDEX ON sg_deployments (ipfs_cid);
 
 CREATE TABLE sg_names (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -64,7 +64,7 @@ CREATE TABLE pois (
   poi BYTEA UNIQUE NOT NULL,
   sg_deployment_id INTEGER NOT NULL REFERENCES sg_deployments(id) ON DELETE CASCADE,
   indexer_id INTEGER NOT NULL REFERENCES indexers(id),
-  block_id INTEGER NOT NULL REFERENCES blocks(id),
+  block_id BIGINT NOT NULL REFERENCES blocks(id),
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
@@ -85,7 +85,7 @@ CREATE TABLE poi_divergence_bisect_reports (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   poi1_id INTEGER NOT NULL REFERENCES pois(id) ON DELETE RESTRICT,
   poi2_id INTEGER NOT NULL REFERENCES pois(id) ON DELETE RESTRICT,
-  divergence_block_id INTEGER REFERENCES blocks(id),
+  divergence_block_id BIGINT REFERENCES blocks(id),
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE (poi1_id, poi2_id),
   -- We always "normalize" the ordering between PoI 1 & 2.
