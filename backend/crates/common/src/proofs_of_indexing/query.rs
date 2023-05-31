@@ -97,18 +97,17 @@ fn skip_errors<I>(
 where
     I: Indexer,
 {
-    let url = result.1.urls().status.to_string();
     match result.0 {
         Ok(pois) => {
             info!(
-                id = %result.1.id(), %url, pois = %pois.len(),
+                id = %result.1.id(), pois = %pois.len(),
                 "Successfully queried POIs from indexer"
             );
             Some(pois)
         }
         Err(error) => {
             warn!(
-                id = %result.1.id(), %url, %error,
+                id = %result.1.id(), %error,
                 "Failed to query POIs from indexer"
             );
             None

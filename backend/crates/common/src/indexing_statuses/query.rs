@@ -45,7 +45,6 @@ where
             Ok(statuses) => {
                 debug!(
                     indexer_id = %indexer.id(),
-                    indexer_url = %indexer.urls().status,
                     statuses = %statuses.len(),
                     "Successfully queried indexing statuses"
                 );
@@ -55,7 +54,6 @@ where
             Err(error) => {
                 warn!(
                     indexer_id = %indexer.id(),
-                    indexer_url = %indexer.urls().status,
                     %error,
                     "Failed to query indexing statuses"
                 );

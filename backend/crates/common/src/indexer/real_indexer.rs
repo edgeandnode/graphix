@@ -124,6 +124,10 @@ impl RealIndexer {
             urls: env.urls.clone(),
         }))
     }
+
+    fn urls(&self) -> &IndexerUrls {
+        &self.0.urls
+    }
 }
 
 #[async_trait]
@@ -136,10 +140,6 @@ impl Indexer for RealIndexer {
         None
     }
 
-    fn urls(&self) -> &IndexerUrls {
-        &self.0.urls
-    }
-
     async fn indexing_statuses(self) -> Result<Vec<IndexingStatus<Self>>, anyhow::Error> {
         let client = reqwest::Client::new();
         let request = IndexingStatuses::build_query(indexing_statuses::Variables);
@@ -150,7 +150,7 @@ impl Indexer for RealIndexer {
             .await?;
 
         debug!(
-            url = %self.urls().status.to_string(),
+            id = %self.id(),
             response = ?response_raw,
             "Indexer returned a response"
         );
@@ -164,7 +164,7 @@ impl Indexer for RealIndexer {
                 .collect::<Vec<_>>()
                 .join(",");
             warn!(
-                url = %self.urls().status.to_string(),
+                id = %self.id(),
                 %errors,
                 "Indexer returned indexing status errors"
             );
@@ -180,7 +180,7 @@ impl Indexer for RealIndexer {
                     Ok(status) => statuses.push(status),
                     Err(e) => {
                         warn!(
-                            url = %self.urls().status.to_string(),
+                            id = %self.id(),
                             %e,
                             %deployment,
                             "Failed to parse indexing status, skipping deployment"
@@ -235,7 +235,6 @@ impl Indexer for RealIndexer {
                     .join(",");
                 warn!(
                     id = %self.id(),
-                    url = %self.urls().status.to_string(),
                     %errors,
                     "indexer returned POI errors"
                 );
@@ -250,16 +249,16 @@ impl Indexer for RealIndexer {
 
                 // Parse POI results
                 pois.extend(
-                        data.public_proofs_of_indexing
+                    data.public_proofs_of_indexing
                         .into_iter()
                         .map(|result| (self.clone(), result).try_into())
                         .filter_map(|result| match result {
                             Ok(v) => Some(v),
                             Err(error) => {
-                                warn!(id = %self.id(), url = %self.urls().status.to_string(), %error);
+                                warn!(id = %self.id(), %error);
                                 None
                             }
-                        })
+                        }),
                 );
             } else {
                 warn!("no data present, skipping");

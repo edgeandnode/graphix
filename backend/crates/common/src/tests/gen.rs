@@ -1,6 +1,6 @@
 use std::{iter::repeat_with, sync::Arc};
 
-use crate::prelude::{BlockPointer, Bytes32, IndexerUrls, SubgraphDeployment};
+use crate::prelude::{BlockPointer, Bytes32, SubgraphDeployment};
 use rand::{distributions::Alphanumeric, seq::IteratorRandom, Rng};
 
 use super::mocks::{DeploymentDetails, MockIndexer, PartialProofOfIndexing};
@@ -92,9 +92,6 @@ where
 
         Arc::new(MockIndexer {
             id,
-            urls: IndexerUrls {
-                status: "http://some-url.com/".parse().unwrap(),
-            },
             deployment_details,
             fail_indexing_statuses: rng.gen_bool(0.1),
             fail_proofs_of_indexing: rng.gen_bool(0.1),

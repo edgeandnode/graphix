@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     prelude::{
-        BlockPointer, Bytes32, Indexer, IndexerUrls, IndexingStatus, POIRequest, ProofOfIndexing,
+        BlockPointer, Bytes32, Indexer, IndexingStatus, POIRequest, ProofOfIndexing,
         SubgraphDeployment,
     },
     PrometheusMetrics,
@@ -21,7 +21,6 @@ pub struct DeploymentDetails {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MockIndexer {
     pub id: String,
-    pub urls: IndexerUrls,
     pub deployment_details: Vec<DeploymentDetails>,
     pub fail_indexing_statuses: bool,
     pub fail_proofs_of_indexing: bool,
@@ -35,10 +34,6 @@ impl Indexer for Arc<MockIndexer> {
 
     fn address(&self) -> Option<&[u8]> {
         None
-    }
-
-    fn urls(&self) -> &IndexerUrls {
-        &self.urls
     }
 
     async fn indexing_statuses(self) -> Result<Vec<IndexingStatus<Self>>, anyhow::Error> {

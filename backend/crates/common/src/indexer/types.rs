@@ -4,7 +4,6 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 
 use crate::{
-    config::IndexerUrls,
     types::{IndexingStatus, POIRequest, ProofOfIndexing},
     PrometheusMetrics,
 };
@@ -13,7 +12,6 @@ use crate::{
 pub trait Indexer: Clone + Sized + Eq + Send + Sync + Hash + Ord + Send + Sync {
     fn id(&self) -> &str;
     fn address(&self) -> Option<&[u8]>;
-    fn urls(&self) -> &IndexerUrls;
 
     async fn indexing_statuses(self) -> Result<Vec<IndexingStatus<Self>>, anyhow::Error>;
 
