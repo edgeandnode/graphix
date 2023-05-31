@@ -84,6 +84,25 @@ pub struct NewBlock {
 }
 
 #[derive(Debug, Queryable)]
+pub struct Indexer {
+    pub id: IntId,
+    pub name: Option<String>,
+    pub address: Option<Vec<u8>>,
+    pub created_at: NaiveDateTime,
+}
+
+impl From<IndexerRow> for Indexer {
+    fn from(row: IndexerRow) -> Self {
+        Self {
+            id: row.id,
+            name: row.name,
+            address: row.address,
+            created_at: row.created_at,
+        }
+    }
+}
+
+#[derive(Debug, Queryable)]
 pub struct IndexerRow {
     pub id: IntId,
     pub name: Option<String>,

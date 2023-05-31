@@ -35,6 +35,12 @@ pub(super) fn poi(conn: &mut PgConnection, poi: &str) -> anyhow::Result<Option<m
     Ok(query.get_result::<models::PoI>(conn).optional()?)
 }
 
+pub(super) fn indexers(conn: &mut PgConnection) -> anyhow::Result<Vec<IndexerRow>> {
+    use schema::indexers;
+
+    Ok(indexers::table.load::<IndexerRow>(conn)?)
+}
+
 // This is a single SQL statement, a transaction is not necessary.
 pub(super) fn pois(
     conn: &mut PgConnection,

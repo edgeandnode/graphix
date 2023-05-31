@@ -27,6 +27,13 @@ impl QueryRoot {
             .collect())
     }
 
+    async fn indexers(&self, ctx: &Context<'_>) -> Result<Vec<Indexer>, async_graphql::Error> {
+        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let indexers = api_ctx.store.indexers()?;
+
+        Ok(indexers.into_iter().map(Indexer::from).collect())
+    }
+
     async fn proofs_of_indexing(
         &self,
         ctx: &Context<'_>,
@@ -139,6 +146,15 @@ struct ProofOfIndexing {
 struct Indexer {
     id: HexBytesWith0xPrefix,
     allocated_tokens: Option<u64>,
+}
+
+impl From<models::Indexer> for Indexer {
+    fn from(indexer: models::Indexer) -> Self {
+        Self {
+            id: indexer.id.to_string(),
+            allocated_tokens: None, // TODO: we don't store this in the db yet
+        }
+    }
 }
 
 impl From<models::PoI> for ProofOfIndexing {
