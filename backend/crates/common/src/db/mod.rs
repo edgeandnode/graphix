@@ -79,11 +79,16 @@ impl Store {
     }
 
     fn run_migrations(&self) -> anyhow::Result<()> {
+        let mut conn = self.pool.get()?;
+
+        // Get a lock for running migrations. Blocks until we get the lock.
+        diesel::sql_query("select pg_advisory_lock(1)").execute(&mut conn)?;
         info!("Run database migrations");
-        let mut connection = self.pool.get()?;
-        connection
-            .run_pending_migrations(MIGRATIONS)
+        conn.run_pending_migrations(MIGRATIONS)
             .map_err(|e| anyhow::anyhow!(e))?;
+
+        // Release the migration lock.
+        diesel::sql_query("select pg_advisory_unlock(1)").execute(&mut conn)?;
         Ok(())
     }
 
@@ -100,15 +105,10 @@ impl Store {
     pub fn sg_deployments(&self) -> anyhow::Result<Vec<String>> {
         use schema::sg_deployments as sgd;
 
-        let mut deployments: Vec<String> = sgd::table
+        Ok(sgd::table
             .select(sgd::ipfs_cid)
-            .load::<String>(&mut self.conn()?)?
-            .into_iter()
-            .map(|x| hex::ToHex::encode_hex(&x))
-            .collect();
-
-        deployments.sort();
-        Ok(deployments)
+            .order_by(sgd::ipfs_cid.asc())
+            .load::<String>(&mut self.conn()?)?)
     }
 
     pub fn poi(&self, poi: &str) -> anyhow::Result<Option<PoI>> {

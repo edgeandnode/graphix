@@ -139,7 +139,6 @@ impl Indexer for RealIndexer {
         &self.0.urls
     }
 
-    #[instrument]
     async fn indexing_statuses(self) -> Result<Vec<IndexingStatus<Self>>, anyhow::Error> {
         let client = reqwest::Client::new();
         let request = IndexingStatuses::build_query(indexing_statuses::Variables);
@@ -196,12 +195,12 @@ impl Indexer for RealIndexer {
         self,
         requests: Vec<POIRequest>,
     ) -> Result<Vec<ProofOfIndexing<Self>>, anyhow::Error> {
+        let client = reqwest::Client::new();
         let mut pois = vec![];
 
         // Graph Node implements a limit of 10 POI requests per request, so
         // split our requests up accordingly.
         for requests in requests.chunks(10) {
-            let client = reqwest::Client::new();
             let request = ProofsOfIndexing::build_query(proofs_of_indexing::Variables {
                 requests: requests
                     .into_iter()
