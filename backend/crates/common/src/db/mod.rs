@@ -116,6 +116,14 @@ impl Store {
         diesel_queries::poi(&mut conn, poi)
     }
 
+    pub fn indexers(&self) -> anyhow::Result<Vec<models::Indexer>> {
+        let mut conn = self.conn()?;
+        Ok(diesel_queries::indexers(&mut conn)?
+            .into_iter()
+            .map(Into::into)
+            .collect())
+    }
+
     /// Queries the database for proofs of indexing that refer to the specified
     /// subgraph deployments and in the given [`BlockRange`], if given.
     pub fn pois(

@@ -5,7 +5,8 @@ mod tests;
 
 use clap::Parser;
 use graphix_common::{db, modes, prelude::Config};
-use graphix_common::{indexing_statuses, proofs_of_indexing};
+use graphix_common::{indexing_statuses, proofs_of_indexing, PrometheusMetrics};
+use prometheus_exporter::prometheus;
 use std::path::PathBuf;
 use std::time::Duration;
 use tracing::*;
@@ -30,16 +31,23 @@ async fn main() -> anyhow::Result<()> {
     let indexers = modes::testing_indexers(config.clone());
 
     let sleep_duration = Duration::from_secs(config.polling_period_in_seconds);
+    let metrics = PrometheusMetrics::new(prometheus::default_registry().clone());
 
     loop {
-        info!("Monitor indexing statuses");
-        let indexing_statuses = indexing_statuses::query_indexing_statuses(indexers.clone()).await;
+        info!("New main loop iteration");
+
+        let indexing_statuses =
+            indexing_statuses::query_indexing_statuses(&metrics, indexers.clone()).await;
 
         info!("Monitor proofs of indexing");
         let pois = proofs_of_indexing::query_proofs_of_indexing(indexing_statuses).await;
 
         store.write_pois(&pois, db::PoiLiveness::Live)?;
 
+        info!(
+            sleep_seconds = sleep_duration.as_secs(),
+            "Sleeping for a while before next main loop iteration"
+        );
         tokio::time::sleep(sleep_duration).await;
     }
 }
