@@ -1,49 +1,65 @@
 use crate::prelude::{Indexer, IndexingStatus};
-use futures::stream::FuturesOrdered;
+use crate::PrometheusMetrics;
+use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use tracing::*;
 
-pub async fn query_indexing_statuses<I>(indexers: Vec<I>) -> Vec<IndexingStatus<I>>
+/// Queries all `indexingStatuses` for all `indexers`.
+#[instrument(skip(_metrics, indexers))]
+pub async fn query_indexing_statuses<I>(
+    _metrics: &PrometheusMetrics, // TODO: use metrics
+    indexers: Vec<I>,
+) -> Vec<IndexingStatus<I>>
 where
     I: Indexer,
 {
-    info!("Query indexing statuses");
+    info!(indexers = indexers.len(), "Querying indexing statuses...");
 
-    indexers
-        .iter()
-        .map(|indexer| indexer.clone().indexing_statuses())
-        .collect::<FuturesOrdered<_>>()
-        .collect::<Vec<_>>()
-        .await
-        .into_iter()
-        .zip(indexers)
-        .filter_map(skip_errors)
-        .flatten()
-        .collect()
-}
+    let mut futures = FuturesUnordered::new();
+    for indexer in indexers.clone() {
+        futures.push(async move { (indexer.clone(), indexer.indexing_statuses().await) });
+    }
 
-fn skip_errors<I>(
-    result: (Result<Vec<IndexingStatus<I>>, anyhow::Error>, I),
-) -> Option<Vec<IndexingStatus<I>>>
-where
-    I: Indexer,
-{
-    let url = result.1.urls().status.to_string();
-    match result.0 {
-        Ok(indexing_statuses) => {
-            info!(
-                id = %result.1.id(), %url, statuses = %indexing_statuses.len(),
-                "Successfully queried indexing statuses"
-            );
+    let mut indexing_statuses = vec![];
+    let mut query_successes = 0;
+    let mut query_failures = 0;
 
-            Some(indexing_statuses)
+    while let Some((indexer, query_res)) = futures.next().await {
+        if query_res.is_ok() {
+            query_successes += 1;
+        } else {
+            query_failures += 1;
         }
-        Err(error) => {
-            warn!(
-                id = %result.1.id(), %url, %error,
-                "Failed to query indexing statuses"
-            );
-            None
+
+        match query_res {
+            Ok(statuses) => {
+                debug!(
+                    indexer_id = %indexer.id(),
+                    indexer_url = %indexer.urls().status,
+                    statuses = %statuses.len(),
+                    "Successfully queried indexing statuses"
+                );
+                indexing_statuses.extend(statuses);
+            }
+
+            Err(error) => {
+                warn!(
+                    indexer_id = %indexer.id(),
+                    indexer_url = %indexer.urls().status,
+                    %error,
+                    "Failed to query indexing statuses"
+                );
+            }
         }
     }
+
+    info!(
+        indexers = indexers.len(),
+        indexing_statuses = indexing_statuses.len(),
+        %query_successes,
+        %query_failures,
+        "Finished querying indexing statuses for all indexers"
+    );
+
+    indexing_statuses
 }

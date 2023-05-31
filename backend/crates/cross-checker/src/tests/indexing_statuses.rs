@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use futures::{future, stream::FuturesUnordered, StreamExt};
-use graphix_common::prelude::Indexer;
+use graphix_common::{prelude::Indexer, PrometheusMetrics};
 
 use crate::indexing_statuses;
 
@@ -30,7 +30,9 @@ async fn indexing_statuses() {
             .flatten()
             .collect::<BTreeSet<_>>();
 
-        let queried_statuses = indexing_statuses::query_indexing_statuses(indexers)
+        let metrics =
+            PrometheusMetrics::new(prometheus_exporter::prometheus::default_registry().clone());
+        let queried_statuses = indexing_statuses::query_indexing_statuses(&metrics, indexers)
             .await
             .into_iter()
             .collect();
