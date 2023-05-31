@@ -234,11 +234,9 @@ impl Indexer for RealIndexer {
                 );
             }
 
-            // Parse POI results
-            pois.extend(
-                response
-                    .data
-                    .map(|data| {
+            if let Some(data) = response.data {
+                // Parse POI results
+                pois.extend(
                         data.public_proofs_of_indexing
                         .into_iter()
                         .map(|result| (self.clone(), result).try_into())
@@ -249,10 +247,10 @@ impl Indexer for RealIndexer {
                                 None
                             }
                         })
-                        // .collect::<Vec<_>>()
-                    })
-                    .ok_or_else(|| anyhow!("no proofs of indexing returned"))?,
-            );
+                );
+            } else {
+                warn!("no data present, skipping");
+            }
         }
 
         Ok(pois)
