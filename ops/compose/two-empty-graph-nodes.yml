@@ -57,6 +57,8 @@ services:
         condition: service_healthy
     environment:
       RUST_LOG: graphix=debug
+    ports:
+      - "9184:9184"
     volumes:
       - ./graphix/:/config/
     command: ["--config", "/config/two-empty-graph-nodes.yml"]
