@@ -1,0 +1,8 @@
+!testing
+
+databaseUrl: postgres://graphix:password@postgres-graphix:5432/graphix
+environments:
+  - id: testnet-indexer-03
+    urls:
+      status: http://testnet-indexer-03-europe-cent.thegraph.com/status
+
