@@ -22,7 +22,8 @@ async fn poi_db_roundtrip() {
 
     let indexing_statuses =
         crate::indexing_statuses::query_indexing_statuses(&metrics, indexers).await;
-    let pois = crate::proofs_of_indexing::query_proofs_of_indexing(indexing_statuses).await;
+    let pois =
+        crate::proofs_of_indexing::query_proofs_of_indexing(&metrics, indexing_statuses).await;
 
     let store = Store::new(&test_db_url()).unwrap();
     let mut conn = store.test_conn();

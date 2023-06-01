@@ -5,9 +5,9 @@ use futures::StreamExt;
 use tracing::*;
 
 /// Queries all `indexingStatuses` for all `indexers`.
-#[instrument(skip(_metrics, indexers))]
+#[instrument(skip(metrics, indexers))]
 pub async fn query_indexing_statuses<I>(
-    _metrics: &PrometheusMetrics, // TODO: use metrics
+    metrics: &PrometheusMetrics,
     indexers: Vec<I>,
 ) -> Vec<IndexingStatus<I>>
 where
@@ -27,8 +27,18 @@ where
     while let Some((indexer, query_res)) = futures.next().await {
         if query_res.is_ok() {
             query_successes += 1;
+            metrics
+                .indexing_statuses_requests
+                .get_metric_with_label_values(&[indexer.id(), "1"])
+                .unwrap()
+                .inc();
         } else {
             query_failures += 1;
+            metrics
+                .indexing_statuses_requests
+                .get_metric_with_label_values(&[indexer.id(), "0"])
+                .unwrap()
+                .inc();
         }
 
         match query_res {

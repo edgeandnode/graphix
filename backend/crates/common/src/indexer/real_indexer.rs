@@ -9,6 +9,7 @@ use tracing::*;
 use crate::{
     config::{EnvironmentConfig, IndexerUrls},
     types::{BlockPointer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment},
+    PrometheusMetrics,
 };
 
 use super::Indexer;
@@ -193,6 +194,7 @@ impl Indexer for RealIndexer {
 
     async fn proofs_of_indexing(
         self,
+        metrics: &PrometheusMetrics,
         requests: Vec<POIRequest>,
     ) -> Result<Vec<ProofOfIndexing<Self>>, anyhow::Error> {
         let client = reqwest::Client::new();
@@ -220,6 +222,12 @@ impl Indexer for RealIndexer {
 
             // Log any errors received for debugging
             if let Some(errors) = response.errors {
+                metrics
+                    .public_proofs_of_indexing_requests
+                    .get_metric_with_label_values(&[self.id(), "0"])
+                    .unwrap()
+                    .inc();
+
                 let errors = errors
                     .iter()
                     .map(|e| e.message.clone())
@@ -234,6 +242,12 @@ impl Indexer for RealIndexer {
             }
 
             if let Some(data) = response.data {
+                metrics
+                    .public_proofs_of_indexing_requests
+                    .get_metric_with_label_values(&[self.id(), "1"])
+                    .unwrap()
+                    .inc();
+
                 // Parse POI results
                 pois.extend(
                         data.public_proofs_of_indexing

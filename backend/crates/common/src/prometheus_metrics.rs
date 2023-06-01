@@ -6,21 +6,30 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use prometheus_exporter::prometheus;
 
 pub struct PrometheusMetrics {
+    pub indexing_statuses_requests: prometheus::IntCounterVec,
     pub public_proofs_of_indexing_requests: prometheus::IntCounterVec,
 }
 
 impl PrometheusMetrics {
     pub fn new(registry: prometheus::Registry) -> Self {
+        let indexing_statuses_requests = prometheus::register_int_counter_vec_with_registry!(
+            "indexing_statuses_requests",
+            "Number of indexingStatuses requests",
+            &["indexer", "success"],
+            registry
+        )
+        .unwrap();
         let public_proofs_of_indexing_requests =
             prometheus::register_int_counter_vec_with_registry!(
                 "public_proofs_of_indexing_requests",
-                "Number of public_proofs_of_indexing requests",
-                &["indexer", "statutes", "success"],
+                "Number of publicProofsOfIndexing requests",
+                &["indexer", "success"],
                 registry
             )
             .unwrap();
 
         Self {
+            indexing_statuses_requests,
             public_proofs_of_indexing_requests,
         }
     }

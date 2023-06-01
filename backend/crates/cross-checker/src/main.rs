@@ -37,7 +37,7 @@ async fn main() -> anyhow::Result<()> {
     // Prometheus metrics.
     let registry = prometheus::default_registry().clone();
     let metrics = PrometheusMetrics::new(registry.clone());
-    let _exporter = PrometheusExporter::start(9184, registry.clone());
+    let _exporter = PrometheusExporter::start(9184, registry.clone()).unwrap();
 
     loop {
         info!("New main loop iteration");
@@ -46,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
             indexing_statuses::query_indexing_statuses(&metrics, indexers.clone()).await;
 
         info!("Monitor proofs of indexing");
-        let pois = proofs_of_indexing::query_proofs_of_indexing(indexing_statuses).await;
+        let pois = proofs_of_indexing::query_proofs_of_indexing(&metrics, indexing_statuses).await;
 
         store.write_pois(&pois, db::PoiLiveness::Live)?;
 

@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use crate::{
     config::IndexerUrls,
     types::{IndexingStatus, POIRequest, ProofOfIndexing},
+    PrometheusMetrics,
 };
 
 #[async_trait]
@@ -18,15 +19,17 @@ pub trait Indexer: Clone + Sized + Eq + Send + Sync + Hash + Ord + Send + Sync {
 
     async fn proofs_of_indexing(
         self,
+        metrics: &PrometheusMetrics,
         requests: Vec<POIRequest>,
     ) -> Result<Vec<ProofOfIndexing<Self>>, anyhow::Error>;
 
     /// Convenience wrapper around calling `proofs_of_indexing` for a single POI.
     async fn proof_of_indexing(
         self,
+        metrics: &PrometheusMetrics,
         request: POIRequest,
     ) -> Result<ProofOfIndexing<Self>, anyhow::Error> {
-        let mut results = self.proofs_of_indexing(vec![request]).await?;
+        let mut results = self.proofs_of_indexing(metrics, vec![request]).await?;
         results
             .pop()
             .ok_or_else(|| anyhow!("no proof of indexing returned"))

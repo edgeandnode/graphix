@@ -3,21 +3,13 @@ use std::collections::{hash_map::RandomState, HashMap, HashSet};
 use crate::prelude::{
     BlockPointer, Indexer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment,
 };
-use eventuals::*;
+use crate::PrometheusMetrics;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use tracing::*;
 
-pub fn proofs_of_indexing<I>(
-    indexing_statuses: Eventual<Vec<IndexingStatus<I>>>,
-) -> Eventual<Vec<ProofOfIndexing<I>>>
-where
-    I: Indexer + 'static,
-{
-    indexing_statuses.map(query_proofs_of_indexing)
-}
-
 pub async fn query_proofs_of_indexing<I>(
+    metrics: &PrometheusMetrics,
     indexing_statuses: Vec<IndexingStatus<I>>,
 ) -> Vec<ProofOfIndexing<I>>
 where
@@ -86,7 +78,7 @@ where
                 })
                 .collect::<Vec<_>>();
 
-            indexer.clone().proofs_of_indexing(poi_requests)
+            indexer.clone().proofs_of_indexing(&metrics, poi_requests)
         })
         .collect::<FuturesUnordered<_>>()
         .collect::<Vec<_>>()
