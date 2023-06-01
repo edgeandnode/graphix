@@ -1,0 +1,94 @@
+version: "3"
+services:
+  grafana:
+    image: grafana/grafana-enterprise
+    restart: always
+    # https://community.grafana.com/t/new-docker-install-with-persistent-storage-permission-problem/10896/16
+    user: "$UID:$GID"
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    environment:
+      # Plugin to create panels from GraphQL queries: https://github.com/fifemon/graphql-datasource
+      - GF_INSTALL_PLUGINS=fifemon-graphql-datasource
+    volumes:
+      - ./grafana/config/:/etc/grafana/
+      - ./grafana/data:/var/lib/grafana/
+
+  prometheus:
+    image: prom/prometheus
+    restart: always
+    entrypoint:
+      - /bin/prometheus
+      - --log.level=warn
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+
+  graphix-cross-checker:
+    image: edgeandnode/graphix-cross-checker
+    restart: on-failure
+    build:
+      context: ../..
+      dockerfile: ops/cross-checker.dockerfile
+      args:
+        CARGO_PROFILE: dev
+    depends_on:
+      postgres-graphix:
+        condition: service_healthy
+    environment:
+      RUST_LOG: graphix=debug
+    volumes:
+      - ./graphix/:/config/
+    command: ["--config", "/config/testnet-indexer.yml"]
+
+  graphix-api-server:
+    image: edgeandnode/graphix-api-server
+    restart: on-failure
+    build:
+      context: ../..
+      dockerfile: ops/api-server.dockerfile
+      args:
+        CARGO_PROFILE: dev
+    ports:
+      - "3030:3030"
+    depends_on:
+      postgres-graphix:
+        condition: service_healthy
+    environment:
+      RUST_LOG: graphix=debug
+    volumes:
+      - ./graphix/:/config/
+    command:
+      [
+        "--database-url",
+        "postgres://graphix:password@postgres-graphix:5432/graphix",
+        "--port",
+        "3030",
+      ]
+
+  postgres-graphix:
+    image: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: graphix
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: graphix
+      # FIXME: remove this env. var. which we shouldn't need. Introduced by
+      # <https://github.com/graphprotocol/graph-node/pull/3511>, maybe as a
+      # workaround for https://github.com/docker/for-mac/issues/6270?
+      PGDATA: "/var/lib/postgresql/data"
+    healthcheck:
+      test: psql -U graphix -c '\q' || exit 1
+      interval: 1s
+      timeout: 1s
+      retries: 1000
+    volumes:
+      - ./data/postgres-graphix:/var/lib/postgresql/data

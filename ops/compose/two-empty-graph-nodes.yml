@@ -21,7 +21,7 @@ services:
     restart: always
     entrypoint:
       - /bin/prometheus
-      - --log.level=info
+      - --log.level=warn
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --web.console.libraries=/usr/share/prometheus/console_libraries
@@ -56,10 +56,10 @@ services:
       postgres-graphix:
         condition: service_healthy
     environment:
-      RUST_LOG: debug
+      RUST_LOG: graphix=debug
     volumes:
       - ./graphix/:/config/
-    command: ["--config", "/config/config.yml"]
+    command: ["--config", "/config/two-empty-graph-nodes.yml"]
   graphix-api-server:
     image: edgeandnode/graphix-api-server
     restart: on-failure
@@ -74,7 +74,7 @@ services:
       postgres-graphix:
         condition: service_healthy
     environment:
-      RUST_LOG: debug
+      RUST_LOG: graphix=debug
     volumes:
       - ./graphix/:/config/
     command:
