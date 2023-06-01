@@ -5,7 +5,9 @@ mod tests;
 
 use clap::Parser;
 use graphix_common::{db, modes, prelude::Config};
-use graphix_common::{indexing_statuses, proofs_of_indexing, PrometheusMetrics};
+use graphix_common::{
+    indexing_statuses, proofs_of_indexing, PrometheusExporter, PrometheusMetrics,
+};
 use prometheus_exporter::prometheus;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -31,7 +33,11 @@ async fn main() -> anyhow::Result<()> {
     let indexers = modes::testing_indexers(config.clone());
 
     let sleep_duration = Duration::from_secs(config.polling_period_in_seconds);
-    let metrics = PrometheusMetrics::new(prometheus::default_registry().clone());
+
+    // Prometheus metrics.
+    let registry = prometheus::default_registry().clone();
+    let metrics = PrometheusMetrics::new(registry.clone());
+    let _exporter = PrometheusExporter::start(9184, registry.clone());
 
     loop {
         info!("New main loop iteration");
