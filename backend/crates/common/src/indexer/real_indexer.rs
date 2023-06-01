@@ -110,10 +110,36 @@ impl TryInto<ProofOfIndexing<RealIndexer>>
 #[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub struct RealIndexer(Arc<Inner>);
 
-#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug)]
 struct Inner {
-    id: String,
+    id: String, // Assumed to be unique accross all indexers
     urls: IndexerUrls,
+    client: reqwest::Client,
+}
+
+impl PartialEq for Inner {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl PartialOrd for Inner {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.id.cmp(&other.id))
+    }
+}
+
+impl Eq for Inner {}
+impl Ord for Inner {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id.cmp(&other.id)
+    }
+}
+
+impl Hash for Inner {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
 }
 
 impl RealIndexer {
@@ -122,6 +148,7 @@ impl RealIndexer {
         Self(Arc::new(Inner {
             id: env.id.clone(),
             urls: env.urls.clone(),
+            client: reqwest::Client::new(),
         }))
     }
 
@@ -141,9 +168,10 @@ impl Indexer for RealIndexer {
     }
 
     async fn indexing_statuses(self) -> Result<Vec<IndexingStatus<Self>>, anyhow::Error> {
-        let client = reqwest::Client::new();
         let request = IndexingStatuses::build_query(indexing_statuses::Variables);
-        let response_raw = client
+        let response_raw = self
+            .0
+            .client
             .post(self.urls().status.clone())
             .json(&request)
             .send()
@@ -197,7 +225,6 @@ impl Indexer for RealIndexer {
         metrics: &PrometheusMetrics,
         requests: Vec<POIRequest>,
     ) -> Result<Vec<ProofOfIndexing<Self>>, anyhow::Error> {
-        let client = reqwest::Client::new();
         let mut pois = vec![];
 
         // Graph Node implements a limit of 10 POI requests per request, so
@@ -212,7 +239,9 @@ impl Indexer for RealIndexer {
                     })
                     .collect(),
             });
-            let response: Response<proofs_of_indexing::ResponseData> = client
+            let response: Response<proofs_of_indexing::ResponseData> = self
+                .0
+                .client
                 .post(self.urls().status.clone())
                 .json(&request)
                 .send()
