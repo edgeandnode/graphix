@@ -19,7 +19,7 @@ async fn proofs_of_indexing() {
             PrometheusMetrics::new(prometheus_exporter::prometheus::default_registry().clone());
         let indexing_statuses =
             indexing_statuses::query_indexing_statuses(&metrics, indexers).await;
-        let pois = proofs_of_indexing::query_proofs_of_indexing(indexing_statuses);
+        let pois = proofs_of_indexing::query_proofs_of_indexing(&metrics, indexing_statuses);
 
         let actual_pois = pois.await.into_iter().collect::<BTreeSet<_>>();
 
