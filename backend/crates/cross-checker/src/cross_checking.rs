@@ -9,12 +9,9 @@ use futures::{
     stream::FuturesUnordered,
     FutureExt, SinkExt, Stream, StreamExt,
 };
+use graphix_common::bisect::{bisect_blocks, BisectDecision, DivergingBlock};
 use graphix_common::prelude::{
     Indexer, POICrossCheckReport, POIRequest, ProofOfIndexing, SubgraphDeployment,
-};
-use graphix_common::{
-    bisect::{bisect_blocks, BisectDecision, DivergingBlock},
-    PrometheusMetrics,
 };
 use itertools::Itertools;
 use nanoid::nanoid;
@@ -187,9 +184,6 @@ async fn test_block_number(
     ctx: POIBisectContext,
     block_number: u64,
 ) -> Result<BisectDecision, anyhow::Error> {
-    let metrics =
-        PrometheusMetrics::new(prometheus_exporter::prometheus::default_registry().clone());
-
     debug!(
         %bisection_id,
         %block_number,
@@ -208,12 +202,8 @@ async fn test_block_number(
         block_number,
     };
 
-    let poi1 = indexer1
-        .proof_of_indexing(&metrics, request.clone())
-        .await?;
-    let poi2 = indexer2
-        .proof_of_indexing(&metrics, request.clone())
-        .await?;
+    let poi1 = indexer1.proof_of_indexing(request.clone()).await?;
+    let poi2 = indexer2.proof_of_indexing(request.clone()).await?;
 
     poi_broadcaster.send(poi1.clone()).await?;
     poi_broadcaster.send(poi2.clone()).await?;

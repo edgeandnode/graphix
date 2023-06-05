@@ -1,9 +1,6 @@
 use std::collections::BTreeSet;
 
-use crate::{
-    db::{diesel_queries, PoiLiveness, Store},
-    PrometheusMetrics,
-};
+use crate::db::{diesel_queries, PoiLiveness, Store};
 use diesel::Connection;
 
 use crate::tests::{fast_rng, gen::gen_indexers};
@@ -16,13 +13,9 @@ fn test_db_url() -> String {
 async fn poi_db_roundtrip() {
     let mut rng = fast_rng(0);
     let indexers = gen_indexers(&mut rng, 100);
-    let metrics =
-        PrometheusMetrics::new(prometheus_exporter::prometheus::default_registry().clone());
 
-    let indexing_statuses =
-        crate::indexing_statuses::query_indexing_statuses(&metrics, indexers).await;
-    let pois =
-        crate::proofs_of_indexing::query_proofs_of_indexing(&metrics, indexing_statuses).await;
+    let indexing_statuses = crate::indexing_statuses::query_indexing_statuses(indexers).await;
+    let pois = crate::proofs_of_indexing::query_proofs_of_indexing(indexing_statuses).await;
 
     let store = Store::new(&test_db_url()).unwrap();
     let mut conn = store.test_conn();

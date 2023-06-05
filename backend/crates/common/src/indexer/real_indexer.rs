@@ -8,8 +8,8 @@ use tracing::*;
 use crate::{
     config::IndexerUrls,
     prelude::IndexerConfig,
+    prometheus_metrics::metrics,
     types::{BlockPointer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment},
-    PrometheusMetrics,
 };
 
 use super::Indexer;
@@ -187,7 +187,6 @@ impl Indexer for RealIndexer {
 
     async fn proofs_of_indexing(
         self: Arc<Self>,
-        metrics: &PrometheusMetrics,
         requests: Vec<POIRequest>,
     ) -> Result<Vec<ProofOfIndexing>, anyhow::Error> {
         let mut pois = vec![];
@@ -215,7 +214,7 @@ impl Indexer for RealIndexer {
 
             // Log any errors received for debugging
             if let Some(errors) = response.errors {
-                metrics
+                metrics()
                     .public_proofs_of_indexing_requests
                     .get_metric_with_label_values(&[self.id(), "0"])
                     .unwrap()
@@ -234,7 +233,7 @@ impl Indexer for RealIndexer {
             }
 
             if let Some(data) = response.data {
-                metrics
+                metrics()
                     .public_proofs_of_indexing_requests
                     .get_metric_with_label_values(&[self.id(), "1"])
                     .unwrap()

@@ -1,11 +1,7 @@
 use std::sync::Arc;
 
-use crate::{
-    prelude::{
-        BlockPointer, Bytes32, Indexer, IndexingStatus, POIRequest, ProofOfIndexing,
-        SubgraphDeployment,
-    },
-    PrometheusMetrics,
+use crate::prelude::{
+    BlockPointer, Bytes32, Indexer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment,
 };
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -56,7 +52,6 @@ impl Indexer for MockIndexer {
 
     async fn proofs_of_indexing(
         self: Arc<Self>,
-        _metrics: &PrometheusMetrics,
         requests: Vec<POIRequest>,
     ) -> Result<Vec<ProofOfIndexing>, anyhow::Error> {
         if self.fail_proofs_of_indexing {

@@ -4,13 +4,11 @@ use std::sync::Arc;
 use crate::prelude::{
     BlockPointer, Indexer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment,
 };
-use crate::PrometheusMetrics;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use tracing::*;
 
 pub async fn query_proofs_of_indexing(
-    metrics: &PrometheusMetrics,
     indexing_statuses: Vec<IndexingStatus>,
 ) -> Vec<ProofOfIndexing> {
     info!("Query POIs for recent common blocks across indexers");
@@ -76,7 +74,7 @@ pub async fn query_proofs_of_indexing(
                 })
                 .collect::<Vec<_>>();
 
-            indexer.clone().proofs_of_indexing(&metrics, poi_requests)
+            indexer.clone().proofs_of_indexing(poi_requests)
         })
         .collect::<FuturesUnordered<_>>()
         .collect::<Vec<_>>()
