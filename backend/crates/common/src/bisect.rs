@@ -1,20 +1,14 @@
-use crate::prelude::{DivergingBlock as DivergentBlock, Indexer, ProofOfIndexing};
+use crate::prelude::{DivergingBlock as DivergentBlock, ProofOfIndexing};
 use futures::Future;
 use tracing::info;
 
-pub struct DivergingBlock<I>
-where
-    I: Indexer,
-{
-    pub poi1: ProofOfIndexing<I>,
-    pub poi2: ProofOfIndexing<I>,
+pub struct DivergingBlock {
+    pub poi1: ProofOfIndexing,
+    pub poi2: ProofOfIndexing,
 }
 
-impl<I> From<DivergingBlock<I>> for DivergentBlock
-where
-    I: Indexer,
-{
-    fn from(other: DivergingBlock<I>) -> DivergentBlock {
+impl From<DivergingBlock> for DivergentBlock {
+    fn from(other: DivergingBlock) -> DivergentBlock {
         Self {
             block: other.poi1.block,
             proof_of_indexing1: other.poi1.proof_of_indexing,
@@ -23,28 +17,24 @@ where
     }
 }
 
-pub enum BisectDecision<I>
-where
-    I: Indexer,
-{
+pub enum BisectDecision {
     Good,
     Bad {
-        poi1: ProofOfIndexing<I>,
-        poi2: ProofOfIndexing<I>,
+        poi1: ProofOfIndexing,
+        poi2: ProofOfIndexing,
     },
 }
 
-pub async fn bisect_blocks<C, F, Out, I>(
+pub async fn bisect_blocks<C, F, Out>(
     bisection_id: String,
     context: C,
-    mut bad: DivergingBlock<I>,
+    mut bad: DivergingBlock,
     test_fn: F,
-) -> Result<DivergingBlock<I>, anyhow::Error>
+) -> Result<DivergingBlock, anyhow::Error>
 where
     C: Clone,
     F: Fn(String, C, u64) -> Out,
-    Out: Future<Output = Result<BisectDecision<I>, anyhow::Error>>,
-    I: Indexer,
+    Out: Future<Output = Result<BisectDecision, anyhow::Error>>,
 {
     info!(%bisection_id, bad = %bad.poi1.block.number, "Bisect start");
 

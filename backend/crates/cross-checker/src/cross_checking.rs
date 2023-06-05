@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, sync::Arc};
 
 use anyhow::anyhow;
 use eventuals::{Eventual, EventualExt};
@@ -21,25 +21,19 @@ use nanoid::nanoid;
 use tracing::{debug, info, warn};
 
 #[derive(Debug, Clone)]
-struct POIBisectContext<I>
-where
-    I: Indexer,
-{
-    indexer1: I,
-    indexer2: I,
+struct POIBisectContext {
+    indexer1: Arc<dyn Indexer>,
+    indexer2: Arc<dyn Indexer>,
     deployment: SubgraphDeployment,
-    poi_broadcaster: Sender<ProofOfIndexing<I>>,
+    poi_broadcaster: Sender<ProofOfIndexing>,
 }
 
-pub fn cross_checking<I>(
-    pois: Eventual<Vec<ProofOfIndexing<I>>>,
+pub fn cross_checking(
+    pois: Eventual<Vec<ProofOfIndexing>>,
 ) -> (
-    impl Stream<Item = ProofOfIndexing<I>>,
-    impl Stream<Item = POICrossCheckReport<I>>,
-)
-where
-    I: Indexer + 'static,
-{
+    impl Stream<Item = ProofOfIndexing>,
+    impl Stream<Item = POICrossCheckReport>,
+) {
     let (poi_broadcaster, poi_receiver) = channel(1000);
     let (report_broadcaster, report_receiver) = channel(1000);
 
@@ -110,14 +104,11 @@ where
     (poi_receiver, report_receiver)
 }
 
-pub async fn cross_check_poi<I>(
-    poi1: ProofOfIndexing<I>,
-    poi2: ProofOfIndexing<I>,
-    mut poi_broadcaster: Sender<ProofOfIndexing<I>>,
-) -> Result<POICrossCheckReport<I>, anyhow::Error>
-where
-    I: Indexer,
-{
+pub async fn cross_check_poi(
+    poi1: ProofOfIndexing,
+    poi2: ProofOfIndexing,
+    mut poi_broadcaster: Sender<ProofOfIndexing>,
+) -> Result<POICrossCheckReport, anyhow::Error> {
     info!(
         indexer1 = %poi1.indexer.id(),
         indexer2 = %poi2.indexer.id(),
@@ -191,14 +182,11 @@ where
     })
 }
 
-async fn test_block_number<I>(
+async fn test_block_number(
     bisection_id: String,
-    ctx: POIBisectContext<I>,
+    ctx: POIBisectContext,
     block_number: u64,
-) -> Result<BisectDecision<I>, anyhow::Error>
-where
-    I: Indexer,
-{
+) -> Result<BisectDecision, anyhow::Error> {
     let metrics =
         PrometheusMetrics::new(prometheus_exporter::prometheus::default_registry().clone());
 

@@ -1,4 +1,5 @@
 use std::collections::{hash_map::RandomState, HashMap, HashSet};
+use std::sync::Arc;
 
 use crate::prelude::{
     BlockPointer, Indexer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment,
@@ -8,20 +9,17 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use tracing::*;
 
-pub async fn query_proofs_of_indexing<I>(
+pub async fn query_proofs_of_indexing(
     metrics: &PrometheusMetrics,
-    indexing_statuses: Vec<IndexingStatus<I>>,
-) -> Vec<ProofOfIndexing<I>>
-where
-    I: Indexer,
-{
+    indexing_statuses: Vec<IndexingStatus>,
+) -> Vec<ProofOfIndexing> {
     info!("Query POIs for recent common blocks across indexers");
 
     // Identify all indexers
     let indexers = indexing_statuses
         .iter()
         .map(|status| status.indexer.clone())
-        .collect::<HashSet<I, RandomState>>();
+        .collect::<HashSet<_>>();
 
     // Identify all deployments
     let deployments: HashSet<SubgraphDeployment, RandomState> = HashSet::from_iter(
@@ -31,7 +29,7 @@ where
     );
 
     // Group indexing statuses by deployment
-    let statuses_by_deployment: HashMap<SubgraphDeployment, Vec<&IndexingStatus<I>>> =
+    let statuses_by_deployment: HashMap<SubgraphDeployment, Vec<&IndexingStatus>> =
         HashMap::from_iter(deployments.iter().map(|deployment| {
             (
                 deployment.clone(),
@@ -91,12 +89,12 @@ where
         .collect::<Vec<_>>()
 }
 
-fn skip_errors<I>(
-    result: (Result<Vec<ProofOfIndexing<I>>, anyhow::Error>, I),
-) -> Option<Vec<ProofOfIndexing<I>>>
-where
-    I: Indexer,
-{
+fn skip_errors(
+    result: (
+        Result<Vec<ProofOfIndexing>, anyhow::Error>,
+        Arc<dyn Indexer>,
+    ),
+) -> Option<Vec<ProofOfIndexing>> {
     match result.0 {
         Ok(pois) => {
             info!(

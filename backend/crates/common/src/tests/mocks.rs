@@ -27,7 +27,7 @@ pub struct MockIndexer {
 }
 
 #[async_trait]
-impl Indexer for Arc<MockIndexer> {
+impl Indexer for MockIndexer {
     fn id(&self) -> &str {
         &self.id
     }
@@ -36,7 +36,7 @@ impl Indexer for Arc<MockIndexer> {
         None
     }
 
-    async fn indexing_statuses(self) -> Result<Vec<IndexingStatus<Self>>, anyhow::Error> {
+    async fn indexing_statuses(self: Arc<Self>) -> Result<Vec<IndexingStatus>, anyhow::Error> {
         if self.fail_indexing_statuses {
             Err(anyhow!("boo"))
         } else {
@@ -55,10 +55,10 @@ impl Indexer for Arc<MockIndexer> {
     }
 
     async fn proofs_of_indexing(
-        self,
+        self: Arc<Self>,
         _metrics: &PrometheusMetrics,
         requests: Vec<POIRequest>,
-    ) -> Result<Vec<ProofOfIndexing<Self>>, anyhow::Error> {
+    ) -> Result<Vec<ProofOfIndexing>, anyhow::Error> {
         if self.fail_proofs_of_indexing {
             Err(anyhow!("boo"))
         } else {

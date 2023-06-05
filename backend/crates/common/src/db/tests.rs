@@ -2,7 +2,6 @@ use std::collections::BTreeSet;
 
 use crate::{
     db::{diesel_queries, PoiLiveness, Store},
-    indexer::Indexer,
     PrometheusMetrics,
 };
 use diesel::Connection;

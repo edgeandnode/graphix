@@ -1,6 +1,9 @@
 use std::{iter::repeat_with, sync::Arc};
 
-use crate::prelude::{BlockPointer, Bytes32, SubgraphDeployment};
+use crate::{
+    indexer::Indexer,
+    prelude::{BlockPointer, Bytes32, SubgraphDeployment},
+};
 use rand::{distributions::Alphanumeric, seq::IteratorRandom, Rng};
 
 use super::mocks::{DeploymentDetails, MockIndexer, PartialProofOfIndexing};
@@ -54,7 +57,7 @@ where
         .collect()
 }
 
-pub fn gen_indexers<R>(mut rng: &mut R, max_indexers: usize) -> Vec<Arc<MockIndexer>>
+pub fn gen_indexers<R>(mut rng: &mut R, max_indexers: usize) -> Vec<Arc<dyn Indexer>>
 where
     R: Rng,
 {
@@ -95,8 +98,8 @@ where
             deployment_details,
             fail_indexing_statuses: rng.gen_bool(0.1),
             fail_proofs_of_indexing: rng.gen_bool(0.1),
-        })
+        }) as Arc<dyn Indexer>
     })
     .take(number_of_indexers)
-    .collect::<Vec<Arc<MockIndexer>>>()
+    .collect()
 }

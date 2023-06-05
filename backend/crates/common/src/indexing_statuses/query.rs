@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::prelude::{Indexer, IndexingStatus};
 use crate::PrometheusMetrics;
 use futures::stream::FuturesUnordered;
@@ -5,18 +7,16 @@ use futures::StreamExt;
 use tracing::*;
 
 /// Queries all `indexingStatuses` for all `indexers`.
-#[instrument(skip(metrics, indexers))]
-pub async fn query_indexing_statuses<I>(
+#[instrument(skip_all)]
+pub async fn query_indexing_statuses(
     metrics: &PrometheusMetrics,
-    indexers: Vec<I>,
-) -> Vec<IndexingStatus<I>>
-where
-    I: Indexer,
-{
-    info!(indexers = indexers.len(), "Querying indexing statuses...");
+    indexers: Vec<Arc<dyn Indexer>>,
+) -> Vec<IndexingStatus> {
+    let indexer_count = indexers.len();
+    info!(indexers = indexer_count, "Querying indexing statuses...");
 
     let mut futures = FuturesUnordered::new();
-    for indexer in indexers.clone() {
+    for indexer in indexers {
         futures.push(async move { (indexer.clone(), indexer.indexing_statuses().await) });
     }
 
@@ -62,7 +62,7 @@ where
     }
 
     info!(
-        indexers = indexers.len(),
+        indexers = indexer_count,
         indexing_statuses = indexing_statuses.len(),
         %query_successes,
         %query_failures,

@@ -4,20 +4,19 @@ use futures::{FutureExt, Stream, StreamExt, TryFutureExt};
 use futures_retry::{FutureRetry, RetryPolicy};
 use tracing::warn;
 
-use crate::{indexer::Indexer, types};
+use crate::types;
 
 use super::{PoiLiveness, Store};
 
 /// Write any POIs that we receive to the database.
-pub fn write<S, I>(store: Store, proofs_of_indexing: S)
+pub fn write<S>(store: Store, proofs_of_indexing: S)
 where
-    S: Stream<Item = types::ProofOfIndexing<I>> + Send + 'static,
-    I: Indexer + 'static,
+    S: Stream<Item = types::ProofOfIndexing> + Send + 'static,
 {
     tokio::spawn(async move {
         proofs_of_indexing
             .ready_chunks(100)
-            .for_each(move |chunk: Vec<types::ProofOfIndexing<I>>| {
+            .for_each(move |chunk: Vec<types::ProofOfIndexing>| {
                 let store = store.clone();
                 let mut consecutive_errors = 0;
 
@@ -49,10 +48,9 @@ where
 }
 
 /// Write any POI cross-check reports that we receive to the database.
-pub fn write_reports<S, I>(_store: Store, _reports: S)
+pub fn write_reports<S>(_store: Store, _reports: S)
 where
-    S: Stream<Item = types::POICrossCheckReport<I>> + Send + 'static,
-    I: Indexer + Send + Sync + 'static,
+    S: Stream<Item = types::POICrossCheckReport> + Send + 'static,
 {
     // TODO writing cross check reports to the database not implemented
     // tokio::spawn(async move {

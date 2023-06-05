@@ -1,4 +1,3 @@
-use core::hash::Hash;
 use std::sync::Arc;
 
 use anyhow::anyhow;
@@ -7,7 +6,8 @@ use graphql_client::{GraphQLQuery, Response};
 use tracing::*;
 
 use crate::{
-    config::{EnvironmentConfig, IndexerUrls},
+    config::IndexerUrls,
+    prelude::IndexerConfig,
     types::{BlockPointer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment},
     PrometheusMetrics,
 };
@@ -28,15 +28,15 @@ type Bytes = String;
 )]
 struct IndexingStatuses;
 
-impl TryInto<IndexingStatus<RealIndexer>>
+impl TryInto<IndexingStatus>
     for (
-        RealIndexer,
+        Arc<RealIndexer>,
         indexing_statuses::IndexingStatusesIndexingStatuses,
     )
 {
     type Error = anyhow::Error;
 
-    fn try_into(self) -> Result<IndexingStatus<RealIndexer>, Self::Error> {
+    fn try_into(self) -> Result<IndexingStatus, Self::Error> {
         let chain = self
             .1
             .chains
@@ -80,15 +80,15 @@ impl TryInto<IndexingStatus<RealIndexer>>
 )]
 struct ProofsOfIndexing;
 
-impl TryInto<ProofOfIndexing<RealIndexer>>
+impl TryInto<ProofOfIndexing>
     for (
-        RealIndexer,
+        Arc<RealIndexer>,
         proofs_of_indexing::ProofsOfIndexingPublicProofsOfIndexing,
     )
 {
     type Error = anyhow::Error;
 
-    fn try_into(self) -> Result<ProofOfIndexing<RealIndexer>, Self::Error> {
+    fn try_into(self) -> Result<ProofOfIndexing, Self::Error> {
         Ok(ProofOfIndexing {
             indexer: self.0,
             deployment: SubgraphDeployment(self.1.deployment.clone()),
@@ -105,74 +105,39 @@ impl TryInto<ProofOfIndexing<RealIndexer>>
     }
 }
 
-/// Indexer
-
-#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub struct RealIndexer(Arc<Inner>);
-
-#[derive(Clone, Debug)]
-struct Inner {
+#[derive(Debug)]
+pub struct RealIndexer {
     id: String, // Assumed to be unique accross all indexers
     urls: IndexerUrls,
     client: reqwest::Client,
 }
 
-impl PartialEq for Inner {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-    }
-}
-
-impl PartialOrd for Inner {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.id.cmp(&other.id))
-    }
-}
-
-impl Eq for Inner {}
-impl Ord for Inner {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.id.cmp(&other.id)
-    }
-}
-
-impl Hash for Inner {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-    }
-}
-
 impl RealIndexer {
-    #[instrument(skip(env))]
-    pub fn new(env: &EnvironmentConfig) -> Self {
-        Self(Arc::new(Inner {
-            id: env.id.clone(),
-            urls: env.urls.clone(),
+    #[instrument(skip_all)]
+    pub fn new(config: IndexerConfig) -> Self {
+        RealIndexer {
+            id: config.id,
+            urls: config.urls,
             client: reqwest::Client::new(),
-        }))
-    }
-
-    fn urls(&self) -> &IndexerUrls {
-        &self.0.urls
+        }
     }
 }
 
 #[async_trait]
 impl Indexer for RealIndexer {
     fn id(&self) -> &str {
-        &self.0.id
+        &self.id
     }
 
     fn address(&self) -> Option<&[u8]> {
         None
     }
 
-    async fn indexing_statuses(self) -> Result<Vec<IndexingStatus<Self>>, anyhow::Error> {
+    async fn indexing_statuses(self: Arc<Self>) -> Result<Vec<IndexingStatus>, anyhow::Error> {
         let request = IndexingStatuses::build_query(indexing_statuses::Variables);
         let response_raw = self
-            .0
             .client
-            .post(self.urls().status.clone())
+            .post(self.urls.status.clone())
             .json(&request)
             .send()
             .await?;
@@ -221,10 +186,10 @@ impl Indexer for RealIndexer {
     }
 
     async fn proofs_of_indexing(
-        self,
+        self: Arc<Self>,
         metrics: &PrometheusMetrics,
         requests: Vec<POIRequest>,
-    ) -> Result<Vec<ProofOfIndexing<Self>>, anyhow::Error> {
+    ) -> Result<Vec<ProofOfIndexing>, anyhow::Error> {
         let mut pois = vec![];
 
         // Graph Node implements a limit of 10 POI requests per request, so
@@ -240,9 +205,8 @@ impl Indexer for RealIndexer {
                     .collect(),
             });
             let response: Response<proofs_of_indexing::ResponseData> = self
-                .0
                 .client
-                .post(self.urls().status.clone())
+                .post(self.urls.status.clone())
                 .json(&request)
                 .send()
                 .await?
