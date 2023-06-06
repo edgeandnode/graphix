@@ -3,6 +3,7 @@
 databaseUrl: postgres://graphix:password@postgres-graphix:5432/graphix
 environments:
   - id: testnet-indexer-03
+    type: Indexer
     urls:
       status: http://testnet-indexer-03-europe-cent.thegraph.com/status
 
