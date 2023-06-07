@@ -1,4 +1,7 @@
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::{
+    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+    sync::OnceLock,
+};
 
 // It's important to use the exported crate `prometheus_exporter::prometheus`
 // instead of `prometheus`, as different versions of that crate have
@@ -10,8 +13,16 @@ pub struct PrometheusMetrics {
     pub public_proofs_of_indexing_requests: prometheus::IntCounterVec,
 }
 
+static METRICS: OnceLock<PrometheusMetrics> = OnceLock::new();
+
+pub fn metrics() -> &'static PrometheusMetrics {
+    METRICS.get_or_init(|| {
+        PrometheusMetrics::new(prometheus_exporter::prometheus::default_registry().clone())
+    })
+}
+
 impl PrometheusMetrics {
-    pub fn new(registry: prometheus::Registry) -> Self {
+    fn new(registry: prometheus::Registry) -> Self {
         let indexing_statuses_requests = prometheus::register_int_counter_vec_with_registry!(
             "indexing_statuses_requests",
             "Number of indexingStatuses requests",

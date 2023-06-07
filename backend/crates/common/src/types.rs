@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::{fmt, ops::Deref};
+use std::{fmt, ops::Deref, sync::Arc};
 
 use crate::{db::models::WritablePoI, indexer::Indexer};
 
@@ -33,12 +33,21 @@ impl Deref for SubgraphDeployment {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
-pub struct IndexingStatus<I> {
-    pub indexer: I,
+#[derive(Debug, Clone, Eq)]
+pub struct IndexingStatus {
+    pub indexer: Arc<dyn Indexer>,
     pub deployment: SubgraphDeployment,
     pub network: String,
     pub latest_block: BlockPointer,
+}
+
+impl PartialEq for IndexingStatus {
+    fn eq(&self, other: &Self) -> bool {
+        &*self.indexer == &*other.indexer
+            && self.deployment == other.deployment
+            && self.network == other.network
+            && self.latest_block == other.latest_block
+    }
 }
 
 /// A 32-byte array that can be easily converted to and from hex strings.
@@ -72,15 +81,24 @@ impl fmt::Display for Bytes32 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
-pub struct ProofOfIndexing<I> {
-    pub indexer: I,
+#[derive(Debug, Clone, Eq, PartialOrd, Ord)]
+pub struct ProofOfIndexing {
+    pub indexer: Arc<dyn Indexer>,
     pub deployment: SubgraphDeployment,
     pub block: BlockPointer,
     pub proof_of_indexing: Bytes32,
 }
 
-impl<I: Indexer> WritablePoI for ProofOfIndexing<I> {
+impl PartialEq for ProofOfIndexing {
+    fn eq(&self, other: &Self) -> bool {
+        &*self.indexer == &*other.indexer
+            && self.deployment == other.deployment
+            && self.block == other.block
+            && self.proof_of_indexing == other.proof_of_indexing
+    }
+}
+
+impl WritablePoI for ProofOfIndexing {
     fn deployment_cid(&self) -> &str {
         self.deployment.as_str()
     }
@@ -109,13 +127,10 @@ pub struct DivergingBlock {
     pub proof_of_indexing2: Bytes32,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct POICrossCheckReport<I>
-where
-    I: Indexer,
-{
-    pub poi1: ProofOfIndexing<I>,
-    pub poi2: ProofOfIndexing<I>,
+#[derive(Clone, Debug)]
+pub struct POICrossCheckReport {
+    pub poi1: ProofOfIndexing,
+    pub poi2: ProofOfIndexing,
     pub diverging_block: Option<DivergingBlock>,
 }
 

@@ -17,9 +17,24 @@ pub struct IndexerUrls {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct EnvironmentConfig {
+pub struct IndexerConfig {
     pub id: String,
     pub urls: IndexerUrls,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct InterceptorConfig {
+    pub id: String,
+    pub target: String,
+    pub poi_byte: u8,
+}
+
+// enumify EnvironmentConfig, with a variant like the existing one and a new one called `InterceptorConfig`
+#[derive(Clone, Debug, Deserialize)]
+#[serde(tag = "type")]
+pub enum EnvironmentConfig {
+    Indexer(IndexerConfig),
+    Interceptor(InterceptorConfig),
 }
 
 #[derive(Clone, Debug, Deserialize)]
