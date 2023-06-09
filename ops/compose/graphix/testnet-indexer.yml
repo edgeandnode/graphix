@@ -5,5 +5,5 @@ environments:
   - id: testnet-indexer-03
     type: Indexer
     urls:
-      status: http://testnet-indexer-03-europe-cent.thegraph.com/status
+      status: https://testnet-indexer-03-europe-cent.thegraph.com/status
 
