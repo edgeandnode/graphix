@@ -189,28 +189,35 @@ impl Indexer for RealIndexer {
         self: Arc<Self>,
         requests: Vec<POIRequest>,
     ) -> Result<Vec<ProofOfIndexing>, anyhow::Error> {
+        use proofs_of_indexing::{PublicProofOfIndexingRequest, ResponseData, Variables};
+
         let mut pois = vec![];
 
         // Graph Node implements a limit of 10 POI requests per request, so
         // split our requests up accordingly.
         for requests in requests.chunks(10) {
-            let request = ProofsOfIndexing::build_query(proofs_of_indexing::Variables {
+            let request = ProofsOfIndexing::build_query(Variables {
                 requests: requests
                     .into_iter()
-                    .map(|query| proofs_of_indexing::PublicProofOfIndexingRequest {
+                    .map(|query| PublicProofOfIndexingRequest {
                         deployment: query.deployment.to_string(),
                         block_number: query.block_number.to_string(),
                     })
                     .collect(),
             });
-            let response: Response<proofs_of_indexing::ResponseData> = self
+            let raw_response = self
                 .client
                 .post(self.urls.status.clone())
                 .json(&request)
                 .send()
                 .await?
-                .json()
+                .text()
                 .await?;
+
+            let Ok(response) = serde_json::from_str::<Response<ResponseData>>(&raw_response)
+                else {
+                  return Err(anyhow!("Response is not JSON: {:?}", raw_response))
+                };
 
             // Log any errors received for debugging
             if let Some(errors) = response.errors {
@@ -225,11 +232,7 @@ impl Indexer for RealIndexer {
                     .map(|e| e.message.clone())
                     .collect::<Vec<_>>()
                     .join(",");
-                warn!(
-                    id = %self.id(),
-                    %errors,
-                    "indexer returned POI errors"
-                );
+                return Err(anyhow!("indexer returned POI errors: {}", errors));
             }
 
             if let Some(data) = response.data {

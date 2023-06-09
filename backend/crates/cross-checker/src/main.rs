@@ -44,7 +44,10 @@ async fn main() -> anyhow::Result<()> {
         info!("Monitor proofs of indexing");
         let pois = proofs_of_indexing::query_proofs_of_indexing(indexing_statuses).await;
 
-        store.write_pois(&pois, db::PoiLiveness::Live)?;
+        let write_err = store.write_pois(&pois, db::PoiLiveness::Live).err();
+        if let Some(err) = write_err {
+            error!(error = %err, "Failed to write POIs to database");
+        }
 
         info!(
             sleep_seconds = sleep_duration.as_secs(),
