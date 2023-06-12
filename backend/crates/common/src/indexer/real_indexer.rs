@@ -214,10 +214,16 @@ impl Indexer for RealIndexer {
                 .text()
                 .await?;
 
-            let Ok(response) = serde_json::from_str::<Response<ResponseData>>(&raw_response)
-                else {
-                  return Err(anyhow!("Response is not JSON: {:?}", raw_response))
-                };
+            let response = match serde_json::from_str::<Response<ResponseData>>(&raw_response) {
+                Ok(response) => response,
+                Err(e) => {
+                    return Err(anyhow!(
+                        "Response is not JSON, parsing error: `{}`, full response: `{}`",
+                        e,
+                        raw_response
+                    ))
+                }
+            };
 
             // Log any errors received for debugging
             if let Some(errors) = response.errors {
