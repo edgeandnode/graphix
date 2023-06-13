@@ -188,9 +188,7 @@ impl Indexer for RealIndexer {
     async fn proofs_of_indexing(
         self: Arc<Self>,
         requests: Vec<POIRequest>,
-    ) -> Result<Vec<ProofOfIndexing>, anyhow::Error> {
-        use proofs_of_indexing::{PublicProofOfIndexingRequest, ResponseData, Variables};
-
+    ) -> Vec<ProofOfIndexing> {
         let mut pois = vec![];
 
         // Graph Node implements a limit of 10 POI requests per request, so
@@ -199,79 +197,94 @@ impl Indexer for RealIndexer {
             debug!(
                 indexer = %self.id(),
                 batch_size = requests.len(),
-                "Requesting public PoIs"
+                "Requesting public PoIs batch"
             );
 
-            let request = ProofsOfIndexing::build_query(Variables {
-                requests: requests
-                    .into_iter()
-                    .map(|query| PublicProofOfIndexingRequest {
-                        deployment: query.deployment.to_string(),
-                        block_number: query.block_number.to_string(),
-                    })
-                    .collect(),
-            });
-            let raw_response = self
-                .client
-                .post(self.urls.status.clone())
-                .json(&request)
-                .send()
-                .await?
-                .text()
-                .await?;
+            let result = self.clone().proofs_of_indexing_batch(requests).await;
 
-            let response = match serde_json::from_str::<Response<ResponseData>>(&raw_response) {
-                Ok(response) => response,
-                Err(e) => {
-                    return Err(anyhow!(
-                        "Response is not JSON, parsing error: `{}`, full response: `{}`",
-                        e,
-                        raw_response
-                    ))
+            match result {
+                Ok(batch_pois) => {
+                    metrics()
+                        .public_proofs_of_indexing_requests
+                        .get_metric_with_label_values(&[self.id(), "1"])
+                        .unwrap()
+                        .inc();
+
+                    info!(
+                        id = %self.id(), pois = %batch_pois.len(),
+                        "Successfully queried POIs batch from indexer"
+                    );
+                    pois.extend(batch_pois);
                 }
-            };
+                Err(error) => {
+                    metrics()
+                        .public_proofs_of_indexing_requests
+                        .get_metric_with_label_values(&[self.id(), "0"])
+                        .unwrap()
+                        .inc();
 
-            // Log any errors received for debugging
-            if let Some(errors) = response.errors {
-                metrics()
-                    .public_proofs_of_indexing_requests
-                    .get_metric_with_label_values(&[self.id(), "0"])
-                    .unwrap()
-                    .inc();
-
-                let errors = errors
-                    .iter()
-                    .map(|e| e.message.clone())
-                    .collect::<Vec<_>>()
-                    .join(",");
-                return Err(anyhow!("indexer returned POI errors: {}", errors));
-            }
-
-            if let Some(data) = response.data {
-                metrics()
-                    .public_proofs_of_indexing_requests
-                    .get_metric_with_label_values(&[self.id(), "1"])
-                    .unwrap()
-                    .inc();
-
-                // Parse POI results
-                pois.extend(
-                    data.public_proofs_of_indexing
-                        .into_iter()
-                        .map(|result| (self.clone(), result).try_into())
-                        .filter_map(|result| match result {
-                            Ok(v) => Some(v),
-                            Err(error) => {
-                                warn!(id = %self.id(), %error);
-                                None
-                            }
-                        }),
-                );
-            } else {
-                warn!("no data present, skipping");
+                    warn!(
+                        id = %self.id(), %error,
+                        "Failed to query POIs batch from indexer"
+                    );
+                }
             }
         }
 
-        Ok(pois)
+        pois
+    }
+}
+
+impl RealIndexer {
+    async fn proofs_of_indexing_batch(
+        self: Arc<Self>,
+        requests: &[POIRequest],
+    ) -> Result<Vec<ProofOfIndexing>, anyhow::Error> {
+        use proofs_of_indexing::{PublicProofOfIndexingRequest, ResponseData, Variables};
+        let request = ProofsOfIndexing::build_query(Variables {
+            requests: requests
+                .into_iter()
+                .map(|query| PublicProofOfIndexingRequest {
+                    deployment: query.deployment.to_string(),
+                    block_number: query.block_number.to_string(),
+                })
+                .collect(),
+        });
+        let raw_response = self
+            .client
+            .post(self.urls.status.clone())
+            .json(&request)
+            .send()
+            .await?
+            .text()
+            .await?;
+
+        let response = match serde_json::from_str::<Response<ResponseData>>(&raw_response) {
+            Ok(response) => response,
+            Err(e) => {
+                return Err(anyhow!(
+                    "Response is not JSON, parsing error: `{}`, full response: `{}`",
+                    e,
+                    raw_response
+                ))
+            }
+        };
+
+        if let Some(errors) = response.errors {
+            let errors = errors
+                .iter()
+                .map(|e| e.message.clone())
+                .collect::<Vec<_>>()
+                .join(",");
+            return Err(anyhow!("indexer returned POI errors: {}", errors));
+        }
+
+        let Some(data) = response.data else { return Err(anyhow!("no data present")) };
+
+        // Parse POI results
+        data.public_proofs_of_indexing
+            .into_iter()
+            .map(|result| (self.clone(), result).try_into())
+            .collect::<Result<Vec<_>, _>>()
     }
 }

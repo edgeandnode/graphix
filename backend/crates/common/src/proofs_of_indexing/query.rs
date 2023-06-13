@@ -1,8 +1,7 @@
 use std::collections::{hash_map::RandomState, HashMap, HashSet};
-use std::sync::Arc;
 
 use crate::prelude::{
-    BlockPointer, Indexer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment,
+    BlockPointer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment,
 };
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
@@ -80,33 +79,6 @@ pub async fn query_proofs_of_indexing(
         .collect::<Vec<_>>()
         .await
         .into_iter()
-        .zip(indexers.into_iter())
-        .into_iter()
-        .filter_map(skip_errors)
         .flatten()
         .collect::<Vec<_>>()
-}
-
-fn skip_errors(
-    result: (
-        Result<Vec<ProofOfIndexing>, anyhow::Error>,
-        Arc<dyn Indexer>,
-    ),
-) -> Option<Vec<ProofOfIndexing>> {
-    match result.0 {
-        Ok(pois) => {
-            info!(
-                id = %result.1.id(), pois = %pois.len(),
-                "Successfully queried POIs from indexer"
-            );
-            Some(pois)
-        }
-        Err(error) => {
-            warn!(
-                id = %result.1.id(), %error,
-                "Failed to query POIs from indexer"
-            );
-            None
-        }
-    }
 }
