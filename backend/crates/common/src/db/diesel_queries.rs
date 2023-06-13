@@ -127,8 +127,8 @@ pub(super) fn write_pois(
         let indexer_id = {
             // First, attempt to find the existing indexer by the address field
             let existing_indexer: Option<IndexerRow> = indexers::table
-                .filter(indexers::name.eq(poi.indexer_id()))
-                .filter(indexers::address.eq(poi.indexer_address()))
+                .filter(indexers::name.is_not_distinct_from(poi.indexer_id()))
+                .filter(indexers::address.is_not_distinct_from(poi.indexer_address()))
                 .get_result(conn)
                 .optional()?;
 

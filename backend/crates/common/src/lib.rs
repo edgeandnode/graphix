@@ -5,6 +5,7 @@ pub mod db;
 mod indexer;
 pub mod indexing_statuses;
 pub mod modes;
+pub mod network_subgraph;
 mod prometheus_metrics;
 pub mod proofs_of_indexing;
 mod types;

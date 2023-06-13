@@ -196,6 +196,12 @@ impl Indexer for RealIndexer {
         // Graph Node implements a limit of 10 POI requests per request, so
         // split our requests up accordingly.
         for requests in requests.chunks(10) {
+            debug!(
+                indexer = %self.id(),
+                batch_size = requests.len(),
+                "Requesting public PoIs"
+            );
+
             let request = ProofsOfIndexing::build_query(Variables {
                 requests: requests
                     .into_iter()
