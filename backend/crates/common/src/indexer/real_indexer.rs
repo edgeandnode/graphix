@@ -244,11 +244,7 @@ impl Indexer for RealIndexer {
                     .map(|e| e.message.clone())
                     .collect::<Vec<_>>()
                     .join(",");
-                warn!(
-                    id = %self.id(),
-                    %errors,
-                    "indexer returned POI errors"
-                );
+                return Err(anyhow!("indexer returned POI errors: {}", errors));
             }
 
             if let Some(data) = response.data {
