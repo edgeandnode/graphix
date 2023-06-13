@@ -14,17 +14,15 @@ pub trait Indexer: Send + Sync + Debug {
 
     async fn indexing_statuses(self: Arc<Self>) -> Result<Vec<IndexingStatus>, anyhow::Error>;
 
-    async fn proofs_of_indexing(
-        self: Arc<Self>,
-        requests: Vec<POIRequest>,
-    ) -> Result<Vec<ProofOfIndexing>, anyhow::Error>;
+    async fn proofs_of_indexing(self: Arc<Self>, requests: Vec<POIRequest>)
+        -> Vec<ProofOfIndexing>;
 
     /// Convenience wrapper around calling `proofs_of_indexing` for a single POI.
     async fn proof_of_indexing(
         self: Arc<Self>,
         request: POIRequest,
     ) -> Result<ProofOfIndexing, anyhow::Error> {
-        let mut results = self.proofs_of_indexing(vec![request]).await?;
+        let mut results = self.proofs_of_indexing(vec![request]).await;
         results
             .pop()
             .ok_or_else(|| anyhow!("no proof of indexing returned"))

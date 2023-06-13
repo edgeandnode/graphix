@@ -53,11 +53,10 @@ impl Indexer for IndexerInterceptor {
     async fn proofs_of_indexing(
         self: Arc<Self>,
         requests: Vec<POIRequest>,
-    ) -> Result<Vec<ProofOfIndexing>, anyhow::Error> {
-        let pois = self.target.clone().proofs_of_indexing(requests).await?;
+    ) -> Vec<ProofOfIndexing> {
+        let pois = self.target.clone().proofs_of_indexing(requests).await;
 
-        Ok(pois
-            .into_iter()
+        pois.into_iter()
             .map(|poi| {
                 let divergent_poi = Bytes32([self.poi_byte; 32]);
                 ProofOfIndexing {
@@ -67,6 +66,6 @@ impl Indexer for IndexerInterceptor {
                     proof_of_indexing: divergent_poi,
                 }
             })
-            .collect())
+            .collect()
     }
 }

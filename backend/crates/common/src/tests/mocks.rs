@@ -19,7 +19,6 @@ pub struct MockIndexer {
     pub id: String,
     pub deployment_details: Vec<DeploymentDetails>,
     pub fail_indexing_statuses: bool,
-    pub fail_proofs_of_indexing: bool,
 }
 
 #[async_trait]
@@ -53,34 +52,30 @@ impl Indexer for MockIndexer {
     async fn proofs_of_indexing(
         self: Arc<Self>,
         requests: Vec<POIRequest>,
-    ) -> Result<Vec<ProofOfIndexing>, anyhow::Error> {
-        if self.fail_proofs_of_indexing {
-            Err(anyhow!("boo"))
-        } else {
-            // TODO: Introduce discrepancies from canonical POIs into the mix
-            Ok(requests
-                .into_iter()
-                .filter_map(|request| {
-                    self.deployment_details
-                        .iter()
-                        .find(|detail| detail.deployment.eq(&request.deployment))
-                        .map(|detail| (request, detail))
-                })
-                .filter_map(|(request, detail)| {
-                    detail
-                        .canonical_pois
-                        .iter()
-                        .find(|poi| poi.block.number.eq(&request.block_number))
-                        .map(|poi| (detail, poi))
-                })
-                .map(|(deployment_detail, poi)| ProofOfIndexing {
-                    indexer: self.clone(),
-                    deployment: deployment_detail.deployment.clone(),
-                    block: poi.block.clone(),
-                    proof_of_indexing: poi.proof_of_indexing.clone(),
-                })
-                .collect::<Vec<_>>())
-        }
+    ) -> Vec<ProofOfIndexing> {
+        // TODO: Introduce discrepancies from canonical POIs into the mix
+        requests
+            .into_iter()
+            .filter_map(|request| {
+                self.deployment_details
+                    .iter()
+                    .find(|detail| detail.deployment.eq(&request.deployment))
+                    .map(|detail| (request, detail))
+            })
+            .filter_map(|(request, detail)| {
+                detail
+                    .canonical_pois
+                    .iter()
+                    .find(|poi| poi.block.number.eq(&request.block_number))
+                    .map(|poi| (detail, poi))
+            })
+            .map(|(deployment_detail, poi)| ProofOfIndexing {
+                indexer: self.clone(),
+                deployment: deployment_detail.deployment.clone(),
+                block: poi.block.clone(),
+                proof_of_indexing: poi.proof_of_indexing.clone(),
+            })
+            .collect::<Vec<_>>()
     }
 }
 

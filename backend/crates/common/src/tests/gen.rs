@@ -97,7 +97,6 @@ where
             id,
             deployment_details,
             fail_indexing_statuses: rng.gen_bool(0.1),
-            fail_proofs_of_indexing: rng.gen_bool(0.1),
         }) as Arc<dyn Indexer>
     })
     .take(number_of_indexers)
