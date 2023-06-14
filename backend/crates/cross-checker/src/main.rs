@@ -4,7 +4,7 @@ pub(crate) mod cross_checking;
 mod tests;
 
 use clap::Parser;
-use graphix_common::{db, modes, prelude::Config};
+use graphix_common::{config, db, prelude::Config};
 use graphix_common::{indexing_statuses, proofs_of_indexing, PrometheusExporter};
 use prometheus_exporter::prometheus;
 use std::path::PathBuf;
@@ -20,15 +20,9 @@ async fn main() -> anyhow::Result<()> {
     let cli_options = CliOptions::parse();
 
     info!("Load configuration file");
-    let config = match Config::try_from(&cli_options.config)? {
-        Config::Testing(c) => c,
-        _ => todo!("Only testing mode supported for now"),
-    };
+    let config = Config::read(&cli_options.config)?;
 
     let store = db::Store::new(&config.database_url)?;
-
-    info!("Initialize inputs (indexers, indexing statuses etc.)");
-    let indexers = modes::testing_indexers(config.clone());
 
     let sleep_duration = Duration::from_secs(config.polling_period_in_seconds);
 
@@ -39,7 +33,10 @@ async fn main() -> anyhow::Result<()> {
     loop {
         info!("New main loop iteration");
 
-        let indexing_statuses = indexing_statuses::query_indexing_statuses(indexers.clone()).await;
+        info!("Initialize inputs (indexers, indexing statuses etc.)");
+        let indexers = config::config_to_indexers(config.clone()).await?;
+
+        let indexing_statuses = indexing_statuses::query_indexing_statuses(indexers).await;
 
         info!("Monitor proofs of indexing");
         let pois = proofs_of_indexing::query_proofs_of_indexing(indexing_statuses).await;

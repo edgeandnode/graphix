@@ -1,7 +1,14 @@
 #![allow(dead_code)]
 
+use reqwest::Url;
 use serde_derive::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
+use tracing::warn;
+
+use crate::{
+    config::{IndexerConfig, IndexerUrls},
+    prelude::{Indexer as IndexerTrait, RealIndexer},
+};
 
 #[derive(Debug, Clone)]
 pub struct NetworkSubgraph {
@@ -10,49 +17,7 @@ pub struct NetworkSubgraph {
 }
 
 impl NetworkSubgraph {
-    pub fn new(endpoint: String) -> Self {
-        Self {
-            endpoint,
-            client: reqwest::Client::new(),
-        }
-    }
-}
-
-#[derive(Serialize)]
-struct GraphqlRequest {
-    query: String,
-    variables: BTreeMap<String, serde_json::Value>,
-}
-
-#[derive(Deserialize)]
-struct GraphqlResponse {
-    data: Option<serde_json::Value>,
-    errors: Option<Vec<serde_json::Value>>,
-}
-
-#[derive(Deserialize)]
-struct GraphqlResponseData {
-    subgraph_deployments: Vec<SubgraphDeployment>,
-}
-
-#[derive(Deserialize)]
-struct SubgraphDeployment {
-    ipfs_hash: String,
-    indexer_allocations: Vec<IndexerAllocation>,
-}
-
-#[derive(Deserialize)]
-struct IndexerAllocation {
-    indexer: Indexer,
-}
-
-#[derive(Deserialize)]
-struct Indexer {
-    id: String,
-    url: String,
-}
-
-const DEPLOYMENTS_QUERY: &str = r#"
+    const DEPLOYMENTS_QUERY: &str = r#"
 {
   subgraphDeployments(where: { indexerAllocations_: { status_in: [Active]  }}, orderBy:stakedTokens) {
     ipfsHash
@@ -66,11 +31,35 @@ const DEPLOYMENTS_QUERY: &str = r#"
 }
 "#;
 
-impl NetworkSubgraph {
+    pub fn new(endpoint: String) -> Self {
+        Self {
+            endpoint,
+            client: reqwest::Client::new(),
+        }
+    }
+
+    pub async fn indexers(&self) -> anyhow::Result<Vec<Arc<dyn IndexerTrait>>> {
+        let sg_deployments = self.subgraph_deployments().await?;
+
+        let mut indexers: Vec<Arc<dyn IndexerTrait>> = vec![];
+        for deployment in sg_deployments {
+            for indexer_allocation in deployment.indexer_allocations {
+                let url = indexer_allocation.indexer.url.clone();
+                if let Ok(indexer) = indexer_allocation_data_to_real_indexer(indexer_allocation) {
+                    indexers.push(Arc::new(indexer));
+                } else {
+                    warn!(url, "Failed to create indexer from allocation data");
+                }
+            }
+        }
+
+        Ok(indexers)
+    }
+
     // The `curation_threshold` is denominated in GRT.
-    async fn subgraph_deployments(&self) -> anyhow::Result<Vec<SubgraphDeployment>> {
+    pub async fn subgraph_deployments(&self) -> anyhow::Result<Vec<SubgraphDeployment>> {
         let request = GraphqlRequest {
-            query: DEPLOYMENTS_QUERY.to_string(),
+            query: Self::DEPLOYMENTS_QUERY.to_string(),
             variables: BTreeMap::new(), // Our query doesn't require any variables.
         };
 
@@ -113,6 +102,63 @@ impl NetworkSubgraph {
         Ok(data_deserialized.subgraph_deployments)
     }
 }
+
+fn indexer_allocation_data_to_real_indexer(
+    indexer_allocation: IndexerAllocation,
+) -> anyhow::Result<RealIndexer> {
+    let indexer = indexer_allocation.indexer;
+    let mut url: Url = indexer.url.parse()?;
+    // FIXME: we're unable to connect to indexers over HTTPS inside
+    // docker-compose for now.
+    url.set_scheme("http")
+        .map_err(|_| anyhow::anyhow!("unable to set scheme"))?;
+    url.set_port(Some(8030))
+        .map_err(|_| anyhow::anyhow!("unable to set port"))?;
+    url.set_path("/status");
+    let config = IndexerConfig {
+        id: indexer.id,
+        urls: IndexerUrls { status: url },
+    };
+    Ok(RealIndexer::new(config))
+}
+
+#[derive(Serialize)]
+struct GraphqlRequest {
+    query: String,
+    variables: BTreeMap<String, serde_json::Value>,
+}
+
+#[derive(Deserialize)]
+struct GraphqlResponse {
+    data: Option<serde_json::Value>,
+    errors: Option<Vec<serde_json::Value>>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GraphqlResponseData {
+    subgraph_deployments: Vec<SubgraphDeployment>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SubgraphDeployment {
+    pub ipfs_hash: String,
+    pub indexer_allocations: Vec<IndexerAllocation>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct IndexerAllocation {
+    pub indexer: Indexer,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Indexer {
+    pub id: String,
+    pub url: String,
+}
+
+impl NetworkSubgraph {}
 
 mod util {
     use tiny_cid::Cid;
