@@ -194,7 +194,7 @@ impl Indexer for RealIndexer {
         // Graph Node implements a limit of 10 POI requests per request, so
         // split our requests up accordingly.
         for requests in requests.chunks(10) {
-            debug!(
+            trace!(
                 indexer = %self.id(),
                 batch_size = requests.len(),
                 "Requesting public PoIs batch"
@@ -210,10 +210,6 @@ impl Indexer for RealIndexer {
                         .unwrap()
                         .inc();
 
-                    info!(
-                        id = %self.id(), pois = %batch_pois.len(),
-                        "Successfully queried POIs batch from indexer"
-                    );
                     pois.extend(batch_pois);
                 }
                 Err(error) => {

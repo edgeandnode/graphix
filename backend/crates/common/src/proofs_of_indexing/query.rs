@@ -55,7 +55,7 @@ pub async fn query_proofs_of_indexing(
     // Fetch POIs for the most recent common blocks
     indexers
         .iter()
-        .map(|indexer| {
+        .map(|indexer| async {
             let poi_requests = latest_blocks
                 .iter()
                 .filter(|(deployment, _)| {
@@ -73,7 +73,14 @@ pub async fn query_proofs_of_indexing(
                 })
                 .collect::<Vec<_>>();
 
-            indexer.clone().proofs_of_indexing(poi_requests)
+            let pois = indexer.clone().proofs_of_indexing(poi_requests).await;
+
+            info!(
+                id = %indexer.id(), pois = %pois.len(),
+                "Successfully queried POIs from indexer"
+            );
+
+            pois
         })
         .collect::<FuturesUnordered<_>>()
         .collect::<Vec<_>>()
