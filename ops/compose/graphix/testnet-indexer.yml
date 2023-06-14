@@ -1,9 +1,10 @@
-!testing
-
 databaseUrl: postgres://graphix:password@postgres-graphix:5432/graphix
-environments:
+sources:
   - id: testnet-indexer-03
-    type: Indexer
+    type: indexer
     urls:
       status: https://testnet-indexer-03-europe-cent.thegraph.com/status
-
+  - type: networkSubgraph
+    endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-goerli
+    stakeThreshold: 0.0
+    limit: 0 # Disabled for now

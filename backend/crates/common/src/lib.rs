@@ -1,10 +1,9 @@
 pub mod api_types;
 pub mod bisect;
-mod config;
+pub mod config;
 pub mod db;
 mod indexer;
 pub mod indexing_statuses;
-pub mod modes;
 pub mod network_subgraph;
 mod prometheus_metrics;
 pub mod proofs_of_indexing;
@@ -19,6 +18,5 @@ pub mod prelude {
     pub use super::config::*;
     pub use super::db;
     pub use super::indexer::*;
-    pub use super::modes;
     pub use super::types::*;
 }
