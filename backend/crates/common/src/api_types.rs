@@ -139,7 +139,7 @@ struct ProofOfIndexing {
     hash: String,
     deployment: Deployment,
     allocated_tokens: Option<u64>,
-    indexers: Vec<Indexer>,
+    indexer: Indexer,
 }
 
 #[derive(SimpleObject)]
@@ -174,7 +174,7 @@ impl From<models::PoI> for ProofOfIndexing {
                 number: poi.block.number as u64,
                 hash: hex::encode(poi.block.hash),
             },
-            indexers: vec![],
+            indexer: Indexer::from(models::Indexer::from(poi.indexer)),
         }
     }
 }
