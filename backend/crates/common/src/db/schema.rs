@@ -53,6 +53,8 @@ diesel::table! {
     live_pois (id) {
         id -> Int4,
         poi_id -> Int4,
+        sg_deployment_id -> Int4,
+        indexer_id -> Int4,
     }
 }
 

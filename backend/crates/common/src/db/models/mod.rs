@@ -2,8 +2,8 @@ use super::schema::*;
 use crate::types;
 use chrono::NaiveDateTime;
 use diesel::{
-    backend, deserialize::FromSql, pg::Pg, sql_types::Jsonb, AsExpression, FromSqlRow, Insertable,
-    Queryable,
+    backend, deserialize::FromSql, pg::Pg, sql_types::Jsonb, AsChangeset, AsExpression, FromSqlRow,
+    Insertable, Queryable,
 };
 use serde::{Deserialize, Serialize};
 use types::BlockPointer;
@@ -133,10 +133,12 @@ pub struct NewSgDeployment {
     pub created_at: NaiveDateTime,
 }
 
-#[derive(Debug, Insertable)]
+#[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = live_pois)]
 pub struct NewLivePoi {
     pub poi_id: IntId,
+    pub sg_deployment_id: IntId,
+    pub indexer_id: IntId,
 }
 
 #[derive(FromSqlRow, AsExpression, Serialize, Deserialize, Debug, Default)]
