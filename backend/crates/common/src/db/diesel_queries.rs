@@ -8,7 +8,7 @@ use crate::api_types::BlockRangeInput;
 use crate::db::models::{
     self, IndexerRow, NewIndexer, NewLivePoi, NewPoI, NewSgDeployment, SgDeployment,
 };
-use crate::db::schema;
+use crate::db::schema::{self, live_pois};
 
 pub(super) fn poi(conn: &mut PgConnection, poi: &str) -> anyhow::Result<Option<models::PoI>> {
     use schema::blocks;
@@ -47,42 +47,62 @@ pub(super) fn pois(
     sg_deployments: &[String],
     block_range: Option<BlockRangeInput>,
     limit: Option<u16>,
+    live_only: bool,
 ) -> anyhow::Result<Vec<models::PoI>> {
-    use schema::blocks;
-    use schema::indexers;
-    use schema::pois;
-    use schema::sg_deployments;
+    // The macro serves to conditionally join with `live_pois`.
+    macro_rules! make_query {
+        ($($join:expr),*) => {
+            {
+                use schema::blocks;
+                use schema::indexers;
+                use schema::pois;
+                use schema::sg_deployments;
 
-    let query = pois::table
-        .inner_join(sg_deployments::table)
-        .inner_join(indexers::table)
-        .inner_join(blocks::table)
-        .select((
-            pois::id,
-            pois::poi,
-            pois::created_at,
-            sg_deployments::all_columns,
-            indexers::all_columns,
-            blocks::all_columns,
-        ))
-        .order_by(blocks::number.desc())
-        .order_by(schema::pois::created_at.desc())
-        .filter(sg_deployments::ipfs_cid.eq_any(sg_deployments))
-        .filter(
-            blocks::number.between(
-                block_range
-                    .as_ref()
-                    .and_then(|b| b.start)
-                    .map_or(0, |start| start as i64),
-                block_range
-                    .as_ref()
-                    .and_then(|b| b.end)
-                    .map_or(i64::max_value(), |end| end as i64),
-            ),
-        )
-        .limit(limit.unwrap_or(1000) as i64);
+                pois::table
+                    .inner_join(sg_deployments::table)
+                    .inner_join(indexers::table)
+                    .inner_join(blocks::table)
+                    $(
+                        .inner_join($join)
+                    )?
+                    .select((
+                        pois::id,
+                        pois::poi,
+                        pois::created_at,
+                        sg_deployments::all_columns,
+                        indexers::all_columns,
+                        blocks::all_columns,
+                    ))
+                    .order_by(blocks::number.desc())
+                    .order_by(schema::pois::created_at.desc())
+                    .filter(sg_deployments::ipfs_cid.eq_any(sg_deployments))
+                    .filter(
+                        blocks::number.between(
+                            block_range
+                                .as_ref()
+                                .and_then(|b| b.start)
+                                .map_or(0, |start| start as i64),
+                            block_range
+                                .as_ref()
+                                .and_then(|b| b.end)
+                                .map_or(i64::max_value(), |end| end as i64),
+                        ),
+                    )
+                    .limit(limit.unwrap_or(1000) as i64)
+            }
+        };
+    }
 
-    Ok(query.load::<models::PoI>(conn)?)
+    match live_only {
+        false => {
+            let query = make_query!();
+            return Ok(query.load::<models::PoI>(conn)?);
+        }
+        true => {
+            let query = make_query!(live_pois::table);
+            return Ok(query.load::<models::PoI>(conn)?);
+        }
+    }
 }
 
 // The caller must make sure that `conn` is within a transaction.
@@ -93,7 +113,6 @@ pub(super) fn write_pois(
 ) -> anyhow::Result<()> {
     use schema::blocks;
     use schema::indexers;
-    use schema::live_pois;
     use schema::pois;
     use schema::sg_deployments;
 

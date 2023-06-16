@@ -8,3 +8,13 @@ sources:
     endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-goerli
     stakeThreshold: 0.0
     limit: 0 # Disabled for now
+  # Example interceptors
+  # - id: testnet-indexer-03-interceptor
+  #   type: interceptor
+  #   target: testnet-indexer-03
+  #   poiByte: 255
+  # - id: testnet-indexer-03-interceptor2
+  #   type: interceptor
+  #   target: testnet-indexer-03
+  #   poiByte: 255
+

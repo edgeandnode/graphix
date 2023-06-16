@@ -47,6 +47,20 @@ impl QueryRoot {
         Ok(pois.into_iter().map(ProofOfIndexing::from).collect())
     }
 
+    async fn live_proofs_of_indexing(
+        &self,
+        ctx: &Context<'_>,
+        request: ProofOfIndexingRequest,
+    ) -> Result<Vec<ProofOfIndexing>, async_graphql::Error> {
+        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let pois =
+            api_ctx
+                .store
+                .live_pois(&request.deployments, request.block_range, request.limit)?;
+
+        Ok(pois.into_iter().map(ProofOfIndexing::from).collect())
+    }
+
     // async fn poi_cross_check_reports(
     //     &self,
     //     ctx: &Context<'_>,
