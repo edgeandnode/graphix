@@ -207,9 +207,16 @@ pub(super) fn write_pois(
             .get_result::<i32>(conn)?;
 
         if live == PoiLiveness::Live {
+            let value = NewLivePoi {
+                poi_id,
+                sg_deployment_id,
+                indexer_id,
+            };
             diesel::insert_into(live_pois::table)
-                .values(NewLivePoi { poi_id })
-                .on_conflict_do_nothing()
+                .values(&value)
+                .on_conflict((live_pois::sg_deployment_id, live_pois::indexer_id))
+                .do_update()
+                .set(&value)
                 .execute(conn)?;
         }
     }

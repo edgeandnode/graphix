@@ -78,7 +78,11 @@ CREATE INDEX ON pois (indexer_id);
 
 CREATE TABLE live_pois (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  poi_id INTEGER NOT NULL REFERENCES pois(id) ON DELETE CASCADE
+  sg_deployment_id INTEGER NOT NULL REFERENCES sg_deployments(id) ON DELETE CASCADE,
+  indexer_id INTEGER NOT NULL REFERENCES indexers(id),
+  poi_id INTEGER NOT NULL REFERENCES pois(id) ON DELETE CASCADE,
+
+  UNIQUE (sg_deployment_id, indexer_id)
 );
 
 CREATE TABLE poi_divergence_bisect_reports (
