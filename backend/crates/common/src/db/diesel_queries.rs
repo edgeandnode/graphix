@@ -50,6 +50,7 @@ pub(super) fn pois(
     limit: Option<u16>,
     live_only: bool,
 ) -> anyhow::Result<Vec<models::PoI>> {
+    #![allow(non_snake_case)]
     use schema::blocks;
     use schema::indexers;
     use schema::pois;
@@ -123,60 +124,14 @@ pub(super) fn write_pois(
     live: PoiLiveness,
 ) -> anyhow::Result<()> {
     use schema::blocks;
-    use schema::indexers;
     use schema::pois;
-    use schema::sg_deployments;
 
     let len = pois.len();
 
     for poi in pois {
-        let sg_deployment_id = {
-            // First, attempt to find the existing sg_deployment by the deployment field
-            let existing_sg_deployment: Option<SgDeployment> = sg_deployments::table
-                .filter(sg_deployments::ipfs_cid.eq(poi.deployment_cid()))
-                .get_result(conn)
-                .optional()?;
+        let sg_deployment_id = get_or_insert_deployment(conn, poi.deployment_cid())?;
 
-            if let Some(existing_sg_deployment) = existing_sg_deployment {
-                // If the sg_deployment exists, use its id
-                existing_sg_deployment.id
-            } else {
-                // If the sg_deployment doesn't exist, insert a new one and return its id
-                let new_sg_deployment = NewSgDeployment {
-                    ipfs_cid: poi.deployment_cid().to_string(),
-                    network: 1, // Network assumed to be mainnet, see also: hardcoded-mainnet
-                    created_at: Utc::now().naive_utc(),
-                };
-                diesel::insert_into(sg_deployments::table)
-                    .values(&new_sg_deployment)
-                    .returning(sg_deployments::id)
-                    .get_result(conn)?
-            }
-        };
-
-        let indexer_id = {
-            // First, attempt to find the existing indexer by the address field
-            let existing_indexer: Option<IndexerRow> = indexers::table
-                .filter(indexers::name.is_not_distinct_from(poi.indexer_id()))
-                .filter(indexers::address.is_not_distinct_from(poi.indexer_address()))
-                .get_result(conn)
-                .optional()?;
-
-            if let Some(existing_indexer) = existing_indexer {
-                // If the indexer exists, use its id
-                existing_indexer.id
-            } else {
-                // If the indexer doesn't exist, insert a new one and return its id
-                let new_indexer = NewIndexer {
-                    address: poi.indexer_address().map(ToOwned::to_owned),
-                    name: Some(poi.indexer_id().to_string()),
-                };
-                diesel::insert_into(indexers::table)
-                    .values(&new_indexer)
-                    .returning(indexers::id)
-                    .get_result(conn)?
-            }
-        };
+        let indexer_id = get_or_insert_indexer(conn, poi.indexer_id(), poi.indexer_address())?;
 
         let block_id = {
             // First, attempt to find the existing block by hash
@@ -234,4 +189,61 @@ pub(super) fn write_pois(
 
     info!(%len, "Wrote POIs to database");
     Ok(())
+}
+
+fn get_or_insert_indexer(
+    conn: &mut PgConnection,
+    id: &str,
+    address: Option<&[u8]>,
+) -> Result<i32, anyhow::Error> {
+    use schema::indexers;
+
+    let existing_indexer: Option<IndexerRow> = indexers::table
+        .filter(indexers::name.is_not_distinct_from(id))
+        .filter(indexers::address.is_not_distinct_from(address))
+        .get_result(conn)
+        .optional()?;
+    Ok(if let Some(existing_indexer) = existing_indexer {
+        // If the indexer exists, use its id
+        existing_indexer.id
+    } else {
+        // If the indexer doesn't exist, insert a new one and return its id
+        let new_indexer = NewIndexer {
+            address: address.map(ToOwned::to_owned),
+            name: Some(id.to_string()),
+        };
+        diesel::insert_into(indexers::table)
+            .values(&new_indexer)
+            .returning(indexers::id)
+            .get_result(conn)?
+    })
+}
+
+fn get_or_insert_deployment(
+    conn: &mut PgConnection,
+    deployment_cid: &str,
+) -> Result<i32, anyhow::Error> {
+    use schema::sg_deployments;
+
+    let existing_sg_deployment: Option<SgDeployment> = sg_deployments::table
+        .filter(sg_deployments::ipfs_cid.eq(&deployment_cid))
+        .get_result(conn)
+        .optional()?;
+    Ok(
+        if let Some(existing_sg_deployment) = existing_sg_deployment {
+            // If the sg_deployment exists, use its id
+            existing_sg_deployment.id
+        } else {
+            // If the sg_deployment doesn't exist, insert a new one and return its id
+            let new_sg_deployment = NewSgDeployment {
+                ipfs_cid: deployment_cid.to_owned(),
+                network: 1, // Network assumed to be mainnet, see also: hardcoded-mainnet
+                created_at: Utc::now().naive_utc(),
+            };
+            diesel::insert_into(sg_deployments::table)
+                .values(&new_sg_deployment)
+                .returning(sg_deployments::id)
+                .get_result(conn)?
+        },
+    )
 }
