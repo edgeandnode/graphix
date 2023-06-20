@@ -23,7 +23,8 @@ async fn poi_db_roundtrip() {
         diesel_queries::write_pois(conn, &pois.clone(), PoiLiveness::NotLive).unwrap();
         let all_deployments: Vec<String> =
             pois.iter().map(|poi| poi.deployment.0.clone()).collect();
-        let read_pois = diesel_queries::pois(conn, &all_deployments, None, None, false).unwrap();
+        let read_pois =
+            diesel_queries::pois(conn, Some(&all_deployments), None, None, false).unwrap();
 
         // The triple is (deployment, indexer_id, poi)
         let poi_triples: BTreeSet<(String, String, Vec<u8>)> = pois
@@ -43,7 +44,8 @@ async fn poi_db_roundtrip() {
             .collect();
         assert!(poi_triples == read_poi_triples);
 
-        let live_pois = diesel_queries::pois(conn, &all_deployments, None, None, true).unwrap();
+        let live_pois =
+            diesel_queries::pois(conn, Some(&all_deployments), None, None, true).unwrap();
         assert!(live_pois.is_empty());
 
         Ok(())
@@ -57,19 +59,20 @@ async fn poi_db_roundtrip() {
 
         // Assert that all pois are live pois
         assert_eq!(
-            diesel_queries::pois(conn, &all_deployments, None, None, true)
+            diesel_queries::pois(conn, Some(&all_deployments), None, None, true)
                 .unwrap()
                 .into_iter()
                 .map(|poi| poi.id)
                 .collect::<Vec<_>>(),
-            diesel_queries::pois(conn, &all_deployments, None, None, false)
+            diesel_queries::pois(conn, Some(&all_deployments), None, None, false)
                 .unwrap()
                 .into_iter()
                 .map(|poi| poi.id)
                 .collect::<Vec<_>>()
         );
 
-        let read_pois = diesel_queries::pois(conn, &all_deployments, None, None, true).unwrap();
+        let read_pois =
+            diesel_queries::pois(conn, Some(&all_deployments), None, None, true).unwrap();
 
         // The triple is (deployment, indexer_id, poi)
         let poi_triples: BTreeSet<(String, String, Vec<u8>)> = pois
