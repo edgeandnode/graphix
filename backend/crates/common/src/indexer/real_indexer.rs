@@ -116,7 +116,7 @@ impl RealIndexer {
     #[instrument(skip_all)]
     pub fn new(config: IndexerConfig) -> Self {
         RealIndexer {
-            id: config.id,
+            id: config.name,
             urls: config.urls,
             client: reqwest::Client::new(),
         }
