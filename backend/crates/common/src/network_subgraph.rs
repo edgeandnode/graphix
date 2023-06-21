@@ -18,18 +18,27 @@ pub struct NetworkSubgraph {
 
 impl NetworkSubgraph {
     const DEPLOYMENTS_QUERY: &str = r#"
-{
-  subgraphDeployments(where: { indexerAllocations_: { status_in: [Active]  }}, orderBy:stakedTokens) {
-    ipfsHash
-    indexerAllocations(orderBy:allocatedTokens) {
-      indexer {
-        id
-        url
-      }
-    }
-  }
-}
-"#;
+        {
+          subgraphDeployments(where: { indexerAllocations_: { status_in: [Active]  }}, orderBy:stakedTokens) {
+            ipfsHash
+            indexerAllocations(orderBy:allocatedTokens) {
+              indexer {
+                id
+                url
+              }
+            }
+          }
+        }
+    "#;
+
+    const INDEXER_BY_ADDRESS_QUERY: &str = r#"
+        {
+          indexers(where: { id: $id }) {
+            url
+            defaultDisplayName
+          }
+        }
+    "#;
 
     pub fn new(endpoint: String) -> Self {
         Self {
@@ -54,6 +63,60 @@ impl NetworkSubgraph {
         }
 
         Ok(indexers)
+    }
+
+    pub async fn indexer_by_address(
+        &self,
+        address: &[u8],
+    ) -> anyhow::Result<Arc<dyn IndexerTrait>> {
+        let request = GraphqlRequest {
+            query: Self::INDEXER_BY_ADDRESS_QUERY.to_string(),
+            variables: BTreeMap::from_iter(vec![(
+                "id".to_string(),
+                serde_json::to_value(hex::encode(address))?,
+            )]),
+        };
+
+        let res: GraphqlResponse = self
+            .client
+            .post(&self.endpoint)
+            .json(&request)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+
+        let errors = res.errors.unwrap_or_default();
+        if !errors.is_empty() {
+            return Err(anyhow::anyhow!(
+                "error(s) querying indexer by address from the network subgraph: {}",
+                serde_json::to_string(&errors)?
+            ));
+        }
+
+        #[derive(Debug, Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct ResponseData {
+            url: String,
+            default_display_name: String,
+        }
+
+        // Unwrap: A response that has no errors must contain data.
+        let data = res.data.unwrap();
+        let data_deserialized: Vec<ResponseData> = serde_json::from_value(data)?;
+        let indexer_data = data_deserialized.first().ok_or_else(|| {
+            anyhow::anyhow!("No indexer found for address {}", hex::encode(address))
+        })?;
+
+        let indexer = Arc::new(RealIndexer::new(IndexerConfig {
+            name: indexer_data.default_display_name.clone(),
+            urls: IndexerUrls {
+                status: Url::parse(&format!("{}/status", indexer_data.url))?,
+            },
+        }));
+
+        Ok(indexer)
     }
 
     // The `curation_threshold` is denominated in GRT.
@@ -112,11 +175,9 @@ fn indexer_allocation_data_to_real_indexer(
     // docker-compose for now.
     url.set_scheme("http")
         .map_err(|_| anyhow::anyhow!("unable to set scheme"))?;
-    url.set_port(Some(8030))
-        .map_err(|_| anyhow::anyhow!("unable to set port"))?;
     url.set_path("/status");
     let config = IndexerConfig {
-        id: indexer.id,
+        name: indexer.id,
         urls: IndexerUrls { status: url },
     };
     Ok(RealIndexer::new(config))

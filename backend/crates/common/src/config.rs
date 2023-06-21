@@ -51,6 +51,17 @@ impl Config {
             .collect()
     }
 
+    pub fn indexers_by_address(&self) -> Vec<IndexerByAddressConfig> {
+        self.sources
+            .iter()
+            .filter_map(|source| match source {
+                ConfigSource::IndexerByAddress(config) => Some(config),
+                _ => None,
+            })
+            .cloned()
+            .collect()
+    }
+
     pub fn interceptors(&self) -> Vec<InterceptorConfig> {
         self.sources
             .iter()
@@ -94,8 +105,15 @@ pub struct IndexerUrls {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IndexerConfig {
-    pub id: String,
+    pub name: String,
     pub urls: IndexerUrls,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IndexerByAddressConfig {
+    #[serde(deserialize_with = "deserialize_hexstring")]
+    pub address: Vec<u8>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -109,7 +127,7 @@ pub struct NetworkSubgraphConfig {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InterceptorConfig {
-    pub id: String,
+    pub name: String,
     pub target: String,
     pub poi_byte: u8,
 }
@@ -118,6 +136,7 @@ pub struct InterceptorConfig {
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ConfigSource {
     Indexer(IndexerConfig),
+    IndexerByAddress(IndexerByAddressConfig),
     Interceptor(InterceptorConfig),
     NetworkSubgraph(NetworkSubgraphConfig),
 }
@@ -130,16 +149,24 @@ where
     Url::parse(&s).map_err(serde::de::Error::custom)
 }
 
+fn deserialize_hexstring<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    if !s.starts_with("0x") {
+        return Err(serde::de::Error::custom("hexstring must start with 0x"));
+    }
+    hex::decode(&s[2..]).map_err(serde::de::Error::custom)
+}
+
 #[instrument]
 pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn Indexer>>> {
     let mut indexers: Vec<Arc<dyn Indexer>> = vec![];
 
-    let static_indexers = config.indexers();
-    let interceptors = config.interceptors();
-
     // First, configure all the real, static indexers.
-    for config in static_indexers {
-        info!(indexer_id = %config.id, "Configuring indexer");
+    for config in config.indexers() {
+        info!(indexer_id = %config.name, "Configuring indexer");
         indexers.push(Arc::new(RealIndexer::new(config.clone())));
     }
 
@@ -156,16 +183,30 @@ pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn In
         indexers.extend(network_subgraph_indexers);
     }
 
+    // Then, configure indexers by address, which requires access to the network subgraph.
+    for indexer_config in config.indexers_by_address() {
+        let network_subgraph = NetworkSubgraph::new(
+            config
+                .network_subgraph()
+                .ok_or_else(|| anyhow::anyhow!("indexer by address requires a network subgraph"))?
+                .endpoint,
+        );
+        let indexer = network_subgraph
+            .indexer_by_address(&indexer_config.address)
+            .await?;
+        indexers.push(indexer);
+    }
+
     // Finally, configure all the interceptors, referring to the real, static
     // indexers by ID.
-    for config in interceptors {
-        info!(interceptor_id = %config.id, "Configuring interceptor");
+    for config in config.interceptors() {
+        info!(interceptor_id = %config.name, "Configuring interceptor");
         let target = indexers
             .iter()
             .find(|indexer| indexer.id() == config.target)
             .expect("interceptor target indexer not found");
         indexers.push(Arc::new(IndexerInterceptor::new(
-            config.id,
+            config.name,
             target.clone(),
             config.poi_byte,
         )));

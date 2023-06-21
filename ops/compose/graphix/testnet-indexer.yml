@@ -1,13 +1,19 @@
 databaseUrl: postgres://graphix:password@postgres-graphix:5432/graphix
 sources:
-  - id: testnet-indexer-03
-    type: indexer
+  - type: indexer
+    name: testnet-indexer-03
     urls:
       status: https://testnet-indexer-03-europe-cent.thegraph.com/status
+  - type: indexer
+    name: ellipra
+    urls:
+      status: http://graph-testnet.ellipfra.net/status
   - type: networkSubgraph
     endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-goerli
     stakeThreshold: 0.0
     limit: 0 # Disabled for now
+  # - type: indexerByAddress
+  #   address: "0x56577167dcdd1a3de2e58d53fc2be0b622d82a7c"
   # Example interceptors
   # - id: testnet-indexer-03-interceptor
   #   type: interceptor
