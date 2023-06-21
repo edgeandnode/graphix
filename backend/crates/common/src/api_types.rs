@@ -1,6 +1,9 @@
 //! GraphQL API types.
 
+use std::collections::BTreeMap;
+
 use crate::db::{models, Store};
+use anyhow::Context as _;
 use async_graphql::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -20,10 +23,7 @@ impl QueryRoot {
 
         Ok(deployments
             .into_iter()
-            .map(|id| Deployment {
-                id,
-                pois_count: None,
-            })
+            .map(|id| Deployment { id })
             .collect())
     }
 
@@ -53,12 +53,106 @@ impl QueryRoot {
         request: ProofOfIndexingRequest,
     ) -> Result<Vec<ProofOfIndexing>, async_graphql::Error> {
         let api_ctx = ctx.data::<APISchemaContext>()?;
-        let pois =
-            api_ctx
-                .store
-                .live_pois(&request.deployments, request.block_range, request.limit)?;
+        let pois = api_ctx.store.live_pois(
+            None,
+            Some(&request.deployments),
+            request.block_range,
+            request.limit,
+        )?;
 
         Ok(pois.into_iter().map(ProofOfIndexing::from).collect())
+    }
+
+    async fn poi_agreement_ratios(
+        &self,
+        ctx: &Context<'_>,
+        indexer_name: String,
+    ) -> Result<Vec<POIAgreementRatio>, async_graphql::Error> {
+        let api_ctx = ctx.data::<APISchemaContext>()?;
+
+        // Query live POIs of a the requested indexer.
+        let indexer_pois = api_ctx
+            .store
+            .live_pois(Some(&indexer_name), None, None, None)?;
+
+        let deployment_cids: Vec<_> = indexer_pois
+            .iter()
+            .map(|poi| poi.sg_deployment.cid.clone())
+            .collect();
+
+        // Query all live POIs for the specific deployments.
+        let all_deployment_pois =
+            api_ctx
+                .store
+                .live_pois(None, Some(&deployment_cids), None, None)?;
+
+        // Convert POIs to ProofOfIndexing and group by deployment
+        let mut deployment_to_pois: BTreeMap<String, Vec<ProofOfIndexing>> = BTreeMap::new();
+        for poi in all_deployment_pois {
+            let proof_of_indexing: ProofOfIndexing = poi.into();
+            deployment_to_pois
+                .entry(proof_of_indexing.deployment.id.clone())
+                .or_default()
+                .push(proof_of_indexing);
+        }
+
+        let mut agreement_ratios: Vec<POIAgreementRatio> = Vec::new();
+
+        for poi in indexer_pois {
+            let poi: ProofOfIndexing = poi.into();
+
+            let deployment = Deployment {
+                id: poi.deployment.id.clone(),
+            };
+
+            let block = PartialBlock {
+                number: poi.block.number as i64,
+                hash: Some(poi.block.hash),
+            };
+
+            let deployment_pois = deployment_to_pois
+                .get(&poi.deployment.id)
+                .context("inconsistent pois table, no pois for deployment")?;
+
+            let total_indexers = deployment_pois.len() as i32;
+
+            // Calculate POI agreement by creating a map to count unique POIs and their occurrence.
+            let mut poi_counts: BTreeMap<String, i32> = BTreeMap::new();
+            for dp in deployment_pois {
+                *poi_counts.entry(dp.hash.clone()).or_insert(0) += 1;
+            }
+
+            // Define consensus and agreement based on the map.
+            let (max_poi, max_poi_count) = poi_counts
+                .iter()
+                .max_by_key(|(_, &v)| v)
+                .context("inconsistent pois table, no pois")?;
+
+            let has_consensus = *max_poi_count > total_indexers / 2;
+
+            let n_agreeing_indexers = *poi_counts
+                .get(&poi.hash)
+                .context("inconsistent pois table, no matching poi")?;
+
+            let n_disagreeing_indexers = total_indexers - n_agreeing_indexers;
+
+            let in_consensus = has_consensus && max_poi == &poi.hash;
+
+            let ratio = POIAgreementRatio {
+                poi: poi.hash.clone(),
+                deployment,
+                block: block,
+                total_indexers,
+                n_agreeing_indexers,
+                n_disagreeing_indexers,
+                has_consensus,
+                in_consensus,
+            };
+
+            agreement_ratios.push(ratio);
+        }
+
+        Ok(agreement_ratios)
     }
 
     // async fn poi_cross_check_reports(
@@ -121,13 +215,13 @@ pub struct BlockRangeInput {
     pub end: Option<u64>,
 }
 
-#[derive(SimpleObject)]
+#[derive(SimpleObject, Debug)]
 pub struct Network {
     pub name: String,
     pub caip2: Option<String>,
 }
 
-#[derive(SimpleObject)]
+#[derive(SimpleObject, Debug)]
 pub struct Block {
     pub network: Network,
     pub number: u64,
@@ -141,13 +235,12 @@ struct PartialBlock {
     hash: Option<String>,
 }
 
-#[derive(SimpleObject)]
+#[derive(SimpleObject, Debug)]
 struct Deployment {
     id: String,
-    pois_count: Option<u64>,
 }
 
-#[derive(SimpleObject)]
+#[derive(SimpleObject, Debug)]
 struct ProofOfIndexing {
     block: Block,
     hash: String,
@@ -156,7 +249,7 @@ struct ProofOfIndexing {
     indexer: Indexer,
 }
 
-#[derive(SimpleObject)]
+#[derive(SimpleObject, Debug)]
 struct Indexer {
     id: HexBytesWith0xPrefix,
     allocated_tokens: Option<u64>,
@@ -165,7 +258,7 @@ struct Indexer {
 impl From<models::Indexer> for Indexer {
     fn from(indexer: models::Indexer) -> Self {
         Self {
-            id: indexer.id.to_string(),
+            id: indexer.name.unwrap_or_default(),
             allocated_tokens: None, // TODO: we don't store this in the db yet
         }
     }
@@ -177,7 +270,6 @@ impl From<models::PoI> for ProofOfIndexing {
             allocated_tokens: None,
             deployment: Deployment {
                 id: poi.sg_deployment.cid.clone(),
-                pois_count: None,
             },
             hash: poi.poi_hex(),
             block: Block {
@@ -219,6 +311,33 @@ struct POICrossCheckReport {
     proof_of_indexing1: String,
     proof_of_indexing2: String,
     diverging_block: Option<DivergingBlock>,
+}
+
+/// A specific indexer can use `POIAgreementRatio` to check in how much agreement it is with other
+/// indexers, given its own poi for each deployment. A consensus currently means a majority of
+/// indexers agreeing on a particular POI.
+#[derive(SimpleObject)]
+#[graphql(name = "POIAgreementRatio")]
+struct POIAgreementRatio {
+    poi: String,
+    deployment: Deployment,
+    block: PartialBlock,
+
+    /// Total number of indexers that have live pois for the deployment.
+    total_indexers: i32,
+
+    /// Number of indexers that agree on the POI with the specified indexer,
+    /// including the indexer itself.
+    n_agreeing_indexers: i32,
+
+    /// Number of indexers that disagree on the POI with the specified indexer.
+    n_disagreeing_indexers: i32,
+
+    /// Indicates if a consensus on the POI exists among indexers.
+    has_consensus: bool,
+
+    /// Indicates if the specified indexer's POI is part of the consensus.
+    in_consensus: bool,
 }
 
 // impl From<models::PoiCrossCheckReport> for POICrossCheckReport {
