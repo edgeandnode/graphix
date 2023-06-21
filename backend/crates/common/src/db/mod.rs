@@ -133,18 +133,33 @@ impl Store {
         limit: Option<u16>,
     ) -> anyhow::Result<Vec<PoI>> {
         let mut conn = self.conn()?;
-        diesel_queries::pois(&mut conn, Some(sg_deployments), block_range, limit, false)
+        diesel_queries::pois(
+            &mut conn,
+            None,
+            Some(sg_deployments),
+            block_range,
+            limit,
+            false,
+        )
     }
 
     /// Like `pois`, but only returns live pois.
     pub fn live_pois(
         &self,
-        sg_deployments: &[String],
+        indexer_name: Option<&str>,
+        sg_deployments_cids: Option<&[String]>,
         block_range: Option<BlockRangeInput>,
         limit: Option<u16>,
     ) -> anyhow::Result<Vec<PoI>> {
         let mut conn = self.conn()?;
-        diesel_queries::pois(&mut conn, Some(sg_deployments), block_range, limit, true)
+        diesel_queries::pois(
+            &mut conn,
+            indexer_name,
+            sg_deployments_cids,
+            block_range,
+            limit,
+            true,
+        )
     }
 
     pub fn write_pois(&self, pois: &[impl WritablePoI], live: PoiLiveness) -> anyhow::Result<()> {

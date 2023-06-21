@@ -45,6 +45,7 @@ pub(super) fn indexers(conn: &mut PgConnection) -> anyhow::Result<Vec<IndexerRow
 // This is a single SQL statement, a transaction is not necessary.
 pub(super) fn pois(
     conn: &mut PgConnection,
+    indexer_id: Option<&str>,
     sg_deployments: Option<&[String]>,
     block_range: Option<BlockRangeInput>,
     limit: Option<u16>,
@@ -54,7 +55,7 @@ pub(super) fn pois(
     use schema::blocks;
     use schema::indexers;
     use schema::pois;
-    use schema::sg_deployments;
+    use schema::sg_deployments as sgd;
 
     let FALSE = diesel::dsl::sql::<sql_types::Bool>("false");
     let TRUE = diesel::dsl::sql::<sql_types::Bool>("true");
@@ -63,7 +64,7 @@ pub(super) fn pois(
         pois::id,
         pois::poi,
         pois::created_at,
-        sg_deployments::all_columns,
+        sgd::all_columns,
         indexers::all_columns,
         blocks::all_columns,
     );
@@ -80,30 +81,36 @@ pub(super) fn pois(
     );
 
     let deployments_filter = match sg_deployments {
-        Some(sg_deployments) => sg_deployments::ipfs_cid.eq_any(sg_deployments).or(FALSE),
-        None => sg_deployments::ipfs_cid.eq_any([]).or(TRUE),
+        Some(sg_deployments) => sgd::ipfs_cid.eq_any(sg_deployments).or(FALSE.clone()),
+        None => sgd::ipfs_cid.eq_any([]).or(TRUE.clone()),
+    };
+
+    let indexer_filter = match indexer_id {
+        Some(indexer_id) => indexers::name.eq(indexer_id).or(FALSE),
+        None => indexers::name.eq("").or(TRUE),
     };
 
     let order_by = (blocks::number.desc(), schema::pois::created_at.desc());
-    let limit = limit.unwrap_or(1000) as i64;
+    let limit = limit.map(|l| l as i64).unwrap_or(i64::MAX) as i64;
 
     match live_only {
         false => {
             let query = pois::table
-                .inner_join(sg_deployments::table)
+                .inner_join(sgd::table)
                 .inner_join(indexers::table)
                 .inner_join(blocks::table)
                 .select(selection)
                 .order_by(order_by)
                 .filter(deployments_filter)
                 .filter(blocks_filter)
+                .filter(indexer_filter)
                 .limit(limit);
             return Ok(query.load::<models::PoI>(conn)?);
         }
         // This will additionally join with `live_pois` to filter out any PoIs that are not live.
         true => {
             let query = pois::table
-                .inner_join(sg_deployments::table)
+                .inner_join(sgd::table)
                 .inner_join(indexers::table)
                 .inner_join(blocks::table)
                 .inner_join(live_pois::table)
@@ -111,6 +118,7 @@ pub(super) fn pois(
                 .order_by(order_by)
                 .filter(deployments_filter)
                 .filter(blocks_filter)
+                .filter(indexer_filter)
                 .limit(limit);
             return Ok(query.load::<models::PoI>(conn)?);
         }
