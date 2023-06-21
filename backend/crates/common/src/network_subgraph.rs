@@ -69,6 +69,7 @@ impl NetworkSubgraph {
         &self,
         address: &[u8],
     ) -> anyhow::Result<Arc<dyn IndexerTrait>> {
+        println!("address is {:?}", hex::encode(address));
         let request = GraphqlRequest {
             query: Self::INDEXER_BY_ADDRESS_QUERY.to_string(),
             variables: BTreeMap::from_iter(vec![(
@@ -98,14 +99,21 @@ impl NetworkSubgraph {
         #[derive(Debug, Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct ResponseData {
+            indexers: Vec<IndexerData>,
+        }
+
+        #[derive(Debug, Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct IndexerData {
             url: String,
             default_display_name: String,
         }
 
         // Unwrap: A response that has no errors must contain data.
         let data = res.data.unwrap();
-        let data_deserialized: Vec<ResponseData> = serde_json::from_value(data)?;
-        let indexer_data = data_deserialized.first().ok_or_else(|| {
+        println!("data: {:?}", data);
+        let data_deserialized: ResponseData = serde_json::from_value(data)?;
+        let indexer_data = data_deserialized.indexers.first().ok_or_else(|| {
             anyhow::anyhow!("No indexer found for address {}", hex::encode(address))
         })?;
 
