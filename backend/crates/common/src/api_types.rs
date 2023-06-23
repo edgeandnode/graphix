@@ -6,6 +6,7 @@ use crate::store::{models, Store};
 use anyhow::Context as _;
 use async_graphql::*;
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 use uuid::Uuid;
 
 type HexBytesWith0xPrefix = String;
@@ -171,19 +172,23 @@ impl QueryRoot {
 
 pub struct MutationRoot;
 
+impl MutationRoot {}
+
 #[Object]
 impl MutationRoot {
     async fn launch_cross_check_report(
         &self,
         ctx: &Context<'_>,
         req: DivergenceInvestigationRequest,
-    ) -> Result<String> {
+    ) -> Result<DivergenceInvestigationResponse> {
+        debug!("launch_cross_check_report");
+
         let api_ctx = ctx.data::<APISchemaContext>()?;
         let store = &api_ctx.store;
 
-        let id = store.queue_cross_check_report(req)?;
+        let id = store.queue_cross_check_report(req)?.to_string();
 
-        Ok(id.to_string())
+        Ok(DivergenceInvestigationResponse { id })
     }
 }
 
@@ -226,6 +231,11 @@ pub struct Block {
     pub network: Network,
     pub number: u64,
     pub hash: HexBytesWith0xPrefix,
+}
+
+#[derive(SimpleObject)]
+struct DivergenceInvestigationResponse {
+    id: String,
 }
 
 /// A block number that may or may not also have an associated hash.
