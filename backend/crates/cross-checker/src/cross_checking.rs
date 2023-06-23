@@ -11,7 +11,7 @@ use futures::{
 };
 use graphix_common::bisect::{bisect_blocks, BisectDecision, DivergingBlock};
 use graphix_common::prelude::{
-    Indexer, POICrossCheckReport, POIRequest, ProofOfIndexing, SubgraphDeployment,
+    Indexer, POICrossCheckReport, PoiRequest, ProofOfIndexing, SubgraphDeployment,
 };
 use itertools::Itertools;
 use nanoid::nanoid;
@@ -197,7 +197,7 @@ async fn test_block_number(
         mut poi_broadcaster,
     } = ctx;
 
-    let request = POIRequest {
+    let request = PoiRequest {
         deployment: deployment.clone(),
         block_number,
     };

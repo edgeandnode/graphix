@@ -1,13 +1,18 @@
+//! A indexer interceptor, for test configs only.
+
 use std::sync::Arc;
 
-use crate::indexer::types::Indexer;
+use crate::indexer::Indexer;
 use crate::prelude::Bytes32;
-use crate::types::{IndexingStatus, POIRequest, ProofOfIndexing};
+use crate::types::{IndexingStatus, PoiRequest, ProofOfIndexing};
 use async_trait::async_trait;
 
-/// Pretends to be an indexer by routing requests a `RealIndexer` and then intercepting the
-/// responses to generate diverging PoIs. The divergent pois will consist of a repetition of
-/// `poi_bit`.
+use super::{CachedEthereumCall, EntityChanges};
+
+/// Pretends to be an indexer by routing requests a
+/// [`RealIndexer`](crate::indexer::RealIndexer) and then intercepting the
+/// responses to generate diverging PoIs. The divergent pois will consist of a
+/// repetition of `poi_byte`. Interceptors have no [`Indexer::address`].
 #[derive(Debug)]
 pub struct IndexerInterceptor {
     target: Arc<dyn Indexer>,
@@ -52,7 +57,7 @@ impl Indexer for IndexerInterceptor {
 
     async fn proofs_of_indexing(
         self: Arc<Self>,
-        requests: Vec<POIRequest>,
+        requests: Vec<PoiRequest>,
     ) -> Vec<ProofOfIndexing> {
         let pois = self.target.clone().proofs_of_indexing(requests).await;
 
@@ -67,5 +72,38 @@ impl Indexer for IndexerInterceptor {
                 }
             })
             .collect()
+    }
+
+    async fn cached_eth_calls(
+        self: Arc<Self>,
+        network: &str,
+        block_hash: &[u8],
+    ) -> anyhow::Result<Vec<CachedEthereumCall>> {
+        self.target
+            .clone()
+            .cached_eth_calls(network, block_hash)
+            .await
+    }
+
+    async fn block_cache_contents(
+        self: Arc<Self>,
+        network: &str,
+        block_hash: &[u8],
+    ) -> anyhow::Result<Option<serde_json::Value>> {
+        self.target
+            .clone()
+            .block_cache_contents(network, block_hash)
+            .await
+    }
+
+    async fn entity_changes(
+        self: Arc<Self>,
+        subgraph_id: &str,
+        block_number: u64,
+    ) -> anyhow::Result<EntityChanges> {
+        self.target
+            .clone()
+            .entity_changes(subgraph_id, block_number)
+            .await
     }
 }

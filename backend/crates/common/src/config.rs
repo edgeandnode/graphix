@@ -4,8 +4,8 @@ use std::{fs::File, path::Path, sync::Arc};
 use tracing::{info, instrument};
 
 use crate::{
+    indexer::{Indexer, IndexerInterceptor, RealIndexer},
     network_subgraph::NetworkSubgraph,
-    prelude::{interceptor::IndexerInterceptor, Indexer, RealIndexer},
 };
 
 #[derive(Debug, Clone, Deserialize)]

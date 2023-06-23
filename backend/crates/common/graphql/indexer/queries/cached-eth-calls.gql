@@ -1,0 +1,11 @@
+query CachedEthereumCalls($network: String!, $blockHash: Bytes!) {
+  cachedEthereumCalls(network: $network, blockHash: $blockHash) {
+    idHash
+    block {
+      number
+      hash
+    }
+    contractAddress
+    returnValue
+  }
+}
