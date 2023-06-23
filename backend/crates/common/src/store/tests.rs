@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use crate::db::{diesel_queries, PoiLiveness, Store};
+use crate::store::{diesel_queries, PoiLiveness, Store};
 use diesel::Connection;
 
 use crate::tests::{fast_rng, gen::gen_indexers};

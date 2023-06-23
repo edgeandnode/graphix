@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::{fmt, ops::Deref, sync::Arc};
 
-use crate::{db::models::WritablePoI, indexer::Indexer};
+use crate::{indexer::Indexer, store::models::WritablePoI};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
 pub struct BlockPointer {
