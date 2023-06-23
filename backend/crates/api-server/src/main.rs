@@ -16,7 +16,7 @@ async fn main() -> Result<(), anyhow::Error> {
     init_tracing();
 
     let cli_options = CliOptions::parse();
-    let store = Store::new(cli_options.database_url.as_str())?;
+    let store = Store::new(cli_options.database_url.as_str()).await?;
 
     run_api_server(cli_options, store).await;
 

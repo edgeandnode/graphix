@@ -22,7 +22,7 @@ async fn main() -> anyhow::Result<()> {
     info!("Load configuration file");
     let config = Config::read(&cli_options.config)?;
 
-    let store = store::Store::new(&config.database_url)?;
+    let store = store::Store::new(&config.database_url).await?;
 
     let sleep_duration = Duration::from_secs(config.polling_period_in_seconds);
 

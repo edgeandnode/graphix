@@ -1,9 +1,10 @@
-use std::collections::BTreeSet;
-
-use crate::store::{diesel_queries, PoiLiveness, Store};
-use diesel::Connection;
-
 use crate::tests::{fast_rng, gen::gen_indexers};
+use crate::{
+    queries,
+    store::{diesel_queries, PoiLiveness, Store},
+};
+use diesel::Connection;
+use std::collections::BTreeSet;
 
 fn test_db_url() -> String {
     std::env::var("GRAPHIX_TEST_DB_URL").expect("GRAPHIX_TEST_DB_URL must be set to run tests")
@@ -14,10 +15,10 @@ async fn poi_db_roundtrip() {
     let mut rng = fast_rng(0);
     let indexers = gen_indexers(&mut rng, 100);
 
-    let indexing_statuses = crate::indexing_statuses::query_indexing_statuses(indexers).await;
-    let pois = crate::proofs_of_indexing::query_proofs_of_indexing(indexing_statuses).await;
+    let indexing_statuses = queries::query_indexing_statuses(indexers).await;
+    let pois = queries::query_proofs_of_indexing(indexing_statuses).await;
 
-    let store = Store::new(&test_db_url()).unwrap();
+    let store = Store::new(&test_db_url()).await.unwrap();
     let mut conn = store.test_conn();
     conn.test_transaction::<_, (), _>(|conn| {
         diesel_queries::write_pois(conn, &pois.clone(), PoiLiveness::NotLive).unwrap();

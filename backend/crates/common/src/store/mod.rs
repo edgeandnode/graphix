@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::api_types::{DivergenceInvestigationRequest, DivergenceInvestigationRequestWithUuid};
 use crate::{api_types::BlockRangeInput, store::models::PoI};
 use anyhow::Error;
@@ -7,6 +9,8 @@ use diesel::{
     Connection, PgConnection,
 };
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use sqlx::postgres::PgListener;
+use tokio::sync::Mutex;
 use tracing::info;
 
 // Provides the diesel queries, callers should handle connection pooling and transactions.
@@ -65,14 +69,20 @@ const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 #[derive(Clone)]
 pub struct Store {
     pool: Pool<ConnectionManager<PgConnection>>,
+    listener: Arc<Mutex<PgListener>>,
 }
 
 impl Store {
-    pub fn new(db_url: &str) -> anyhow::Result<Self> {
+    pub async fn new(db_url: &str) -> anyhow::Result<Self> {
         info!("Initializing database connection pool");
         let manager = r2d2::ConnectionManager::<PgConnection>::new(db_url);
         let pool = r2d2::Builder::new().build(manager)?;
-        let store = Self { pool };
+        let mut listener = PgListener::connect(db_url).await?;
+        listener.listen("cross_check_reports").await?;
+        let store = Self {
+            pool,
+            listener: Arc::new(Mutex::new(listener)),
+        };
         store.run_migrations()?;
         Ok(store)
     }
@@ -164,6 +174,15 @@ impl Store {
     pub fn write_pois(&self, pois: &[impl WritablePoI], live: PoiLiveness) -> anyhow::Result<()> {
         self.conn()?
             .transaction::<_, Error, _>(|conn| diesel_queries::write_pois(conn, pois, live))
+    }
+
+    pub async fn recv_cross_check_report_request(
+        &self,
+    ) -> anyhow::Result<DivergenceInvestigationRequestWithUuid> {
+        let notification = self.listener.lock().await.recv().await?;
+        assert_eq!(notification.channel(), "cross_check_reports");
+        let payload = serde_json::from_str(notification.payload())?;
+        Ok(payload)
     }
 
     pub fn queue_cross_check_report(
