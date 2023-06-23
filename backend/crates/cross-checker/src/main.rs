@@ -3,7 +3,9 @@ mod bisect;
 #[cfg(test)]
 mod tests;
 
+use anyhow::Context;
 use clap::Parser;
+use graphix_common::api_types::DivergenceInvestigationRequestWithUuid;
 use graphix_common::prelude::{BlockPointer, Config, Indexer, ProofOfIndexing, SubgraphDeployment};
 use graphix_common::queries::{query_indexing_statuses, query_proofs_of_indexing};
 use graphix_common::PrometheusExporter;
@@ -73,63 +75,71 @@ fn init_tracing() {
     tracing_subscriber::fmt::init();
 }
 
+#[derive(Parser, Debug)]
+struct CliOptions {
+    #[clap(long)]
+    config: PathBuf,
+}
+
 async fn handle_bisect_requests(
     store: &store::Store,
     indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
 ) -> anyhow::Result<()> {
     loop {
         let next_request = store.recv_cross_check_report_request().await?;
-        let poi_block = store
-            .poi(&next_request.req.poi1)?
-            .expect("POI not found")
-            .block
-            .number;
-        let poi1 = store.poi(&next_request.req.poi1)?.expect("POI not found");
-        let poi2 = store.poi(&next_request.req.poi2)?.expect("POI not found");
-        let indexer1 = indexers
-            .borrow()
-            .iter()
-            .find(|indexer| indexer.address() == poi1.indexer.address.as_deref())
-            .expect("Indexer not found")
-            .clone();
-        let indexer2 = indexers
-            .borrow()
-            .iter()
-            .find(|indexer| indexer.address() == poi2.indexer.address.as_deref())
-            .expect("Indexer not found")
-            .clone();
-        let deployment = SubgraphDeployment(poi1.sg_deployment.cid);
-        let block = BlockPointer {
-            number: poi_block as _,
-            hash: None,
-        };
-        let poi1 = ProofOfIndexing {
-            indexer: indexer1.clone(),
-            deployment: deployment.clone(),
-            block,
-            proof_of_indexing: poi1.poi.try_into()?,
-        };
-        let poi2 = ProofOfIndexing {
-            indexer: indexer2.clone(),
-            deployment: deployment.clone(),
-            block,
-            proof_of_indexing: poi2.poi.try_into()?,
-        };
-        let context = PoiBisectingContext::new(
-            next_request.uuid.to_string(),
-            poi1,
-            poi2,
-            deployment.clone(),
-        );
-
-        let bisect_result = context.start().await?;
-
-        println!("Bisect result: {:?}", bisect_result,);
+        let res = handle_bisect_request(store, indexers.clone(), next_request).await;
+        if let Err(err) = res {
+            error!(error = %err, "Failed to handle bisect request");
+        }
     }
 }
 
-#[derive(Parser, Debug)]
-struct CliOptions {
-    #[clap(long)]
-    config: PathBuf,
+async fn handle_bisect_request(
+    store: &store::Store,
+    indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
+    req: DivergenceInvestigationRequestWithUuid,
+) -> anyhow::Result<()> {
+    let poi_block = store
+        .poi(&req.req.poi1)?
+        .context("POI not found")?
+        .block
+        .number;
+    let poi1 = store.poi(&req.req.poi1)?.context("POI not found")?;
+    let poi2 = store.poi(&req.req.poi2)?.context("POI not found")?;
+    let indexer1 = indexers
+        .borrow()
+        .iter()
+        .find(|indexer| indexer.address() == poi1.indexer.address.as_deref())
+        .context("Indexer not found")?
+        .clone();
+    let indexer2 = indexers
+        .borrow()
+        .iter()
+        .find(|indexer| indexer.address() == poi2.indexer.address.as_deref())
+        .context("Indexer not found")?
+        .clone();
+    let deployment = SubgraphDeployment(poi1.sg_deployment.cid);
+    let block = BlockPointer {
+        number: poi_block as _,
+        hash: None,
+    };
+    let poi1 = ProofOfIndexing {
+        indexer: indexer1.clone(),
+        deployment: deployment.clone(),
+        block,
+        proof_of_indexing: poi1.poi.try_into()?,
+    };
+    let poi2 = ProofOfIndexing {
+        indexer: indexer2.clone(),
+        deployment: deployment.clone(),
+        block,
+        proof_of_indexing: poi2.poi.try_into()?,
+    };
+    let context = PoiBisectingContext::new(req.uuid.to_string(), poi1, poi2, deployment.clone())?;
+
+    let bisect_result = context.start().await?;
+
+    println!("Bisect result: {:?}", bisect_result);
+
+    Ok(())
 }

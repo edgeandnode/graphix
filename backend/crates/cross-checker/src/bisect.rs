@@ -32,25 +32,26 @@ impl PoiBisectingContext {
         poi1: ProofOfIndexing,
         poi2: ProofOfIndexing,
         deployment: SubgraphDeployment,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         // Before attempting to bisect PoIs, we need to make sure that the PoIs refer to:
         // 1. the same subgraph deployment, and
         // 2. the same block.
-        assert_eq!(poi1.deployment, poi2.deployment);
-        assert_eq!(poi1.block, poi2.block);
+
+        anyhow::ensure!(poi1.deployment == poi2.deployment);
+        anyhow::ensure!(poi1.block == poi2.block);
         // Let's also check block hashes are present (and identical, by extension).
-        assert!(poi1.block.hash.is_some());
-        assert!(poi2.block.hash.is_some());
+        anyhow::ensure!(poi1.block.hash.is_some());
+        anyhow::ensure!(poi2.block.hash.is_some());
 
-        assert_ne!(poi1.proof_of_indexing, poi2.proof_of_indexing);
-        assert_ne!(poi1.indexer.address(), poi2.indexer.address());
+        anyhow::ensure!(poi1.proof_of_indexing != poi2.proof_of_indexing);
+        anyhow::ensure!(poi1.indexer.address() != poi2.indexer.address());
 
-        Self {
+        Ok(Self {
             bisection_id,
             poi1,
             poi2,
             deployment,
-        }
+        })
     }
 
     pub async fn start(self) -> anyhow::Result<u64> {
