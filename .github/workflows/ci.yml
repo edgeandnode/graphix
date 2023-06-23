@@ -10,7 +10,6 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
 
-
 jobs:
   rustfmt:
     name: rustfmt
@@ -99,13 +98,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-      - name: Build frontend
-        run: >
-          rustup target add wasm32-unknown-unknown &&
-          cargo install trunk &&
-          cargo install wasm-bindgen-cli &&
-          cd frontend &&
-          trunk build --release
 
   test:
     name: Test
