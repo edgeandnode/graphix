@@ -2,10 +2,9 @@ pub mod api_types;
 pub mod bisect;
 pub mod config;
 mod indexer;
-pub mod indexing_statuses;
 pub mod network_subgraph;
 mod prometheus_metrics;
-pub mod proofs_of_indexing;
+pub mod queries;
 pub mod store;
 mod types;
 
@@ -17,6 +16,8 @@ pub use prometheus_metrics::{PrometheusExporter, PrometheusMetrics};
 pub mod prelude {
     pub use super::config::*;
     pub use super::indexer::*;
+    pub use super::queries::{query_indexing_statuses, query_proofs_of_indexing};
     pub use super::store;
+    pub use super::store::Store;
     pub use super::types::*;
 }
