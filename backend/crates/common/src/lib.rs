@@ -1,5 +1,4 @@
 pub mod api_types;
-pub mod bisect;
 pub mod config;
 mod indexer;
 pub mod network_subgraph;
