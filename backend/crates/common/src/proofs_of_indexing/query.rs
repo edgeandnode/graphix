@@ -1,7 +1,7 @@
 use std::collections::{hash_map::RandomState, HashMap, HashSet};
 
 use crate::prelude::{
-    BlockPointer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment,
+    BlockPointer, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
 };
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
@@ -66,7 +66,7 @@ pub async fn query_proofs_of_indexing(
                         .any(|status| status.indexer.eq(indexer))
                 })
                 .filter_map(|(deployment, block)| {
-                    block.clone().map(|block| POIRequest {
+                    block.clone().map(|block| PoiRequest {
                         deployment: deployment.clone(),
                         block_number: block.number,
                     })

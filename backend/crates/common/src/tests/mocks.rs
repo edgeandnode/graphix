@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use crate::prelude::{
-    BlockPointer, Bytes32, Indexer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment,
+    BlockPointer, Bytes32, CachedEthereumCall, EntityChanges, Indexer, IndexingStatus, PoiRequest,
+    ProofOfIndexing, SubgraphDeployment,
 };
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -51,7 +52,7 @@ impl Indexer for MockIndexer {
 
     async fn proofs_of_indexing(
         self: Arc<Self>,
-        requests: Vec<POIRequest>,
+        requests: Vec<PoiRequest>,
     ) -> Vec<ProofOfIndexing> {
         // TODO: Introduce discrepancies from canonical POIs into the mix
         requests
@@ -76,6 +77,33 @@ impl Indexer for MockIndexer {
                 proof_of_indexing: poi.proof_of_indexing.clone(),
             })
             .collect::<Vec<_>>()
+    }
+
+    async fn cached_eth_calls(
+        self: Arc<Self>,
+        _network: &str,
+        _block_hash: &[u8],
+    ) -> anyhow::Result<Vec<CachedEthereumCall>> {
+        Ok(vec![])
+    }
+
+    async fn block_cache_contents(
+        self: Arc<Self>,
+        _network: &str,
+        _block_hash: &[u8],
+    ) -> anyhow::Result<Option<serde_json::Value>> {
+        Ok(None)
+    }
+
+    async fn entity_changes(
+        self: Arc<Self>,
+        _subgraph_id: &str,
+        _block_number: u64,
+    ) -> anyhow::Result<EntityChanges> {
+        Ok(EntityChanges {
+            updates: Default::default(),
+            deletions: Default::default(),
+        })
     }
 }
 

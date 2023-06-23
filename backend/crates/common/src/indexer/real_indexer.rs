@@ -1,113 +1,24 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::anyhow;
 use async_trait::async_trait;
 use graphql_client::{GraphQLQuery, Response};
+use reqwest::IntoUrl;
+use serde::{de::DeserializeOwned, Serialize};
 use tracing::*;
 
+use super::{CachedEthereumCall, EntityChanges, Indexer};
 use crate::{
     config::IndexerUrls,
-    prelude::IndexerConfig,
+    prelude::{IndexerConfig, WithIndexer},
     prometheus_metrics::metrics,
-    types::{BlockPointer, IndexingStatus, POIRequest, ProofOfIndexing, SubgraphDeployment},
+    types::{BlockPointer, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment},
 };
-
-use super::Indexer;
-
-type BigInt = String;
-type Bytes = String;
-
-/// Indexing Statuses
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/indexer/schema.gql",
-    query_path = "graphql/indexer/indexing-statuses.gql",
-    response_derives = "Debug",
-    variables_derives = "Debug"
-)]
-struct IndexingStatuses;
-
-impl TryInto<IndexingStatus>
-    for (
-        Arc<RealIndexer>,
-        indexing_statuses::IndexingStatusesIndexingStatuses,
-    )
-{
-    type Error = anyhow::Error;
-
-    fn try_into(self) -> Result<IndexingStatus, Self::Error> {
-        let chain = self
-            .1
-            .chains
-            .get(0)
-            .ok_or_else(|| anyhow!("chain status missing"))?;
-
-        let latest_block = match chain.on {
-            indexing_statuses::IndexingStatusesIndexingStatusesChainsOn::EthereumIndexingStatus(
-                indexing_statuses::IndexingStatusesIndexingStatusesChainsOnEthereumIndexingStatus {
-                    ref latest_block,
-                    ..
-                },
-            ) => match latest_block {
-                Some(block) => BlockPointer {
-                    number: block.number.parse()?,
-                    hash: Some(block.hash.clone().as_str().try_into()?),
-                },
-                None => {
-                    return Err(anyhow!("deployment has not started indexing yet"));
-                }
-            },
-        };
-
-        Ok(IndexingStatus {
-            indexer: self.0,
-            deployment: SubgraphDeployment(self.1.subgraph),
-            network: chain.network.clone(),
-            latest_block,
-        })
-    }
-}
-
-/// POIs
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/indexer/schema.gql",
-    query_path = "graphql/indexer/pois.gql",
-    response_derives = "Debug",
-    variables_derives = "Debug"
-)]
-struct ProofsOfIndexing;
-
-impl TryInto<ProofOfIndexing>
-    for (
-        Arc<RealIndexer>,
-        proofs_of_indexing::ProofsOfIndexingPublicProofsOfIndexing,
-    )
-{
-    type Error = anyhow::Error;
-
-    fn try_into(self) -> Result<ProofOfIndexing, Self::Error> {
-        Ok(ProofOfIndexing {
-            indexer: self.0,
-            deployment: SubgraphDeployment(self.1.deployment.clone()),
-            block: BlockPointer {
-                number: self.1.block.number.parse()?,
-                hash: self
-                    .1
-                    .block
-                    .hash
-                    .and_then(|hash| hash.as_str().try_into().ok()),
-            },
-            proof_of_indexing: self.1.proof_of_indexing.as_str().try_into()?,
-        })
-    }
-}
 
 #[derive(Debug)]
 pub struct RealIndexer {
     id: String, // Assumed to be unique accross all indexers
+    address: Option<Vec<u8>>,
     urls: IndexerUrls,
     client: reqwest::Client,
 }
@@ -115,11 +26,82 @@ pub struct RealIndexer {
 impl RealIndexer {
     #[instrument(skip_all)]
     pub fn new(config: IndexerConfig) -> Self {
-        RealIndexer {
+        Self {
             id: config.name,
+            address: None,
             urls: config.urls,
             client: reqwest::Client::new(),
         }
+    }
+
+    #[instrument(skip_all)]
+    pub fn with_address(address: &[u8], status_url: impl IntoUrl) -> Self {
+        Self {
+            id: hex::encode(address),
+            address: Some(address.to_vec()),
+            urls: IndexerUrls {
+                status: status_url.into_url().unwrap(),
+            },
+            client: reqwest::Client::new(),
+        }
+    }
+
+    /// Internal utility method to make a GraphQL query to the indexer. `error`
+    /// and `data` fields are treated as mutually exclusive (which is generally
+    /// a good assumption, but some callers may want more control over error
+    /// handling).
+    async fn graphql_query<I: Serialize, O: DeserializeOwned>(
+        &self,
+        request: I,
+    ) -> anyhow::Result<O> {
+        let response_raw = self
+            .client
+            .post(self.urls.status.clone())
+            .json(&request)
+            .send()
+            .await?;
+
+        let response: Response<O> = response_raw.json().await?;
+
+        if let Some(errors) = response.errors {
+            let errors = errors
+                .iter()
+                .map(|e| e.message.clone())
+                .collect::<Vec<_>>()
+                .join(",");
+            warn!(%errors, "Indexer returned errors");
+            return Err(anyhow::anyhow!("Indexer returned errors: {}", errors));
+        }
+
+        // Unwrap: `data` is always present if there are no errors.
+        Ok(response.data.unwrap())
+    }
+
+    async fn proofs_of_indexing_batch(
+        self: Arc<Self>,
+        requests: &[PoiRequest],
+    ) -> Result<Vec<ProofOfIndexing>, anyhow::Error> {
+        use gql_types::proofs_of_indexing::{
+            PublicProofOfIndexingRequest, ResponseData, Variables,
+        };
+        let request = gql_types::ProofsOfIndexing::build_query(Variables {
+            requests: requests
+                .into_iter()
+                .map(|query| PublicProofOfIndexingRequest {
+                    deployment: query.deployment.to_string(),
+                    block_number: query.block_number.to_string(),
+                })
+                .collect(),
+        });
+
+        let response: ResponseData = self.graphql_query(request).await?;
+
+        // Parse POI results
+        response
+            .public_proofs_of_indexing
+            .into_iter()
+            .map(|result| WithIndexer::new(self.clone(), result).try_into())
+            .collect::<Result<Vec<_>, _>>()
     }
 }
 
@@ -130,64 +112,39 @@ impl Indexer for RealIndexer {
     }
 
     fn address(&self) -> Option<&[u8]> {
-        None
+        self.address.as_deref()
     }
 
     async fn indexing_statuses(self: Arc<Self>) -> Result<Vec<IndexingStatus>, anyhow::Error> {
-        let request = IndexingStatuses::build_query(indexing_statuses::Variables);
-        let response_raw = self
-            .client
-            .post(self.urls.status.clone())
-            .json(&request)
-            .send()
-            .await?;
+        let request =
+            gql_types::IndexingStatuses::build_query(gql_types::indexing_statuses::Variables);
 
-        debug!(
-            id = %self.id(),
-            response = ?response_raw,
-            "Indexer returned a response"
-        );
-        let response: Response<indexing_statuses::ResponseData> = response_raw.json().await?;
+        let response: gql_types::indexing_statuses::ResponseData =
+            self.graphql_query(request).await?;
 
-        // Log any errors received for debugging
-        if let Some(errors) = response.errors {
-            let errors = errors
-                .iter()
-                .map(|e| e.message.clone())
-                .collect::<Vec<_>>()
-                .join(",");
-            warn!(
-                id = %self.id(),
-                %errors,
-                "Indexer returned indexing status errors"
-            );
-        }
-
-        // Parse indexing statuses
         let mut statuses = vec![];
-        if let Some(data) = response.data {
-            for indexing_status in data.indexing_statuses {
-                let deployment = indexing_status.subgraph.clone();
+        for indexing_status in response.indexing_statuses {
+            let deployment = indexing_status.subgraph.clone();
 
-                match (self.clone(), indexing_status).try_into() {
-                    Ok(status) => statuses.push(status),
-                    Err(e) => {
-                        warn!(
-                            id = %self.id(),
-                            %e,
-                            %deployment,
-                            "Failed to parse indexing status, skipping deployment"
-                        );
-                    }
+            match WithIndexer::new(self.clone(), indexing_status).try_into() {
+                Ok(status) => statuses.push(status),
+                Err(e) => {
+                    warn!(
+                        id = %self.id(),
+                        %e,
+                        %deployment,
+                        "Failed to parse indexing status, skipping deployment"
+                    );
                 }
             }
         }
+
         Ok(statuses)
     }
 
     async fn proofs_of_indexing(
         self: Arc<Self>,
-        requests: Vec<POIRequest>,
+        requests: Vec<PoiRequest>,
     ) -> Vec<ProofOfIndexing> {
         let mut pois = vec![];
 
@@ -229,58 +186,205 @@ impl Indexer for RealIndexer {
 
         pois
     }
-}
 
-impl RealIndexer {
-    async fn proofs_of_indexing_batch(
+    async fn cached_eth_calls(
         self: Arc<Self>,
-        requests: &[POIRequest],
-    ) -> Result<Vec<ProofOfIndexing>, anyhow::Error> {
-        use proofs_of_indexing::{PublicProofOfIndexingRequest, ResponseData, Variables};
-        let request = ProofsOfIndexing::build_query(Variables {
-            requests: requests
-                .into_iter()
-                .map(|query| PublicProofOfIndexingRequest {
-                    deployment: query.deployment.to_string(),
-                    block_number: query.block_number.to_string(),
+        network: &str,
+        block_hash: &[u8],
+    ) -> anyhow::Result<Vec<CachedEthereumCall>> {
+        let request = gql_types::CachedEthereumCalls::build_query(
+            gql_types::cached_ethereum_calls::Variables {
+                network: network.to_string(),
+                block_hash: hex::encode(block_hash),
+            },
+        );
+
+        let response: gql_types::cached_ethereum_calls::ResponseData =
+            self.graphql_query(request).await?;
+
+        let eth_calls = response
+            .cached_ethereum_calls
+            .unwrap_or(vec![])
+            .into_iter()
+            .map(|eth_call| {
+                Ok(CachedEthereumCall {
+                    id_hash: gql_types::decode_bytes(&eth_call.id_hash)?,
+                    return_value: gql_types::decode_bytes(&eth_call.return_value)?,
+                    contract_address: gql_types::decode_bytes(&eth_call.contract_address)?,
                 })
-                .collect(),
+            })
+            .collect::<anyhow::Result<Vec<CachedEthereumCall>>>()?;
+
+        Ok(eth_calls)
+    }
+
+    async fn block_cache_contents(
+        self: Arc<Self>,
+        network: &str,
+        block_hash: &[u8],
+    ) -> anyhow::Result<Option<serde_json::Value>> {
+        let request = gql_types::BlockData::build_query(gql_types::block_data::Variables {
+            network: network.to_string(),
+            block_hash: hex::encode(block_hash),
         });
-        let raw_response = self
-            .client
-            .post(self.urls.status.clone())
-            .json(&request)
-            .send()
-            .await?
-            .text()
-            .await?;
 
-        let response = match serde_json::from_str::<Response<ResponseData>>(&raw_response) {
-            Ok(response) => response,
-            Err(e) => {
-                return Err(anyhow!(
-                    "Response is not JSON, parsing error: `{}`, full response: `{}`",
-                    e,
-                    raw_response
-                ))
-            }
-        };
+        let response: gql_types::block_data::ResponseData = self.graphql_query(request).await?;
 
-        if let Some(errors) = response.errors {
-            let errors = errors
-                .iter()
-                .map(|e| e.message.clone())
-                .collect::<Vec<_>>()
-                .join(",");
-            return Err(anyhow!("indexer returned POI errors: {}", errors));
+        Ok(response.block_data)
+    }
+
+    async fn entity_changes(
+        self: Arc<Self>,
+        subgraph_id: &str,
+        block_number: u64,
+    ) -> anyhow::Result<EntityChanges> {
+        let request = gql_types::EntityChangesInBlock::build_query(
+            gql_types::entity_changes_in_block::Variables {
+                subgraph_id: subgraph_id.to_string(),
+                block_number: block_number as i64,
+            },
+        );
+
+        let response: gql_types::entity_changes_in_block::ResponseData =
+            self.graphql_query(request).await?;
+
+        let mut updates = HashMap::new();
+        for entity_type_updates in response.entity_changes_in_block.updates {
+            updates
+                .insert(entity_type_updates.type_, entity_type_updates.entities)
+                .ok_or_else(|| anyhow!("duplicate entity types"))?;
         }
 
-        let Some(data) = response.data else { return Err(anyhow!("no data present")) };
+        let mut deletions = HashMap::new();
+        for entity_type_deletions in response.entity_changes_in_block.deletions {
+            deletions
+                .insert(entity_type_deletions.type_, entity_type_deletions.entities)
+                .ok_or_else(|| anyhow!("duplicate entity types"))?;
+        }
 
-        // Parse POI results
-        data.public_proofs_of_indexing
-            .into_iter()
-            .map(|result| (self.clone(), result).try_into())
-            .collect::<Result<Vec<_>, _>>()
+        Ok(EntityChanges { updates, deletions })
     }
+}
+
+mod gql_types {
+    use super::*;
+    use crate::prelude::WithIndexer;
+
+    pub type JSONObject = serde_json::Value;
+    pub type BigInt = String;
+    pub type Bytes = String;
+
+    pub fn decode_bytes(s: &str) -> anyhow::Result<Vec<u8>> {
+        if !s.starts_with("0x") {
+            anyhow::bail!("hexstring must start with 0x");
+        }
+        Ok(hex::decode(&s[2..])?)
+    }
+
+    /// Indexing Statuses
+
+    #[derive(GraphQLQuery)]
+    #[graphql(
+        schema_path = "graphql/indexer/schema.gql",
+        query_path = "graphql/indexer/queries/indexing-statuses.gql",
+        response_derives = "Debug",
+        variables_derives = "Debug"
+    )]
+    pub struct IndexingStatuses;
+
+    impl TryInto<IndexingStatus> for WithIndexer<indexing_statuses::IndexingStatusesIndexingStatuses> {
+        type Error = anyhow::Error;
+
+        fn try_into(self) -> Result<IndexingStatus, Self::Error> {
+            let chain = self
+                .inner
+                .chains
+                .get(0)
+                .ok_or_else(|| anyhow!("chain status missing"))?;
+
+            let latest_block = match chain.on {
+            indexing_statuses::IndexingStatusesIndexingStatusesChainsOn::EthereumIndexingStatus(
+                indexing_statuses::IndexingStatusesIndexingStatusesChainsOnEthereumIndexingStatus {
+                    ref latest_block,
+                    ..
+                },
+            ) => match latest_block {
+                Some(block) => BlockPointer {
+                    number: block.number.parse()?,
+                    hash: Some(block.hash.clone().as_str().try_into()?),
+                },
+                None => {
+                    return Err(anyhow!("deployment has not started indexing yet"));
+                }
+            },
+        };
+
+            Ok(IndexingStatus {
+                indexer: self.indexer,
+                deployment: SubgraphDeployment(self.inner.subgraph),
+                network: chain.network.clone(),
+                latest_block,
+            })
+        }
+    }
+
+    /// POIs
+
+    #[derive(GraphQLQuery)]
+    #[graphql(
+        schema_path = "graphql/indexer/schema.gql",
+        query_path = "graphql/indexer/queries/pois.gql",
+        response_derives = "Debug",
+        variables_derives = "Debug"
+    )]
+    pub struct ProofsOfIndexing;
+
+    impl TryInto<ProofOfIndexing>
+        for WithIndexer<proofs_of_indexing::ProofsOfIndexingPublicProofsOfIndexing>
+    {
+        type Error = anyhow::Error;
+
+        fn try_into(self) -> Result<ProofOfIndexing, Self::Error> {
+            Ok(ProofOfIndexing {
+                indexer: self.indexer,
+                deployment: SubgraphDeployment(self.inner.deployment.clone()),
+                block: BlockPointer {
+                    number: self.inner.block.number.parse()?,
+                    hash: self
+                        .inner
+                        .block
+                        .hash
+                        .and_then(|hash| hash.as_str().try_into().ok()),
+                },
+                proof_of_indexing: self.inner.proof_of_indexing.as_str().try_into()?,
+            })
+        }
+    }
+
+    #[derive(GraphQLQuery)]
+    #[graphql(
+        schema_path = "graphql/indexer/schema.gql",
+        query_path = "graphql/indexer/queries/entity-changes-in-block.gql",
+        response_derives = "Debug",
+        variables_derives = "Debug"
+    )]
+    pub struct EntityChangesInBlock;
+
+    #[derive(GraphQLQuery)]
+    #[graphql(
+        schema_path = "graphql/indexer/schema.gql",
+        query_path = "graphql/indexer/queries/cached-eth-calls.gql",
+        response_derives = "Debug",
+        variables_derives = "Debug"
+    )]
+    pub struct CachedEthereumCalls;
+
+    #[derive(GraphQLQuery)]
+    #[graphql(
+        schema_path = "graphql/indexer/schema.gql",
+        query_path = "graphql/indexer/queries/block-data.gql",
+        response_derives = "Debug",
+        variables_derives = "Debug"
+    )]
+    pub struct BlockData;
 }

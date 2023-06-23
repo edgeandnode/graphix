@@ -135,7 +135,7 @@ pub struct POICrossCheckReport {
 }
 
 #[derive(Debug, Clone)]
-pub struct POIRequest {
+pub struct PoiRequest {
     pub deployment: SubgraphDeployment,
     pub block_number: u64,
 }

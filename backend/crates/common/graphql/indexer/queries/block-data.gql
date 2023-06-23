@@ -1,0 +1,3 @@
+query BlockData($network: String!, $blockHash: Bytes!) {
+  blockData(network: $network, blockHash: $blockHash)
+}

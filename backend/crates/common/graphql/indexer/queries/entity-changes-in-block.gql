@@ -1,0 +1,12 @@
+query EntityChangesInBlock($subgraphId: String!, $blockNumber: Int!) {
+  entityChangesInBlock(subgraphId: $subgraphId, blockNumber: $blockNumber) {
+    updates {
+      type
+      entities
+    }
+    deletions {
+      type
+      entities
+    }
+  }
+}
