@@ -5,7 +5,7 @@ use async_graphql::{
 use async_graphql_warp::{self, GraphQLResponse};
 use clap::Parser;
 use graphix_common::{api_types as schema, db::Store};
-use std::convert::Infallible;
+use std::{convert::Infallible, net::Ipv4Addr};
 use warp::{
     http::{self, Method},
     Filter,
@@ -59,7 +59,9 @@ async fn run_api_server(options: CliOptions, store: Store) {
         .or(graphql_playground_route)
         .or(graphql_route);
 
-    warp::serve(routes).run(([0, 0, 0, 0], options.port)).await;
+    warp::serve(routes)
+        .run((Ipv4Addr::LOCALHOST, options.port))
+        .await;
 }
 
 fn init_tracing() {
