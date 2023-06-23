@@ -1,8 +1,7 @@
+use graphix_common::queries;
 use graphix_common::tests::{fast_rng, gen::gen_indexers};
 use itertools::Itertools;
 use std::collections::BTreeSet;
-
-use crate::{indexing_statuses, proofs_of_indexing};
 
 #[tokio::test]
 async fn proofs_of_indexing() {
@@ -12,8 +11,8 @@ async fn proofs_of_indexing() {
         let max_indexers = i;
         let indexers = gen_indexers(&mut rng, max_indexers as usize);
 
-        let indexing_statuses = indexing_statuses::query_indexing_statuses(indexers).await;
-        let pois = proofs_of_indexing::query_proofs_of_indexing(indexing_statuses);
+        let indexing_statuses = queries::query_indexing_statuses(indexers).await;
+        let pois = queries::query_proofs_of_indexing(indexing_statuses);
 
         let actual_pois = pois.await.into_iter().collect::<BTreeSet<_>>();
 

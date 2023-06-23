@@ -5,7 +5,7 @@ mod tests;
 
 use clap::Parser;
 use graphix_common::{config, prelude::Config, store};
-use graphix_common::{indexing_statuses, proofs_of_indexing, PrometheusExporter};
+use graphix_common::{queries, PrometheusExporter};
 use prometheus_exporter::prometheus;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -36,10 +36,10 @@ async fn main() -> anyhow::Result<()> {
         info!("Initialize inputs (indexers, indexing statuses etc.)");
         let indexers = config::config_to_indexers(config.clone()).await?;
 
-        let indexing_statuses = indexing_statuses::query_indexing_statuses(indexers).await;
+        let indexing_statuses = queries::query_indexing_statuses(indexers).await;
 
         info!("Monitor proofs of indexing");
-        let pois = proofs_of_indexing::query_proofs_of_indexing(indexing_statuses).await;
+        let pois = queries::query_proofs_of_indexing(indexing_statuses).await;
 
         let write_err = store.write_pois(&pois, store::PoiLiveness::Live).err();
         if let Some(err) = write_err {

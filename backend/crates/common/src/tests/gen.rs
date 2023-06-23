@@ -1,9 +1,6 @@
 use std::{iter::repeat_with, sync::Arc};
 
-use crate::{
-    indexer::Indexer,
-    prelude::{BlockPointer, Bytes32, SubgraphDeployment},
-};
+use crate::prelude::{BlockPointer, Bytes32, Indexer, SubgraphDeployment};
 use rand::{distributions::Alphanumeric, seq::IteratorRandom, Rng};
 
 use super::mocks::{DeploymentDetails, MockIndexer, PartialProofOfIndexing};
