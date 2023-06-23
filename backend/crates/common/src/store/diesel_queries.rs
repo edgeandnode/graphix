@@ -6,10 +6,10 @@ use tracing::info;
 use super::models::WritablePoI;
 use super::PoiLiveness;
 use crate::api_types::BlockRangeInput;
-use crate::db::models::{
+use crate::store::models::{
     self, IndexerRow, NewIndexer, NewLivePoi, NewPoI, NewSgDeployment, SgDeployment,
 };
-use crate::db::schema::{self, live_pois};
+use crate::store::schema::{self, live_pois};
 
 pub(super) fn poi(conn: &mut PgConnection, poi: &str) -> anyhow::Result<Option<models::PoI>> {
     use schema::blocks;

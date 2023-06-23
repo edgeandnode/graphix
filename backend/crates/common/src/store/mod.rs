@@ -1,5 +1,5 @@
 use crate::api_types::{DivergenceInvestigationRequest, DivergenceInvestigationRequestWithUuid};
-use crate::{api_types::BlockRangeInput, db::models::PoI};
+use crate::{api_types::BlockRangeInput, store::models::PoI};
 use anyhow::Error;
 use diesel::prelude::*;
 use diesel::{

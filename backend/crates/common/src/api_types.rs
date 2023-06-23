@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::db::{models, Store};
+use crate::store::{models, Store};
 use anyhow::Context as _;
 use async_graphql::*;
 use serde::{Deserialize, Serialize};

@@ -4,7 +4,7 @@ pub(crate) mod cross_checking;
 mod tests;
 
 use clap::Parser;
-use graphix_common::{config, db, prelude::Config};
+use graphix_common::{config, prelude::Config, store};
 use graphix_common::{indexing_statuses, proofs_of_indexing, PrometheusExporter};
 use prometheus_exporter::prometheus;
 use std::path::PathBuf;
@@ -22,7 +22,7 @@ async fn main() -> anyhow::Result<()> {
     info!("Load configuration file");
     let config = Config::read(&cli_options.config)?;
 
-    let store = db::Store::new(&config.database_url)?;
+    let store = store::Store::new(&config.database_url)?;
 
     let sleep_duration = Duration::from_secs(config.polling_period_in_seconds);
 
@@ -41,7 +41,7 @@ async fn main() -> anyhow::Result<()> {
         info!("Monitor proofs of indexing");
         let pois = proofs_of_indexing::query_proofs_of_indexing(indexing_statuses).await;
 
-        let write_err = store.write_pois(&pois, db::PoiLiveness::Live).err();
+        let write_err = store.write_pois(&pois, store::PoiLiveness::Live).err();
         if let Some(err) = write_err {
             error!(error = %err, "Failed to write POIs to database");
         }
