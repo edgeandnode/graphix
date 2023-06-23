@@ -18,7 +18,6 @@ use uuid::Uuid;
 use self::models::{BigIntId, IndexerRef, IntId, WritablePoI};
 
 pub mod models;
-pub mod proofs_of_indexing;
 mod schema;
 
 #[cfg(test)]
