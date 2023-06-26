@@ -1,7 +1,7 @@
 use reqwest::Url;
 use serde::{Deserialize, Deserializer};
 use std::{fs::File, path::Path, sync::Arc};
-use tracing::{info, instrument};
+use tracing::info;
 
 use crate::{
     indexer::{Indexer, IndexerInterceptor, RealIndexer},
