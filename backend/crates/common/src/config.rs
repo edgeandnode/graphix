@@ -160,7 +160,6 @@ where
     hex::decode(&s[2..]).map_err(serde::de::Error::custom)
 }
 
-#[instrument]
 pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn Indexer>>> {
     let mut indexers: Vec<Arc<dyn Indexer>> = vec![];
 
