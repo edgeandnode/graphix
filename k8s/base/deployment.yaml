@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graphix
+  labels:
+    app: graphix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: graphix
+  template:
+    metadata:
+      labels:
+        app: graphix
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "7300"
+    spec:
+      imagePullSecrets:
+        - name: docker-registry
+      containers:
+        - name: graphix
+          image: graphix:to-be-replaced-by-kustomize
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: graphix
+              containerPort: 80
+            - name: metrics
+              containerPort: 7300
+          command:
+            - sleep
+            - infinte

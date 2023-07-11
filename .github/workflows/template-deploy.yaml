@@ -1,0 +1,71 @@
+name: Template Deploy
+
+on:
+  workflow_call:
+    inputs:
+      GCP_PROJECT_ID:
+        required: false
+        type: string
+        default: graph-mainnet
+      CLUSTER_NAME:
+        required: false
+        type: string
+        default: testnet
+      CLUSTER_LOCATION:
+        required: false
+        type: string
+        default: us-central1-a
+      ENVIRONMENT:
+        required: false
+        type: string
+        default: testnet
+      ENABLE_DIFF:
+        required: false
+        type: boolean
+        default: true
+      ENABLE_APPLY:
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      GCP_SECRET:
+        required: true
+
+jobs:
+  template-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v3
+
+      - id: "auth"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: ${{ secrets.GCP_SECRET }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0
+        with:
+          project_id: ${{ inputs.GCP_PROJECT_ID }}
+
+      - id: "get-credentials"
+        uses: "google-github-actions/get-gke-credentials@v1"
+        with:
+          cluster_name: ${{ inputs.CLUSTER_NAME }}
+          location: ${{ inputs.CLUSTER_LOCATION }}
+
+      - name: Enable homebrew
+        uses: raviqqe/enable-homebrew@v1.0.0
+
+      - name: Install infrastructure tools
+        run: ./brew.sh
+
+      - name: Diff ${{ inputs.ENVIRONMENT }}
+        if: inputs.ENABLE_DIFF
+        working-directory: k8s
+        run: kubectl diff -k ${{ inputs.ENVIRONMENT }}
+
+      - name: Deploy to ${{ inputs.ENVIRONMENT }} cluster
+        if: inputs.ENABLE_APPLY
+        working-directory: k8s
+        run: kubectl apply -k ${{ inputs.ENVIRONMENT }}

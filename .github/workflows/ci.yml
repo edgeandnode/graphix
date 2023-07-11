@@ -1,5 +1,9 @@
 name: CI pipeline
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   push:
     branches: [main]
@@ -34,7 +38,7 @@ jobs:
           args: --all -- --check
 
   docker-api-server:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest/Users/rotarur/projects/edgeandnode/graph-infra/.github/workflows/template-deploy.yaml
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2

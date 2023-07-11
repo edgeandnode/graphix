@@ -1,0 +1,17 @@
+name: Testnet CD for graphix
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/template-deploy.yaml
+    with:
+      ENVIRONMENT: testnet
+    secrets:
+      GCP_SECRET: ${{ secrets.GCP_GRAPH_NETWORK }}
