@@ -9,6 +9,9 @@ query IndexingStatuses {
           number
           hash
         }
+        earliestBlock {
+          number
+        }
       }
     }
   }

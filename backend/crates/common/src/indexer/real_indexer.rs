@@ -306,18 +306,19 @@ mod gql_types {
                 .get(0)
                 .ok_or_else(|| anyhow!("chain status missing"))?;
 
-            let latest_block = match chain.on {
+            let (latest_block, earliest_block_num) = match &chain.on {
             indexing_statuses::IndexingStatusesIndexingStatusesChainsOn::EthereumIndexingStatus(
                 indexing_statuses::IndexingStatusesIndexingStatusesChainsOnEthereumIndexingStatus {
-                    ref latest_block,
+                    latest_block,
+                    earliest_block,
                     ..
                 },
-            ) => match latest_block {
-                Some(block) => BlockPointer {
+            ) => match (latest_block, earliest_block) {
+                (Some(block), Some(earliest_block)) => (BlockPointer {
                     number: block.number.parse()?,
                     hash: Some(block.hash.clone().as_str().try_into()?),
-                },
-                None => {
+                }, earliest_block.number.parse()?),
+                _ => {
                     return Err(anyhow!("deployment has not started indexing yet"));
                 }
             },
@@ -328,6 +329,7 @@ mod gql_types {
                 deployment: SubgraphDeployment(self.inner.subgraph),
                 network: chain.network.clone(),
                 latest_block,
+                earliest_block_num,
             })
         }
     }

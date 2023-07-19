@@ -87,6 +87,7 @@ where
                 network: "mainnet".into(),
                 latest_block: blocks.iter().choose(&mut rng).unwrap().clone(),
                 canonical_pois: gen_pois(blocks.clone(), &mut rng),
+                earliest_block_num: blocks[0].number,
             })
             .collect();
 
