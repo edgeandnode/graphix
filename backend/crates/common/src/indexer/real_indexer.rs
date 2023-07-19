@@ -148,9 +148,13 @@ impl Indexer for RealIndexer {
     ) -> Vec<ProofOfIndexing> {
         let mut pois = vec![];
 
-        // Graph Node implements a limit of 10 POI requests per request, so
-        // split our requests up accordingly.
-        for requests in requests.chunks(10) {
+        // Graph Node implements a limit of 10 POI requests per request, so split our requests up
+        // accordingly.
+        //
+        // FIXME: This is temporarily set to 1 until we fix the error: 'Null value resolved for
+        // non-null field `proofOfIndexing`' Which is probably a Graph Node bug. Setting it to 1
+        // reduces the impact of this issue.
+        for requests in requests.chunks(1) {
             trace!(
                 indexer = %self.id(),
                 batch_size = requests.len(),

@@ -103,16 +103,16 @@ pub async fn query_proofs_of_indexing(
         }));
 
     // For each deployment, identify the latest block number that all indexers have in common
-    let latest_blocks: HashMap<SubgraphDeployment, Option<BlockPointer>> =
+    let latest_blocks: HashMap<SubgraphDeployment, Option<u64>> =
         HashMap::from_iter(deployments.iter().map(|deployment| {
             (
                 deployment.clone(),
                 statuses_by_deployment.get(deployment).and_then(|statuses| {
                     statuses
                         .iter()
-                        .map(|status| &status.latest_block)
-                        .min_by_key(|block| block.number)
-                        .cloned()
+                        .map(|status| &status.latest_block.number)
+                        .min()
+                        .copied()
                 }),
             )
         }));
@@ -130,10 +130,10 @@ pub async fn query_proofs_of_indexing(
                         .iter()
                         .any(|status| status.indexer.eq(indexer))
                 })
-                .filter_map(|(deployment, block)| {
-                    block.clone().map(|block| PoiRequest {
+                .filter_map(|(deployment, block_number)| {
+                    block_number.map(|block_number| PoiRequest {
                         deployment: deployment.clone(),
-                        block_number: block.number,
+                        block_number: block_number,
                     })
                 })
                 .collect::<Vec<_>>();

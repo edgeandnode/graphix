@@ -69,7 +69,6 @@ impl NetworkSubgraph {
         &self,
         address: &[u8],
     ) -> anyhow::Result<Arc<dyn IndexerTrait>> {
-        println!("address is {:?}", hex::encode(address));
         let request = GraphqlRequest {
             query: Self::INDEXER_BY_ADDRESS_QUERY.to_string(),
             variables: BTreeMap::from_iter(vec![(
