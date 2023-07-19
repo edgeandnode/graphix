@@ -102,7 +102,7 @@ pub async fn query_proofs_of_indexing(
             )
         }));
 
-    // For each deployment, identify the latest block number that all indexers have in common
+    // For each deployment, chooose a block on which to query the PoI
     let latest_blocks: HashMap<SubgraphDeployment, Option<u64>> =
         HashMap::from_iter(deployments.iter().map(|deployment| {
             (
@@ -119,12 +119,15 @@ pub async fn query_proofs_of_indexing(
         .map(|indexer| async {
             let poi_requests = latest_blocks
                 .iter()
-                .filter(|(deployment, _)| {
+                .filter(|(deployment, &block_number)| {
                     statuses_by_deployment
                         .get(*deployment)
                         .expect("bug in matching deployments to latest blocks and indexers")
                         .iter()
-                        .any(|status| status.indexer.eq(indexer))
+                        .any(|status| {
+                            status.indexer.eq(indexer)
+                                && Some(status.latest_block.number) >= block_number
+                        })
                 })
                 .filter_map(|(deployment, block_number)| {
                     block_number.map(|block_number| PoiRequest {

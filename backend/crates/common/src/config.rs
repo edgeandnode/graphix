@@ -4,6 +4,7 @@ use std::{fs::File, path::Path, sync::Arc};
 use tracing::info;
 
 use crate::{
+    block_choice::BlockChoicePolicy,
     indexer::{Indexer, IndexerInterceptor, RealIndexer},
     network_subgraph::NetworkSubgraph,
 };
@@ -13,6 +14,9 @@ use crate::{
 pub struct Config {
     pub database_url: String,
     pub sources: Vec<ConfigSource>,
+    #[serde(default)]
+    pub block_choice_policy: BlockChoicePolicy,
+
     #[serde(default = "Config::default_polling_period_in_seconds")]
     pub polling_period_in_seconds: u64,
 }
