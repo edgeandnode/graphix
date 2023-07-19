@@ -1,4 +1,5 @@
 pub mod api_types;
+pub mod block_choice;
 pub mod config;
 mod indexer;
 pub mod network_subgraph;

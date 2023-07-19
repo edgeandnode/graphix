@@ -1,3 +1,4 @@
+use crate::block_choice::BlockChoicePolicy;
 use crate::indexer::Indexer;
 use crate::prelude::{IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment};
 use crate::prometheus_metrics::metrics;
@@ -72,6 +73,7 @@ pub async fn query_indexing_statuses(indexers: Vec<Arc<dyn Indexer>>) -> Vec<Ind
 
 pub async fn query_proofs_of_indexing(
     indexing_statuses: Vec<IndexingStatus>,
+    block_choice_policy: BlockChoicePolicy,
 ) -> Vec<ProofOfIndexing> {
     info!("Query POIs for recent common blocks across indexers");
 
@@ -106,11 +108,7 @@ pub async fn query_proofs_of_indexing(
             (
                 deployment.clone(),
                 statuses_by_deployment.get(deployment).and_then(|statuses| {
-                    statuses
-                        .iter()
-                        .map(|status| &status.latest_block.number)
-                        .min()
-                        .copied()
+                    block_choice_policy.choose_block(statuses.iter().map(|&s| s))
                 }),
             )
         }));
