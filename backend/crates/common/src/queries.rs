@@ -1,7 +1,5 @@
 use crate::indexer::Indexer;
-use crate::prelude::{
-    BlockPointer, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
-};
+use crate::prelude::{IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment};
 use crate::prometheus_metrics::metrics;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
