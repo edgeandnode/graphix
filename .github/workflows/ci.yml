@@ -59,14 +59,14 @@ jobs:
           context: .
           file: ops/api-server.dockerfile
           push: true
-          tags: ghcr.io/${{ github.actor }}/graphix-api-server:latest
+          tags: ghcr.io/${{ github.repository_owner }}/graphix-api-server:latest
       - name: Build and push cross-checker service Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ops/api-server.dockerfile
           push: true
-          tags: ghcr.io/${{ github.actor }}/graphix-cross-checker:latest
+          tags: ghcr.io/${{ github.repository_owner }}/graphix-cross-checker:latest
 
   build:
     name: Build
