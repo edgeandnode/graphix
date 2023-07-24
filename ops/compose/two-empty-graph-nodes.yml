@@ -4,7 +4,7 @@ services:
     image: grafana/grafana-enterprise
     restart: always
     # https://community.grafana.com/t/new-docker-install-with-persistent-storage-permission-problem/10896/16
-    user: "$UID:$GID"
+    user: ":"
     depends_on:
       - prometheus
     ports:
