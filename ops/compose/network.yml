@@ -48,7 +48,7 @@ services:
       - "9184:9184"
     volumes:
       - ./graphix/:/config/
-    command: ["--config", "/config/testnet-indexer.yml"]
+    command: ["--config", "/config/network.yml"]
 
   graphix-api-server:
     image: edgeandnode/graphix-api-server
