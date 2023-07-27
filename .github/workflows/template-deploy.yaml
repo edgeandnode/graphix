@@ -63,7 +63,7 @@ jobs:
       - name: Diff ${{ inputs.ENVIRONMENT }}
         if: inputs.ENABLE_DIFF
         working-directory: k8s
-        run: kubectl diff -k ${{ inputs.ENVIRONMENT }}
+        run: kubectl diff -k ${{ inputs.ENVIRONMENT }} | true
 
       - name: Deploy to ${{ inputs.ENVIRONMENT }} cluster
         if: inputs.ENABLE_APPLY

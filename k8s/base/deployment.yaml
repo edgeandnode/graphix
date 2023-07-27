@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: graphix
+  name: graphix-cross-checker
   labels:
     app: graphix
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: graphix
+      app: graphix-cross-checker
   template:
     metadata:
       labels:
-        app: graphix
+        app: graphix-cross-checker
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/metrics"
@@ -25,10 +25,42 @@ spec:
           image: graphix:to-be-replaced-by-kustomize
           imagePullPolicy: IfNotPresent
           ports:
-            - name: graphix
+            - name: http
               containerPort: 80
             - name: metrics
               containerPort: 7300
-          command:
-            - sleep
-            - infinte
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graphix-api-server
+  labels:
+    app: graphix-api-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: graphix-api-server
+  template:
+    metadata:
+      labels:
+        app: graphix-api-server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "7300"
+    spec:
+      imagePullSecrets:
+        - name: docker-registry
+      containers:
+        - name: api
+          image: api:to-be-replaced-by-kustomize
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GRAPHIX_DATABASE_URL
+              value: postgres://graphix:password@postgres-graphix:5432/graphix
+          ports:
+            - name: http
+              containerPort: 80
+            - name: metrics
+              containerPort: 7300

@@ -39,6 +39,7 @@ pub struct IndexingStatus {
     pub deployment: SubgraphDeployment,
     pub network: String,
     pub latest_block: BlockPointer,
+    pub earliest_block_num: u64,
 }
 
 impl PartialEq for IndexingStatus {

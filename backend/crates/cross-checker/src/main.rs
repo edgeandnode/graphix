@@ -56,7 +56,7 @@ async fn main() -> anyhow::Result<()> {
         let indexing_statuses = query_indexing_statuses(indexers).await;
 
         info!("Monitor proofs of indexing");
-        let pois = query_proofs_of_indexing(indexing_statuses).await;
+        let pois = query_proofs_of_indexing(indexing_statuses, config.block_choice_policy).await;
 
         let write_err = store.write_pois(&pois, store::PoiLiveness::Live).err();
         if let Some(err) = write_err {

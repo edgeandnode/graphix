@@ -13,6 +13,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
+  REGISTRY: ghcr.io
 
 jobs:
   rustfmt:
@@ -31,48 +32,44 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: rustfmt
           override: true
-      - name: Check formating
+      - name: Check formatting
         uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
-
-  docker-api-server:
-    runs-on: ubuntu-latest/Users/rotarur/projects/edgeandnode/graph-infra/.github/workflows/template-deploy.yaml
-    steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      #- name: Login to Docker Hub
-      #  uses: docker/login-action@v2
-      #  with:
-      #    username: ${{ secrets.DOCKERHUB_USERNAME }}
-      #    password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: docker build
-        uses: docker/build-push-action@v4
-        with:
-          push: false
-          tags: edgeandnode/graphix-api-server:latest
-          file: ops/api-server.dockerfile
-  docker-cross-checker:
+  docker-build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    if: github.ref == 'refs/heads/main'
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      #- name: Login to Docker Hub
-      #  uses: docker/login-action@v2
-      #  with:
-      #    username: ${{ secrets.DOCKERHUB_USERNAME }}
-      #    password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: docker build
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push API server Docker image
         uses: docker/build-push-action@v4
         with:
-          push: false
-          tags: edgeandnode/graphix-cross-checker:latest
-          file: ops/cross-checker.dockerfile
+          context: .
+          file: ops/api-server.dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/graphix-api-server:latest
+      - name: Build and push cross-checker service Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ops/api-server.dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/graphix-cross-checker:latest
 
   build:
     name: Build

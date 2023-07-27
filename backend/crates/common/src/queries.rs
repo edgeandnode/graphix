@@ -1,7 +1,6 @@
+use crate::block_choice::BlockChoicePolicy;
 use crate::indexer::Indexer;
-use crate::prelude::{
-    BlockPointer, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
-};
+use crate::prelude::{IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment};
 use crate::prometheus_metrics::metrics;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
@@ -74,6 +73,7 @@ pub async fn query_indexing_statuses(indexers: Vec<Arc<dyn Indexer>>) -> Vec<Ind
 
 pub async fn query_proofs_of_indexing(
     indexing_statuses: Vec<IndexingStatus>,
+    block_choice_policy: BlockChoicePolicy,
 ) -> Vec<ProofOfIndexing> {
     info!("Query POIs for recent common blocks across indexers");
 
@@ -102,17 +102,13 @@ pub async fn query_proofs_of_indexing(
             )
         }));
 
-    // For each deployment, identify the latest block number that all indexers have in common
-    let latest_blocks: HashMap<SubgraphDeployment, Option<BlockPointer>> =
+    // For each deployment, chooose a block on which to query the PoI
+    let latest_blocks: HashMap<SubgraphDeployment, Option<u64>> =
         HashMap::from_iter(deployments.iter().map(|deployment| {
             (
                 deployment.clone(),
                 statuses_by_deployment.get(deployment).and_then(|statuses| {
-                    statuses
-                        .iter()
-                        .map(|status| &status.latest_block)
-                        .min_by_key(|block| block.number)
-                        .cloned()
+                    block_choice_policy.choose_block(statuses.iter().map(|&s| s))
                 }),
             )
         }));
@@ -123,17 +119,20 @@ pub async fn query_proofs_of_indexing(
         .map(|indexer| async {
             let poi_requests = latest_blocks
                 .iter()
-                .filter(|(deployment, _)| {
+                .filter(|(deployment, &block_number)| {
                     statuses_by_deployment
                         .get(*deployment)
                         .expect("bug in matching deployments to latest blocks and indexers")
                         .iter()
-                        .any(|status| status.indexer.eq(indexer))
+                        .any(|status| {
+                            status.indexer.eq(indexer)
+                                && Some(status.latest_block.number) >= block_number
+                        })
                 })
-                .filter_map(|(deployment, block)| {
-                    block.clone().map(|block| PoiRequest {
+                .filter_map(|(deployment, block_number)| {
+                    block_number.map(|block_number| PoiRequest {
                         deployment: deployment.clone(),
-                        block_number: block.number,
+                        block_number: block_number,
                     })
                 })
                 .collect::<Vec<_>>();

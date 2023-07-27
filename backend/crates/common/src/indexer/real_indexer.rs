@@ -148,9 +148,13 @@ impl Indexer for RealIndexer {
     ) -> Vec<ProofOfIndexing> {
         let mut pois = vec![];
 
-        // Graph Node implements a limit of 10 POI requests per request, so
-        // split our requests up accordingly.
-        for requests in requests.chunks(10) {
+        // Graph Node implements a limit of 10 POI requests per request, so split our requests up
+        // accordingly.
+        //
+        // FIXME: This is temporarily set to 1 until we fix the error: 'Null value resolved for
+        // non-null field `proofOfIndexing`' Which is probably a Graph Node bug. Setting it to 1
+        // reduces the impact of this issue.
+        for requests in requests.chunks(1) {
             trace!(
                 indexer = %self.id(),
                 batch_size = requests.len(),
@@ -302,18 +306,19 @@ mod gql_types {
                 .get(0)
                 .ok_or_else(|| anyhow!("chain status missing"))?;
 
-            let latest_block = match chain.on {
+            let (latest_block, earliest_block_num) = match &chain.on {
             indexing_statuses::IndexingStatusesIndexingStatusesChainsOn::EthereumIndexingStatus(
                 indexing_statuses::IndexingStatusesIndexingStatusesChainsOnEthereumIndexingStatus {
-                    ref latest_block,
+                    latest_block,
+                    earliest_block,
                     ..
                 },
-            ) => match latest_block {
-                Some(block) => BlockPointer {
+            ) => match (latest_block, earliest_block) {
+                (Some(block), Some(earliest_block)) => (BlockPointer {
                     number: block.number.parse()?,
                     hash: Some(block.hash.clone().as_str().try_into()?),
-                },
-                None => {
+                }, earliest_block.number.parse()?),
+                _ => {
                     return Err(anyhow!("deployment has not started indexing yet"));
                 }
             },
@@ -324,6 +329,7 @@ mod gql_types {
                 deployment: SubgraphDeployment(self.inner.subgraph),
                 network: chain.network.clone(),
                 latest_block,
+                earliest_block_num,
             })
         }
     }

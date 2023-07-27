@@ -13,6 +13,7 @@ pub struct DeploymentDetails {
     pub network: String,
     pub latest_block: BlockPointer,
     pub canonical_pois: Vec<PartialProofOfIndexing>,
+    pub earliest_block_num: u64,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -45,6 +46,7 @@ impl Indexer for MockIndexer {
                     deployment: details.deployment,
                     network: details.network,
                     latest_block: details.latest_block,
+                    earliest_block_num: details.earliest_block_num,
                 })
                 .collect())
         }

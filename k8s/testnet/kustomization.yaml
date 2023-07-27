@@ -8,3 +8,6 @@ images:
   - name: graphix
     newName: ghcr.io/edgeandnode/graphix-cross-checker
     newTag: latest
+  - name: api
+    newName: ghcr.io/edgeandnode/graphix-api-server
+    newTag: latest

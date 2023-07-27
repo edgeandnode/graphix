@@ -50,6 +50,7 @@ impl Indexer for IndexerInterceptor {
                 deployment: status.deployment,
                 network: status.network,
                 latest_block: status.latest_block,
+                earliest_block_num: status.earliest_block_num,
             })
             .collect();
         Ok(hijacked_statuses)

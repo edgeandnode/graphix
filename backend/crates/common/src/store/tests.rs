@@ -1,3 +1,4 @@
+use crate::block_choice::BlockChoicePolicy;
 use crate::tests::{fast_rng, gen::gen_indexers};
 use crate::{
     queries,
@@ -16,7 +17,8 @@ async fn poi_db_roundtrip() {
     let indexers = gen_indexers(&mut rng, 100);
 
     let indexing_statuses = queries::query_indexing_statuses(indexers).await;
-    let pois = queries::query_proofs_of_indexing(indexing_statuses).await;
+    let pois =
+        queries::query_proofs_of_indexing(indexing_statuses, BlockChoicePolicy::Earliest).await;
 
     let store = Store::new(&test_db_url()).await.unwrap();
     let mut conn = store.test_conn();
