@@ -69,7 +69,7 @@ Spin up the docker-compose environment
 ```sh
 cd ops/compose
 docker compose build
-UID=(id -u) GID=(id -g) docker compose up
+docker compose up
 ```
 
 Deploy at least 1 subgraph to the test graph-nodes
