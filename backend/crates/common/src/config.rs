@@ -109,6 +109,7 @@ pub struct IndexerByAddressConfig {
 #[serde(rename_all = "camelCase")]
 pub struct NetworkSubgraphConfig {
     pub endpoint: String,
+    #[serde(default)]
     pub query: NetworkSubgraphQuery,
     pub stake_threshold: f64,
     pub limit: Option<u32>,
@@ -119,6 +120,12 @@ pub struct NetworkSubgraphConfig {
 pub enum NetworkSubgraphQuery {
     ByAllocations,
     ByStakedTokens,
+}
+
+impl Default for NetworkSubgraphQuery {
+    fn default() -> Self {
+        NetworkSubgraphQuery::ByAllocations
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
