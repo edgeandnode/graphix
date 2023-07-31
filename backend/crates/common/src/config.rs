@@ -109,6 +109,8 @@ pub struct IndexerByAddressConfig {
 #[serde(rename_all = "camelCase")]
 pub struct NetworkSubgraphConfig {
     pub endpoint: String,
+    /// What query out of several available ones to use to fetch the list of
+    /// indexers from the network subgraph?
     #[serde(default)]
     pub query: NetworkSubgraphQuery,
     pub stake_threshold: f64,
