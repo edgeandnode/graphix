@@ -9,10 +9,13 @@ use crate::{
     network_subgraph::NetworkSubgraph,
 };
 
+/// A [`serde`]-compatible representation of Graphix's YAML configuration file.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     pub database_url: String,
+    #[serde(default = "Config::default_prometheus_port")]
+    pub prometheus_port: u16,
     pub sources: Vec<ConfigSource>,
     #[serde(default)]
     pub block_choice_policy: BlockChoicePolicy,
@@ -24,24 +27,8 @@ pub struct Config {
 impl Config {
     pub fn read(path: &Path) -> anyhow::Result<Self> {
         let file = File::open(path)?;
-        let config: Self = serde_yaml::from_reader(file)
-            .map_err(|e| anyhow::Error::new(e).context("invalid config file"))?;
-
-        let num_network_subgraph_sources = config
-            .sources
-            .iter()
-            .filter(|c| match c {
-                ConfigSource::NetworkSubgraph(_) => true,
-                _ => false,
-            })
-            .count();
-
-        // Validation: there can only be one network subgraph source, at most.
-        if num_network_subgraph_sources > 1 {
-            anyhow::bail!("there can only be one network subgraph source");
-        }
-
-        Ok(config)
+        Ok(serde_yaml::from_reader(file)
+            .map_err(|e| anyhow::Error::new(e).context("invalid config file"))?)
     }
 
     pub fn indexers(&self) -> Vec<IndexerConfig> {
@@ -77,25 +64,23 @@ impl Config {
             .collect()
     }
 
-    pub fn network_subgraph(&self) -> Option<NetworkSubgraphConfig> {
-        let network_subgraphs: Vec<NetworkSubgraphConfig> = self
-            .sources
+    pub fn network_subgraphs(&self) -> Vec<NetworkSubgraphConfig> {
+        self.sources
             .iter()
             .filter_map(|source| match source {
                 ConfigSource::NetworkSubgraph(config) => Some(config),
                 _ => None,
             })
             .cloned()
-            .collect();
-
-        // This was already checked by [`Config::read`], it's just some
-        // defensive programming.
-        debug_assert!(network_subgraphs.len() <= 1);
-        network_subgraphs.into_iter().next()
+            .collect()
     }
 
     fn default_polling_period_in_seconds() -> u64 {
         120
+    }
+
+    fn default_prometheus_port() -> u16 {
+        9184
     }
 }
 
@@ -124,8 +109,25 @@ pub struct IndexerByAddressConfig {
 #[serde(rename_all = "camelCase")]
 pub struct NetworkSubgraphConfig {
     pub endpoint: String,
+    /// What query out of several available ones to use to fetch the list of
+    /// indexers from the network subgraph?
+    #[serde(default)]
+    pub query: NetworkSubgraphQuery,
     pub stake_threshold: f64,
     pub limit: Option<u32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum NetworkSubgraphQuery {
+    ByAllocations,
+    ByStakedTokens,
+}
+
+impl Default for NetworkSubgraphQuery {
+    fn default() -> Self {
+        NetworkSubgraphQuery::ByAllocations
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -173,26 +175,44 @@ pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn In
         indexers.push(Arc::new(RealIndexer::new(config.clone())));
     }
 
-    // Then, configure the network subgraph, if required, resulting in "dynamic"
+    // Then, configure the network subgraphs, if required, resulting in "dynamic"
     // indexers.
-    if let Some(config) = config.network_subgraph() {
+    for config in config.network_subgraphs() {
+        info!(endpoint = %config.endpoint, "Configuring network subgraph");
         let network_subgraph = NetworkSubgraph::new(config.endpoint);
-        let mut network_subgraph_indexers = network_subgraph.indexers().await?;
+        let mut network_subgraph_indexers = match config.query {
+            NetworkSubgraphQuery::ByAllocations => {
+                network_subgraph.indexers_by_allocations().await?
+            }
+            NetworkSubgraphQuery::ByStakedTokens => {
+                network_subgraph.indexers_by_staked_tokens().await?
+            }
+        };
         if let Some(limit) = config.limit {
             network_subgraph_indexers.truncate(limit as usize);
         }
 
-        info!("Configuring network subgraph");
         indexers.extend(network_subgraph_indexers);
     }
 
-    // Then, configure indexers by address, which requires access to the network subgraph.
+    info!(
+        indexer_count = indexers.len(),
+        "Configured all network subgraphs"
+    );
+
+    // Then, configure indexers by address, which requires access to a network subgraph.
     for indexer_config in config.indexers_by_address() {
+        // FIXME: when looking up indexers by address, we don't really know
+        // which network subgraph to use for the lookup. Should this be
+        // indicated inside the data source's configuration? Should we try all
+        // network subgraphs until one succeeds?
         let network_subgraph = NetworkSubgraph::new(
             config
-                .network_subgraph()
+                .network_subgraphs()
+                .get(0)
                 .ok_or_else(|| anyhow::anyhow!("indexer by address requires a network subgraph"))?
-                .endpoint,
+                .endpoint
+                .clone(),
         );
         let indexer = network_subgraph
             .indexer_by_address(&indexer_config.address)

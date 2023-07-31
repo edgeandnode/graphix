@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use anyhow::anyhow;
 use reqwest::Url;
 use serde_derive::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::Arc};
@@ -17,6 +18,15 @@ pub struct NetworkSubgraph {
 }
 
 impl NetworkSubgraph {
+    const INDEXERS_BY_STAKED_TOKENS_QUERY: &str = r#"
+        {
+          indexers(orderBy: stakedTokens) {
+            id
+            url
+          }
+        }
+    "#;
+
     const DEPLOYMENTS_QUERY: &str = r#"
         {
           subgraphDeployments(where: { indexerAllocations_: { status_in: [Active]  }}, orderBy:stakedTokens) {
@@ -47,7 +57,54 @@ impl NetworkSubgraph {
         }
     }
 
-    pub async fn indexers(&self) -> anyhow::Result<Vec<Arc<dyn IndexerTrait>>> {
+    pub async fn indexers_by_staked_tokens(&self) -> anyhow::Result<Vec<Arc<dyn IndexerTrait>>> {
+        let request = GraphqlRequest {
+            query: Self::INDEXERS_BY_STAKED_TOKENS_QUERY.to_string(),
+            variables: BTreeMap::new(), // Our query doesn't require any variables.
+        };
+
+        let res: GraphqlResponse = self
+            .client
+            .post(&self.endpoint)
+            .json(&request)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+
+        let errors = res.errors.unwrap_or_default();
+        if !errors.is_empty() {
+            return Err(anyhow::anyhow!(
+                "error(s) querying top indexers from the network subgraph: {}",
+                serde_json::to_string(&errors)?
+            ));
+        }
+
+        // Unwrap: A response that has no errors must contain data.
+        let data = res.data.unwrap();
+        let data_deserialized: GraphqlResponseTopIndexers = serde_json::from_value(data)?;
+
+        let mut indexers: Vec<Arc<dyn IndexerTrait>> = vec![];
+        for indexer in data_deserialized.indexers {
+            let indexer_id = indexer.id.clone();
+            let real_indexer =
+                indexer_allocation_data_to_real_indexer(IndexerAllocation { indexer });
+
+            match real_indexer {
+                Ok(indexer) => indexers.push(Arc::new(indexer)),
+                Err(e) => warn!(
+                    err = %e.to_string(),
+                    indexer_id,
+                    "Received bad indexer for network subgraph query; ignoring",
+                ),
+            }
+        }
+
+        Ok(indexers)
+    }
+
+    pub async fn indexers_by_allocations(&self) -> anyhow::Result<Vec<Arc<dyn IndexerTrait>>> {
         let sg_deployments = self.subgraph_deployments().await?;
 
         let mut indexers: Vec<Arc<dyn IndexerTrait>> = vec![];
@@ -153,7 +210,7 @@ impl NetworkSubgraph {
 
         // Unwrap: A response that has no errors must contain data.
         let data = res.data.unwrap();
-        let data_deserialized: GraphqlResponseData = serde_json::from_value(data)?;
+        let data_deserialized: GraphqlResponseSgDeployments = serde_json::from_value(data)?;
         //let page: Vec<SubgraphDeployment> = page
         //    .into_iter()
         //    .map(|raw_deployment| SubgraphDeployment {
@@ -177,7 +234,10 @@ fn indexer_allocation_data_to_real_indexer(
     indexer_allocation: IndexerAllocation,
 ) -> anyhow::Result<RealIndexer> {
     let indexer = indexer_allocation.indexer;
-    let mut url: Url = indexer.url.parse()?;
+    let mut url: Url = indexer
+        .url
+        .ok_or_else(|| anyhow!("Indexer without URL"))?
+        .parse()?;
     // FIXME: we're unable to connect to indexers over HTTPS inside
     // docker-compose for now.
     url.set_scheme("http")
@@ -204,8 +264,14 @@ struct GraphqlResponse {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct GraphqlResponseData {
+struct GraphqlResponseSgDeployments {
     subgraph_deployments: Vec<SubgraphDeployment>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GraphqlResponseTopIndexers {
+    indexers: Vec<Indexer>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -223,7 +289,7 @@ pub struct IndexerAllocation {
 #[derive(Debug, Deserialize)]
 pub struct Indexer {
     pub id: String,
-    pub url: String,
+    pub url: Option<String>,
 }
 
 impl NetworkSubgraph {}

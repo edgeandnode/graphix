@@ -1,3 +1,5 @@
+# A good mix of data sources for local development, both mainnet and testnet.
+
 databaseUrl: postgres://graphix:password@postgres-graphix:5432/graphix
 sources:
   - type: indexer
@@ -10,8 +12,19 @@ sources:
       status: http://graph-testnet.ellipfra.net/status
   - type: networkSubgraph
     endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-goerli
+    query: byAllocations
     stakeThreshold: 0.0
-    limit: 0 # Disabled for now
+    limit: 20 # Disabled for now
+  - type: networkSubgraph
+    endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-arbitrum
+    query: byAllocations
+    stakeThreshold: 0.0
+    limit: 20
+  - type: networkSubgraph
+    endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-arbitrum
+    query: byStakedTokens
+    stakeThreshold: 0.0
+    limit: 40
   # - type: indexerByAddress
   #   address: "0x56577167dcdd1a3de2e58d53fc2be0b622d82a7c"
   # Example interceptors

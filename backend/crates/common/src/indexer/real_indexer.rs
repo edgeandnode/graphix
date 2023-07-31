@@ -15,6 +15,8 @@ use crate::{
     types::{BlockPointer, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment},
 };
 
+const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
 #[derive(Debug)]
 pub struct RealIndexer {
     id: String, // Assumed to be unique accross all indexers
@@ -57,6 +59,7 @@ impl RealIndexer {
         let response_raw = self
             .client
             .post(self.urls.status.clone())
+            .timeout(REQUEST_TIMEOUT)
             .json(&request)
             .send()
             .await?;
