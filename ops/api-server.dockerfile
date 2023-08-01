@@ -42,4 +42,3 @@ COPY --from=builder /usr/local/bin/graphix-api-server /usr/local/bin
 EXPOSE 3030
 
 ENTRYPOINT [ "graphix-api-server" ]
-CMD ["graphix-api-server", "--port", "3030"]

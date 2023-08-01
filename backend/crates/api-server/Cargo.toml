@@ -13,7 +13,7 @@ path = "src/main.rs"
 anyhow = "1.0.52"
 async-graphql = "5"
 async-graphql-warp = "5"
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive", "env"] }
 graphix-common = { path = "../common" }
 tokio = { version = "1.15.0", features = ["full"] }
 tracing = "0.1.29"

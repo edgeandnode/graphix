@@ -68,9 +68,13 @@ fn init_tracing() {
 
 #[derive(Parser, Debug)]
 pub struct CliOptions {
-    #[clap(long, default_value = "80")]
+    #[clap(long, default_value = "80", env = "GRAPHIX_PORT")]
     pub port: u16,
 
-    #[clap(long, default_value = "postgresql://localhost:5432/graphix")]
+    #[clap(
+        long,
+        default_value = "postgresql://localhost:5432/graphix",
+        env = "GRAPHIX_DATABASE_URL"
+    )]
     pub database_url: String,
 }
