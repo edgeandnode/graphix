@@ -238,10 +238,6 @@ fn indexer_allocation_data_to_real_indexer(
         .url
         .ok_or_else(|| anyhow!("Indexer without URL"))?
         .parse()?;
-    // FIXME: we're unable to connect to indexers over HTTPS inside
-    // docker-compose for now.
-    url.set_scheme("http")
-        .map_err(|_| anyhow::anyhow!("unable to set scheme"))?;
     url.set_path("/status");
     let config = IndexerConfig {
         name: indexer.id,
