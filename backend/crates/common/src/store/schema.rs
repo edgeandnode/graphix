@@ -52,9 +52,9 @@ diesel::table! {
 diesel::table! {
     live_pois (id) {
         id -> Int4,
-        poi_id -> Int4,
         sg_deployment_id -> Int4,
         indexer_id -> Int4,
+        poi_id -> Int4,
     }
 }
 
@@ -69,7 +69,7 @@ diesel::table! {
 
 diesel::table! {
     poi_divergence_bisect_reports (id) {
-        id -> Int4,
+        id -> Text,
         poi1_id -> Int4,
         poi2_id -> Int4,
         divergence_block_id -> Nullable<Int8>,
@@ -113,7 +113,9 @@ diesel::joinable!(entity_changes_in_block -> blocks (block_id));
 diesel::joinable!(entity_changes_in_block -> indexers (indexer_id));
 diesel::joinable!(eth_call_cache_entries -> blocks (block_id));
 diesel::joinable!(eth_call_cache_entries -> indexers (indexer_id));
+diesel::joinable!(live_pois -> indexers (indexer_id));
 diesel::joinable!(live_pois -> pois (poi_id));
+diesel::joinable!(live_pois -> sg_deployments (sg_deployment_id));
 diesel::joinable!(poi_divergence_bisect_reports -> blocks (divergence_block_id));
 diesel::joinable!(pois -> blocks (block_id));
 diesel::joinable!(pois -> indexers (indexer_id));

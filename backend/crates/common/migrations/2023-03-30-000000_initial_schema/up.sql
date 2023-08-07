@@ -86,7 +86,7 @@ CREATE TABLE live_pois (
 );
 
 CREATE TABLE poi_divergence_bisect_reports (
-  id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  id TEXT PRIMARY KEY,
   poi1_id INTEGER NOT NULL REFERENCES pois(id) ON DELETE RESTRICT,
   poi2_id INTEGER NOT NULL REFERENCES pois(id) ON DELETE RESTRICT,
   divergence_block_id BIGINT REFERENCES blocks(id),
