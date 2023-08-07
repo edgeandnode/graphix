@@ -190,12 +190,11 @@ impl Indexer for RealIndexer {
 
                     if error
                         .to_string()
-                        .contains(r#"Cannot query field"publicProofsOfIndexing" on type "Query""#)
+                        .contains(r#"Cannot query field "publicProofsOfIndexing" on type "Query""#)
                     {
                         warn!(
                             id = %self.id(),
-                            "Indexer doesn't seem to support 'publicProofsOfIndexing',
-                            skipping indexer"
+                            "Indexer doesn't seem to support 'publicProofsOfIndexing', skipping it"
                         );
                         break;
                     }

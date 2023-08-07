@@ -19,7 +19,7 @@ mod diesel_queries;
 pub use diesel_queries;
 use uuid::Uuid;
 
-use self::models::{BigIntId, IndexerRef, IntId, WritablePoI};
+use self::models::{BigIntId, IndexerRef, WritablePoI};
 
 pub mod models;
 mod schema;
@@ -176,6 +176,14 @@ impl Store {
             .transaction::<_, Error, _>(|conn| diesel_queries::write_pois(conn, pois, live))
     }
 
+    pub fn cross_check_report(
+        &self,
+        id: &str,
+    ) -> anyhow::Result<DivergenceInvestigationRequestWithUuid> {
+        let mut conn = self.conn()?;
+        diesel_queries::get_cross_check_report(&mut conn, id)
+    }
+
     pub async fn recv_cross_check_report_request(
         &self,
     ) -> anyhow::Result<DivergenceInvestigationRequestWithUuid> {
@@ -188,9 +196,12 @@ impl Store {
     pub fn queue_cross_check_report(
         &self,
         req: DivergenceInvestigationRequest,
-    ) -> anyhow::Result<Uuid> {
-        let uuid = Uuid::new_v4();
-        let with_uuid = DivergenceInvestigationRequestWithUuid { uuid, req };
+    ) -> anyhow::Result<String> {
+        let uuid = Uuid::new_v4().to_string();
+        let with_uuid = DivergenceInvestigationRequestWithUuid {
+            id: uuid.clone(),
+            req,
+        };
 
         diesel::dsl::sql_query("SELECT pg_notify('cross_check_reports', $1);")
             .bind::<diesel::sql_types::Text, _>(serde_json::to_string(&with_uuid)?)
@@ -201,14 +212,11 @@ impl Store {
 
     pub fn write_divergence_bisect_report(
         &self,
-        poi1: &str,
-        poi2: &str,
+        poi1_id: i32,
+        poi2_id: i32,
         divergence_block: BigIntId,
-    ) -> anyhow::Result<IntId> {
+    ) -> anyhow::Result<String> {
         use schema::{blocks, poi_divergence_bisect_reports as reports};
-
-        let poi1_id = self.poi(poi1)?.unwrap().id;
-        let poi2_id = self.poi(poi2)?.unwrap().id;
 
         // Normalize pairing order to avoid duplicates.
         let (poi1_id, poi2_id) = if poi1_id < poi2_id {

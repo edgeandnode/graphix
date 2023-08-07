@@ -178,9 +178,9 @@ impl FromSql<Jsonb, Pg> for DivergingBlock {
 #[derive(Debug, Insertable, Queryable)]
 #[diesel(table_name = poi_divergence_bisect_reports)]
 pub struct PoiDivergenceBisectReport {
-    pub id: IntId,
+    pub id: String,
     pub poi1_id: IntId,
     pub poi2_id: IntId,
-    pub divergence_block_id: BigIntId,
+    pub divergence_block_id: Option<BigIntId>,
     pub created_at: NaiveDateTime,
 }

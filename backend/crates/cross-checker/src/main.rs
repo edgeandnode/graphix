@@ -128,6 +128,8 @@ async fn handle_bisect_request(
         .number;
     let poi1 = store.poi(&req.req.poi1)?.context("POI not found")?;
     let poi2 = store.poi(&req.req.poi2)?.context("POI not found")?;
+    let poi1_id = poi1.id;
+    let poi2_id = poi2.id;
     let indexer1 = indexers
         .borrow()
         .iter()
@@ -157,9 +159,12 @@ async fn handle_bisect_request(
         block,
         proof_of_indexing: poi2.poi.try_into()?,
     };
-    let context = PoiBisectingContext::new(req.uuid.to_string(), poi1, poi2, deployment.clone())?;
+    let context = PoiBisectingContext::new(req.id.to_string(), poi1, poi2, deployment.clone())?;
 
     let bisect_result = context.start().await?;
+
+    // FIXME
+    store.write_divergence_bisect_report(poi1_id, poi2_id, poi_block)?;
 
     println!("Bisect result: {:?}", bisect_result);
 

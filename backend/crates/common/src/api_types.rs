@@ -5,9 +5,9 @@ use std::collections::BTreeMap;
 use crate::store::{models, Store};
 use anyhow::Context as _;
 use async_graphql::*;
+use diesel::FromSqlRow;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
-use uuid::Uuid;
 
 type HexBytesWith0xPrefix = String;
 
@@ -156,18 +156,16 @@ impl QueryRoot {
         Ok(agreement_ratios)
     }
 
-    // async fn poi_cross_check_reports(
-    //     &self,
-    //     ctx: &Context<'_>,
-    //     request: POICrossCheckReportRequest,
-    // ) -> Result<Vec<POICrossCheckReport>, async_graphql::Error> {
-    //     let api_ctx = ctx.data::<APISchemaContext>()?;
-    //     let reports = api_ctx
-    //         .store
-    //         .poi_cross_check_reports(request.indexer1.as_deref(), request.indexer2.as_deref())?;
+    async fn poi_cross_check_report(
+        &self,
+        ctx: &Context<'_>,
+        request_id: String,
+    ) -> Result<String, async_graphql::Error> {
+        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let request = api_ctx.store.cross_check_report(&request_id)?;
 
-    //     Ok(reports.into_iter().map(POICrossCheckReport::from).collect())
-    // }
+        Ok(serde_json::to_string(&request).unwrap())
+    }
 }
 
 pub struct MutationRoot;
@@ -192,7 +190,7 @@ impl MutationRoot {
     }
 }
 
-#[derive(InputObject, Serialize, Deserialize, Debug, Clone)]
+#[derive(InputObject, Serialize, Deserialize, Debug, Clone, FromSqlRow)]
 pub struct DivergenceInvestigationRequest {
     pub poi1: String,
     pub poi2: String,
@@ -201,9 +199,9 @@ pub struct DivergenceInvestigationRequest {
     pub query_entity_changes: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, FromSqlRow)]
 pub struct DivergenceInvestigationRequestWithUuid {
-    pub uuid: Uuid,
+    pub id: String,
     pub req: DivergenceInvestigationRequest,
 }
 

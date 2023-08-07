@@ -6,6 +6,8 @@ use tracing::info;
 use super::models::WritablePoI;
 use super::PoiLiveness;
 use crate::api_types::BlockRangeInput;
+use crate::api_types::DivergenceInvestigationRequest;
+use crate::api_types::DivergenceInvestigationRequestWithUuid;
 use crate::store::models::{
     self, IndexerRow, NewIndexer, NewLivePoi, NewPoI, NewSgDeployment, SgDeployment,
 };
@@ -32,6 +34,29 @@ pub(super) fn poi(conn: &mut PgConnection, poi: &str) -> anyhow::Result<Option<m
             blocks::all_columns,
         ))
         .filter(pois::poi.eq(poi));
+
+    Ok(query.get_result::<models::PoI>(conn).optional()?)
+}
+
+fn poi_by_id(conn: &mut PgConnection, poi_id: i32) -> anyhow::Result<Option<models::PoI>> {
+    use schema::blocks;
+    use schema::indexers;
+    use schema::pois;
+    use schema::sg_deployments;
+
+    let query = pois::table
+        .inner_join(sg_deployments::table)
+        .inner_join(indexers::table)
+        .inner_join(blocks::table)
+        .select((
+            pois::id,
+            pois::poi,
+            pois::created_at,
+            sg_deployments::all_columns,
+            indexers::all_columns,
+            blocks::all_columns,
+        ))
+        .filter(pois::id.eq(&poi_id));
 
     Ok(query.get_result::<models::PoI>(conn).optional()?)
 }
@@ -123,6 +148,33 @@ pub(super) fn pois(
             return Ok(query.load::<models::PoI>(conn)?);
         }
     }
+}
+
+pub fn get_cross_check_report(
+    conn: &mut PgConnection,
+    req_id: &str,
+) -> anyhow::Result<DivergenceInvestigationRequestWithUuid> {
+    use schema::poi_divergence_bisect_reports::dsl::*;
+
+    let row = poi_divergence_bisect_reports
+        .filter(id.eq(&req_id))
+        .get_result::<models::PoiDivergenceBisectReport>(conn)?;
+
+    let poi1 = poi_by_id(conn, row.poi1_id)?.unwrap();
+    let poi2 = poi_by_id(conn, row.poi2_id)?.unwrap();
+
+    let report = DivergenceInvestigationRequestWithUuid {
+        id: row.id,
+        req: DivergenceInvestigationRequest {
+            poi1: poi1.poi_hex(),
+            poi2: poi2.poi_hex(),
+            query_block_caches: false,
+            query_eth_call_caches: false,
+            query_entity_changes: false,
+        },
+    };
+
+    Ok(report)
 }
 
 // The caller must make sure that `conn` is within a transaction.
