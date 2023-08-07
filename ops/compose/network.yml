@@ -10,8 +10,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Plugin to create panels from GraphQL queries: https://github.com/fifemon/graphql-datasource
-      - GF_INSTALL_PLUGINS=fifemon-graphql-datasource
+      # Plugins:
+      # - https://github.com/fifemon/graphql-datasource for GraphQL data sources.
+      # - https://github.com/VolkovLabs/volkovlabs-form-panel for forms, data manipulation, write actions.
+      - GF_INSTALL_PLUGINS=fifemon-graphql-datasource,volkovlabs-form-panel
     volumes:
       - ./grafana/config/:/etc/grafana/
       - ./grafana/data:/var/lib/grafana/
