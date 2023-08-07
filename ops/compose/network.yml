@@ -13,7 +13,8 @@ services:
       # Plugins:
       # - https://github.com/fifemon/graphql-datasource for GraphQL data sources.
       # - https://github.com/VolkovLabs/volkovlabs-form-panel for forms, data manipulation, write actions.
-      - GF_INSTALL_PLUGINS=fifemon-graphql-datasource,volkovlabs-form-panel
+      # - https://github.com/grafana/grafana-json-datasource for JSON-based APIs.
+      - GF_INSTALL_PLUGINS=fifemon-graphql-datasource,volkovlabs-form-panel,marcusolsson-json-datasource
     volumes:
       - ./grafana/config/:/etc/grafana/
       - ./grafana/data:/var/lib/grafana/
