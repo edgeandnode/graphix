@@ -187,6 +187,18 @@ impl Indexer for RealIndexer {
                         id = %self.id(), %error,
                         "Failed to query POIs batch from indexer"
                     );
+
+                    if error
+                        .to_string()
+                        .contains(r#"Cannot query field"publicProofsOfIndexing" on type "Query""#)
+                    {
+                        warn!(
+                            id = %self.id(),
+                            "Indexer doesn't seem to support 'publicProofsOfIndexing',
+                            skipping indexer"
+                        );
+                        break;
+                    }
                 }
             }
         }
