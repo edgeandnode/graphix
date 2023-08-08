@@ -15,6 +15,7 @@ services:
       - GF_INSTALL_PLUGINS=fifemon-graphql-datasource
     volumes:
       - ./grafana/config/:/etc/grafana/
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
       - ./grafana/data:/var/lib/grafana/
 
   prometheus:
