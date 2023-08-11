@@ -6,6 +6,7 @@ use tracing::info;
 use super::models::WritablePoi;
 use super::PoiLiveness;
 use crate::graphql_api::types::BlockRangeInput;
+use crate::prelude::BlockPointer;
 use crate::store::models::{
     self, IndexerRow, NewIndexer, NewLivePoi, NewPoi, NewSgDeployment, SgDeployment,
 };
@@ -152,39 +153,14 @@ pub(super) fn write_pois(
     pois: &[impl WritablePoi],
     live: PoiLiveness,
 ) -> anyhow::Result<()> {
-    use schema::{blocks, pois};
+    use schema::pois;
 
     let len = pois.len();
 
     for poi in pois {
         let sg_deployment_id = get_or_insert_deployment(conn, poi.deployment_cid())?;
-
         let indexer_id = get_or_insert_indexer(conn, poi.indexer_id(), poi.indexer_address())?;
-
-        let block_id = {
-            // First, attempt to find the existing block by hash
-            // TODO: also filter by network to be extra safe
-            let existing_block: Option<models::Block> = blocks::table
-                .filter(blocks::hash.eq(&poi.block().hash.unwrap().0.as_slice()))
-                .get_result(conn)
-                .optional()?;
-
-            if let Some(existing_block) = existing_block {
-                // If the block exists, use its id
-                existing_block.id
-            } else {
-                // If the block doesn't exist, insert a new one and return its id
-                let new_block = models::NewBlock {
-                    number: poi.block().number as i64,
-                    hash: poi.block().hash.unwrap().0.to_vec(),
-                    network_id: 1, // Network assumed to be mainnet, see also: hardcoded-mainnet,
-                };
-                diesel::insert_into(blocks::table)
-                    .values(&new_block)
-                    .returning(blocks::id)
-                    .get_result(conn)?
-            }
-        };
+        let block_id = get_or_insert_block(conn, poi.block())?;
 
         let new_poi = NewPoi {
             sg_deployment_id,
@@ -217,6 +193,34 @@ pub(super) fn write_pois(
 
     info!(%len, "Wrote POIs to database");
     Ok(())
+}
+
+fn get_or_insert_block(conn: &mut PgConnection, block: BlockPointer) -> anyhow::Result<i64> {
+    use schema::blocks;
+
+    // First, attempt to find the existing block by hash
+    // TODO: also filter by network to be extra safe
+    let existing_block: Option<models::Block> = blocks::table
+        .filter(blocks::hash.eq(&block.hash.unwrap().0.as_slice()))
+        .get_result(conn)
+        .optional()?;
+
+    if let Some(existing_block) = existing_block {
+        // If the block exists, return its id
+        Ok(existing_block.id)
+    } else {
+        // If the block doesn't exist, insert a new one and return its id
+        let new_block = models::NewBlock {
+            number: block.number as i64,
+            hash: block.hash.unwrap().0.to_vec(),
+            network_id: 1, // Network assumed to be mainnet, see also: hardcoded-mainnet
+        };
+        let block_id = diesel::insert_into(blocks::table)
+            .values(&new_block)
+            .returning(blocks::id)
+            .get_result(conn)?;
+        Ok(block_id)
+    }
 }
 
 fn get_or_insert_indexer(
