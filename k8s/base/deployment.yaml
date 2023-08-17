@@ -58,7 +58,7 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: GRAPHIX_DATABASE_URL
-              value: postgres://graphix:password@postgres-graphix:5432/graphix
+              value: postgres://graphix:ce11b6d4b90eedb38791ae2e5aa25749@psql.testnet.service.internal:5432/graphix
           ports:
             - name: http
               containerPort: 80

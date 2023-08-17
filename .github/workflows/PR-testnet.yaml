@@ -1,4 +1,4 @@
-name: Testnet CD for graphix
+name: PR CD for Testnet graphix
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
