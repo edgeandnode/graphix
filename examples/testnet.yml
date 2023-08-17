@@ -1,4 +1,4 @@
-databaseUrl: postgres://graphix:password@psql.testnet.service.internal:5432/graphix
+databaseUrl: postgres://graphix:password@localhost:5432/graphix
 sources:
   - type: indexer
     name: testnet-indexer-03
