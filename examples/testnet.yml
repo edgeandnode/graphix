@@ -1,0 +1,15 @@
+databaseUrl: postgres://graphix:password@psql.testnet.service.internal:5432/graphix
+sources:
+  - type: indexer
+    name: testnet-indexer-03
+    urls:
+      status: https://testnet-indexer-03-europe-cent.thegraph.com/status
+  - type: indexer
+    name: ellipra
+    urls:
+      status: http://graph-testnet.ellipfra.net/status
+  - type: networkSubgraph
+    endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-goerli
+    query: byAllocations
+    stakeThreshold: 0.0
+    limit: 0 # Disabled for now

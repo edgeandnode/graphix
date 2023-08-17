@@ -38,9 +38,9 @@ RUN apt-get update && \
 	apt-get clean
 
 COPY --from=builder /usr/local/bin/graphix-cross-checker /usr/local/bin
-COPY --from=builder /app/examples/testing.yml /app/config.yml
+COPY --from=builder /app/examples/testnet.yml /app/config.yml
 
 EXPOSE 14265
 
 ENTRYPOINT [ "graphix-cross-checker" ]
-CMD ["graphix-cross-checker", "--config", "/app/config.yml"]
+CMD ["--config", "/app/config.yml"]
