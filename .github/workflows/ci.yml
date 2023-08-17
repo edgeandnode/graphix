@@ -64,7 +64,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ops/api-server.dockerfile
+          file: ops/cross-checker.dockerfile
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/graphix-cross-checker:latest
 
