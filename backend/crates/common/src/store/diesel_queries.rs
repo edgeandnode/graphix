@@ -165,13 +165,7 @@ pub fn get_cross_check_report(
 
     let report = DivergenceInvestigationRequestWithUuid {
         id: row.id,
-        req: DivergenceInvestigationRequest {
-            poi1: poi1.poi_hex(),
-            poi2: poi2.poi_hex(),
-            query_block_caches: false,
-            query_eth_call_caches: false,
-            query_entity_changes: false,
-        },
+        req: DivergenceInvestigationRequest::new(poi1.poi_hex(), poi2.poi_hex()),
     };
 
     Ok(report)

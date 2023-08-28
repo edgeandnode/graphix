@@ -1,4 +1,4 @@
-//! GraphQL API types.
+//! GraphQL API types and request handlers.
 
 use std::collections::BTreeMap;
 
@@ -15,6 +15,7 @@ pub struct QueryRoot;
 
 #[Object]
 impl QueryRoot {
+    /// Fetches all tracked subgraph deploymens in this Graphix instance.
     async fn deployments(
         &self,
         ctx: &Context<'_>,
@@ -28,6 +29,7 @@ impl QueryRoot {
             .collect())
     }
 
+    /// Fetches all tracked indexers in this Graphix instance.
     async fn indexers(&self, ctx: &Context<'_>) -> Result<Vec<Indexer>, async_graphql::Error> {
         let api_ctx = ctx.data::<APISchemaContext>()?;
         let indexers = api_ctx.store.indexers()?;
@@ -35,6 +37,8 @@ impl QueryRoot {
         Ok(indexers.into_iter().map(Indexer::from).collect())
     }
 
+    /// Filters through all PoIs ever collected by this Graphix
+    /// instance, according to some filtering rules specified in `request`.
     async fn proofs_of_indexing(
         &self,
         ctx: &Context<'_>,
@@ -48,6 +52,9 @@ impl QueryRoot {
         Ok(pois.into_iter().map(ProofOfIndexing::from).collect())
     }
 
+    /// Same as [`QueryRoot::proofs_of_indexing`], but only returns PoIs that
+    /// are "live" i.e. they are the most recent PoI collected for their
+    /// subgraph deployment.
     async fn live_proofs_of_indexing(
         &self,
         ctx: &Context<'_>,
@@ -198,9 +205,33 @@ impl MutationRoot {
 pub struct DivergenceInvestigationRequest {
     pub poi1: String,
     pub poi2: String,
-    pub query_block_caches: bool,
-    pub query_eth_call_caches: bool,
-    pub query_entity_changes: bool,
+    pub query_block_caches: Option<bool>,
+    pub query_eth_call_caches: Option<bool>,
+    pub query_entity_changes: Option<bool>,
+}
+
+impl DivergenceInvestigationRequest {
+    pub fn new(poi1: String, poi2: String) -> Self {
+        Self {
+            poi1,
+            poi2,
+            query_block_caches: None,
+            query_eth_call_caches: None,
+            query_entity_changes: None,
+        }
+    }
+
+    pub fn query_block_caches(&self) -> bool {
+        self.query_block_caches.unwrap_or(true)
+    }
+
+    pub fn query_eth_call_caches(&self) -> bool {
+        self.query_eth_call_caches.unwrap_or(true)
+    }
+
+    pub fn query_entity_changes(&self) -> bool {
+        self.query_entity_changes.unwrap_or(true)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, FromSqlRow)]
