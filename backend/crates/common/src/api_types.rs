@@ -179,12 +179,16 @@ impl MutationRoot {
         ctx: &Context<'_>,
         req: DivergenceInvestigationRequest,
     ) -> Result<DivergenceInvestigationResponse> {
-        debug!("launch_cross_check_report");
-
         let api_ctx = ctx.data::<APISchemaContext>()?;
         let store = &api_ctx.store;
 
-        let id = store.queue_cross_check_report(req)?.to_string();
+        let id = store.queue_cross_check_report(req.clone())?.to_string();
+        debug!(
+            poi1 = req.poi1.as_str(),
+            poi2 = req.poi2.as_str(),
+            id,
+            "Received a launch_cross_check_report request"
+        );
 
         Ok(DivergenceInvestigationResponse { id })
     }
