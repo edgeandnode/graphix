@@ -168,13 +168,6 @@ impl FromSql<Jsonb, Pg> for DivergingBlock {
     }
 }
 
-// impl ToSql<Jsonb, Pg> for DivergingBlock {
-//     fn to_sql(&self, out: &mut Output<Pg>) -> diesel::serialize::Result {
-//         let value = serde_json::to_value(self)?;
-//         <serde_json::Value as ToSql<Jsonb, Pg>>::to_sql(&value, out)
-//     }
-// }
-
 #[derive(Debug, Insertable, Queryable)]
 #[diesel(table_name = poi_divergence_bisect_reports)]
 pub struct PoiDivergenceBisectReport {
