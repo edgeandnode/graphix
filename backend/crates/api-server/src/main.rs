@@ -28,10 +28,10 @@ async fn run_api_server(options: CliOptions, store: Store) {
     let health_check_route = warp::path::end().map(|| format!("Ready to roll!"));
 
     // GraphQL API
-    let api_context = schema::APISchemaContext { store };
+    let api_context = schema::ApiSchemaContext { store };
     let api_schema = schema::api_schema(api_context);
     let api = async_graphql_warp::graphql(api_schema).and_then(
-        |(schema, request): (schema::APISchema, Request)| async move {
+        |(schema, request): (schema::ApiSchema, Request)| async move {
             Ok::<_, Infallible>(GraphQLResponse::from(schema.execute(request).await))
         },
     );

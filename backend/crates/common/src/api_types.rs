@@ -20,7 +20,7 @@ impl QueryRoot {
         &self,
         ctx: &Context<'_>,
     ) -> Result<Vec<Deployment>, async_graphql::Error> {
-        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let deployments = api_ctx.store.sg_deployments()?;
 
         Ok(deployments
@@ -31,7 +31,7 @@ impl QueryRoot {
 
     /// Fetches all tracked indexers in this Graphix instance.
     async fn indexers(&self, ctx: &Context<'_>) -> Result<Vec<Indexer>, async_graphql::Error> {
-        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let indexers = api_ctx.store.indexers()?;
 
         Ok(indexers.into_iter().map(Indexer::from).collect())
@@ -44,7 +44,7 @@ impl QueryRoot {
         ctx: &Context<'_>,
         request: ProofOfIndexingRequest,
     ) -> Result<Vec<ProofOfIndexing>, async_graphql::Error> {
-        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let pois = api_ctx
             .store
             .pois(&request.deployments, request.block_range, request.limit)?;
@@ -60,7 +60,7 @@ impl QueryRoot {
         ctx: &Context<'_>,
         request: ProofOfIndexingRequest,
     ) -> Result<Vec<ProofOfIndexing>, async_graphql::Error> {
-        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let pois = api_ctx.store.live_pois(
             None,
             Some(&request.deployments),
@@ -76,7 +76,7 @@ impl QueryRoot {
         ctx: &Context<'_>,
         indexer_name: String,
     ) -> Result<Vec<POIAgreementRatio>, async_graphql::Error> {
-        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let api_ctx = ctx.data::<ApiSchemaContext>()?;
 
         // Query live POIs of a the requested indexer.
         let indexer_pois = api_ctx
@@ -168,7 +168,7 @@ impl QueryRoot {
         ctx: &Context<'_>,
         request_id: String,
     ) -> Result<String, async_graphql::Error> {
-        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let request = api_ctx.store.cross_check_report(&request_id)?;
 
         Ok(serde_json::to_string(&request).unwrap())
@@ -186,7 +186,7 @@ impl MutationRoot {
         ctx: &Context<'_>,
         req: DivergenceInvestigationRequest,
     ) -> Result<DivergenceInvestigationResponse> {
-        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let store = &api_ctx.store;
 
         let id = store.queue_cross_check_report(req.clone())?.to_string();
@@ -205,7 +205,7 @@ impl MutationRoot {
         ctx: &Context<'_>,
         req: NewDivergenceInvestigationRequest,
     ) -> Result<DivergenceInvestigationResponse> {
-        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let store = &api_ctx.store;
 
         let uuid_string = store.create_divergence_investigation(req)?.to_string();
@@ -219,7 +219,7 @@ impl MutationRoot {
         deployment_ipfs_cid: String,
         name: String,
     ) -> Result<Deployment> {
-        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let store = &api_ctx.store;
 
         store.set_deployment_name(&deployment_ipfs_cid, &name)?;
@@ -230,7 +230,7 @@ impl MutationRoot {
     }
 
     async fn delete_network(&self, ctx: &Context<'_>, network: String) -> Result<String> {
-        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let store = &api_ctx.store;
 
         store.delete_network(&network)?;
@@ -454,13 +454,13 @@ struct POIAgreementRatio {
 //     }
 // }
 
-pub type APISchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
+pub type ApiSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
-pub struct APISchemaContext {
+pub struct ApiSchemaContext {
     pub store: Store,
 }
 
-pub fn api_schema(ctx: APISchemaContext) -> APISchema {
+pub fn api_schema(ctx: ApiSchemaContext) -> ApiSchema {
     Schema::build(QueryRoot, MutationRoot, EmptySubscription)
         .data(ctx)
         .finish()
