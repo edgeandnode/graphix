@@ -132,3 +132,10 @@ CREATE TABLE entity_changes_in_block (
 
 CREATE INDEX ON entity_changes_in_block (indexer_id, block_id);
 
+CREATE TABLE divergence_investigation_requests (
+  -- We're wasting space and performance by using UUID as TEXT, but it's simpler
+  -- and operations on this table won't be a bottleneck.
+  uuid TEXT PRIMARY KEY,
+  request_contents JSONB NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

@@ -196,6 +196,23 @@ pub fn set_deployment_name(
     Ok(())
 }
 
+pub fn create_divergence_investigation_reqest(
+    conn: &mut PgConnection,
+    uuid_str: String,
+    request_contents: serde_json::Value,
+) -> anyhow::Result<()> {
+    use schema::divergence_investigation_requests as requests;
+
+    diesel::insert_into(requests::table)
+        .values((
+            requests::uuid.eq(uuid_str),
+            requests::request_contents.eq(request_contents),
+        ))
+        .execute(conn)?;
+
+    Ok(())
+}
+
 pub fn delete_network(conn: &mut PgConnection, network_name: &str) -> anyhow::Result<()> {
     use schema::networks;
 

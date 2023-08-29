@@ -200,6 +200,19 @@ impl MutationRoot {
         Ok(DivergenceInvestigationResponse { id })
     }
 
+    async fn launch_divergence_investigation(
+        &self,
+        ctx: &Context<'_>,
+        req: NewDivergenceInvestigationRequest,
+    ) -> Result<DivergenceInvestigationResponse> {
+        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let store = &api_ctx.store;
+
+        let uuid_string = store.create_divergence_investigation(req)?.to_string();
+
+        Ok(DivergenceInvestigationResponse { id: uuid_string })
+    }
+
     async fn set_deployment_name(
         &self,
         ctx: &Context<'_>,
@@ -224,6 +237,14 @@ impl MutationRoot {
 
         Ok(network)
     }
+}
+
+#[derive(InputObject, Serialize, Deserialize, Debug, Clone, FromSqlRow)]
+pub struct NewDivergenceInvestigationRequest {
+    pub pois: Vec<String>,
+    pub query_block_caches: Option<bool>,
+    pub query_eth_call_caches: Option<bool>,
+    pub query_entity_changes: Option<bool>,
 }
 
 #[derive(InputObject, Serialize, Deserialize, Debug, Clone, FromSqlRow)]

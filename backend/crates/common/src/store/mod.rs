@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use crate::api_types::{DivergenceInvestigationRequest, DivergenceInvestigationRequestWithUuid};
+use crate::api_types::{
+    DivergenceInvestigationRequest, DivergenceInvestigationRequestWithUuid,
+    NewDivergenceInvestigationRequest,
+};
 use crate::{api_types::BlockRangeInput, store::models::PoI};
 use anyhow::Error;
 use diesel::prelude::*;
@@ -218,6 +221,22 @@ impl Store {
             .execute(&mut self.conn()?)?;
 
         Ok(uuid)
+    }
+
+    pub fn create_divergence_investigation(
+        &self,
+        req: NewDivergenceInvestigationRequest,
+    ) -> anyhow::Result<String> {
+        let uuid_string = Uuid::new_v4().to_string();
+
+        let conn = &mut self.conn()?;
+        diesel_queries::create_divergence_investigation_reqest(
+            conn,
+            uuid_string.to_string(),
+            serde_json::to_value(req)?,
+        )?;
+
+        Ok(uuid_string)
     }
 
     pub fn write_divergence_bisect_report(
