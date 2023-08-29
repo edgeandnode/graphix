@@ -239,6 +239,16 @@ impl Store {
         Ok(uuid_string)
     }
 
+    pub fn get_first_divergence_investigation_request(
+        &self,
+    ) -> anyhow::Result<(String, NewDivergenceInvestigationRequest)> {
+        let mut conn = self.conn()?;
+        let (uuid_string, req_contents) =
+            diesel_queries::get_first_divergence_investigation_request(&mut conn)?;
+
+        Ok((uuid_string, req_contents))
+    }
+
     pub fn write_divergence_bisect_report(
         &self,
         poi1_id: i32,

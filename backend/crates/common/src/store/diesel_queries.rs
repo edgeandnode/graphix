@@ -8,6 +8,7 @@ use super::PoiLiveness;
 use crate::api_types::BlockRangeInput;
 use crate::api_types::DivergenceInvestigationRequest;
 use crate::api_types::DivergenceInvestigationRequestWithUuid;
+use crate::api_types::NewDivergenceInvestigationRequest;
 use crate::store::models::{
     self, IndexerRow, NewIndexer, NewLivePoi, NewPoI, NewSgDeployment, SgDeployment,
 };
@@ -194,6 +195,20 @@ pub fn set_deployment_name(
         .execute(conn)?;
 
     Ok(())
+}
+
+pub fn get_first_divergence_investigation_request(
+    conn: &mut PgConnection,
+) -> anyhow::Result<(String, NewDivergenceInvestigationRequest)> {
+    use schema::divergence_investigation_requests as requests;
+
+    let (uuid_string, jsonb) = requests::table
+        .select((requests::uuid, requests::request_contents))
+        .first::<(String, serde_json::Value)>(conn)?;
+
+    let request_contents = serde_json::from_value(jsonb)?;
+
+    Ok((uuid_string, request_contents))
 }
 
 pub fn create_divergence_investigation_reqest(
