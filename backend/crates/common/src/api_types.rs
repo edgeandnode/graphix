@@ -199,6 +199,22 @@ impl MutationRoot {
 
         Ok(DivergenceInvestigationResponse { id })
     }
+
+    async fn set_deployment_name(
+        &self,
+        ctx: &Context<'_>,
+        deployment_ipfs_cid: String,
+        name: String,
+    ) -> Result<Deployment> {
+        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let store = &api_ctx.store;
+
+        store.set_deployment_name(&deployment_ipfs_cid, &name)?;
+
+        Ok(Deployment {
+            id: deployment_ipfs_cid,
+        })
+    }
 }
 
 #[derive(InputObject, Serialize, Deserialize, Debug, Clone, FromSqlRow)]

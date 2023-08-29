@@ -110,7 +110,7 @@ impl Store {
         self.pool.get().unwrap()
     }
 
-    /// Returns all subgraph deployments that have ever analyzed.
+    /// Returns all subgraph deployments that have ever been analyzed.
     pub fn sg_deployments(&self) -> anyhow::Result<Vec<String>> {
         use schema::sg_deployments as sgd;
 
@@ -123,6 +123,11 @@ impl Store {
     pub fn poi(&self, poi: &str) -> anyhow::Result<Option<PoI>> {
         let mut conn = self.conn()?;
         diesel_queries::poi(&mut conn, poi)
+    }
+
+    pub fn set_deployment_name(&self, sg_deployment_id: &str, name: &str) -> anyhow::Result<()> {
+        let mut conn = self.conn()?;
+        diesel_queries::set_deployment_name(&mut conn, sg_deployment_id, name)
     }
 
     pub fn indexers(&self) -> anyhow::Result<Vec<models::Indexer>> {

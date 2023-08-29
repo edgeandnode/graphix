@@ -171,6 +171,31 @@ pub fn get_cross_check_report(
     Ok(report)
 }
 
+pub fn set_deployment_name(
+    conn: &mut PgConnection,
+    sg_deployment_id: &str,
+    name: &str,
+) -> anyhow::Result<()> {
+    use schema::sg_deployments as sgd;
+    use schema::sg_names;
+
+    diesel::insert_into(sg_names::table)
+        .values((
+            sg_names::sg_deployment_id.eq(sgd::table
+                .select(sgd::id)
+                .filter(sgd::ipfs_cid.eq(sg_deployment_id))
+                .single_value()
+                .assume_not_null()),
+            sg_names::name.eq(name),
+        ))
+        .on_conflict(sg_names::sg_deployment_id)
+        .do_update()
+        .set(sg_names::name.eq(name))
+        .execute(conn)?;
+
+    Ok(())
+}
+
 // The caller must make sure that `conn` is within a transaction.
 pub(super) fn write_pois(
     conn: &mut PgConnection,

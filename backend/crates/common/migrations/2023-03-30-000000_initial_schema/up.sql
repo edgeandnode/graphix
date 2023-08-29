@@ -11,6 +11,7 @@ CREATE TABLE indexers (
 );
 
 CREATE INDEX ON indexers (address);
+CREATE INDEX ON indexers (name);
 
 -- Networks should be PostgreSQL namespaces ('schemas') but Diesel has poor
 -- support for them.
