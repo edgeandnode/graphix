@@ -196,6 +196,15 @@ pub fn set_deployment_name(
     Ok(())
 }
 
+pub fn delete_network(conn: &mut PgConnection, network_name: &str) -> anyhow::Result<()> {
+    use schema::networks;
+
+    diesel::delete(networks::table.filter(networks::name.eq(network_name))).execute(conn)?;
+    // The `ON DELETE CASCADE`s should take care of the rest of the cleanup.
+
+    Ok(())
+}
+
 // The caller must make sure that `conn` is within a transaction.
 pub(super) fn write_pois(
     conn: &mut PgConnection,

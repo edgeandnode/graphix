@@ -215,6 +215,15 @@ impl MutationRoot {
             id: deployment_ipfs_cid,
         })
     }
+
+    async fn delete_network(&self, ctx: &Context<'_>, network: String) -> Result<String> {
+        let api_ctx = ctx.data::<APISchemaContext>()?;
+        let store = &api_ctx.store;
+
+        store.delete_network(&network)?;
+
+        Ok(network)
+    }
 }
 
 #[derive(InputObject, Serialize, Deserialize, Debug, Clone, FromSqlRow)]

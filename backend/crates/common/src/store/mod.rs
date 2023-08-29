@@ -130,6 +130,11 @@ impl Store {
         diesel_queries::set_deployment_name(&mut conn, sg_deployment_id, name)
     }
 
+    pub fn delete_network(&self, network_name: &str) -> anyhow::Result<()> {
+        let mut conn = self.conn()?;
+        diesel_queries::delete_network(&mut conn, network_name)
+    }
+
     pub fn indexers(&self) -> anyhow::Result<Vec<models::Indexer>> {
         let mut conn = self.conn()?;
         Ok(diesel_queries::indexers(&mut conn)?
