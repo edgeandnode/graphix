@@ -45,7 +45,7 @@ async fn main() -> anyhow::Result<()> {
     let store_clone = store.clone();
     let (tx_indexers, rx_indexers) = watch::channel(vec![]);
     tokio::spawn(async move {
-        handle_bisect_requests(&store_clone, rx_indexers)
+        handle_divergence_investigation_requests(&store_clone, rx_indexers)
             .await
             .unwrap()
     });
@@ -103,20 +103,21 @@ struct CliOptions {
     config: PathBuf,
 }
 
-async fn handle_bisect_requests(
+async fn handle_divergence_investigation_requests(
     store: &store::Store,
     indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
 ) -> anyhow::Result<()> {
     loop {
         let next_request = store.recv_cross_check_report_request().await?;
-        let res = handle_bisect_request(store, indexers.clone(), next_request).await;
+        let res =
+            handle_divergence_investigation_request(store, indexers.clone(), next_request).await;
         if let Err(err) = res {
             error!(error = %err, "Failed to handle bisect request");
         }
     }
 }
 
-async fn handle_bisect_request(
+async fn handle_divergence_investigation_request(
     store: &store::Store,
     indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
     req: DivergenceInvestigationRequestWithUuid,
