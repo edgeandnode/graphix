@@ -1,8 +1,7 @@
 use futures::{future, stream::FuturesUnordered, StreamExt};
 use graphix_common::prelude::IndexingStatus;
 
-use crate::query_indexing_statuses;
-
+use graphix_common::queries::query_indexing_statuses;
 use graphix_common::tests::{fast_rng, gen::*};
 
 #[tokio::test]
