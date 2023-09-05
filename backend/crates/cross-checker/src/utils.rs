@@ -1,6 +1,7 @@
+#![allow(dead_code)]
+
 use std::{collections::HashSet, hash::Hash, sync::Arc};
 
-use anyhow::Context;
 use graphix_common::prelude::Indexer;
 use graphix_common::store;
 

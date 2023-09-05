@@ -23,7 +23,6 @@ use utils::unordered_pairs_combinations;
 use uuid::Uuid;
 
 use crate::bisect::PoiBisectingContext;
-use crate::utils::{find_any_indexer_for_poi, find_indexer_pair};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -46,10 +45,17 @@ async fn main() -> anyhow::Result<()> {
     let _exporter = PrometheusExporter::start(config.prometheus_port, registry.clone()).unwrap();
 
     info!("Initializing bisect request handler");
-    let store_clone = store.clone();
+    let store_clone_1 = store.clone();
+    let store_clone_2 = store.clone();
     let (tx_indexers, rx_indexers) = watch::channel(vec![]);
+    let rx_indexers_clone = rx_indexers.clone();
     tokio::spawn(async move {
-        handle_divergence_investigation_requests(&store_clone, rx_indexers)
+        handle_divergence_investigation_requests(&store_clone_1, rx_indexers_clone)
+            .await
+            .unwrap()
+    });
+    tokio::spawn(async move {
+        handle_new_divergence_investigation_requests(&store_clone_2, rx_indexers)
             .await
             .unwrap()
     });
@@ -177,7 +183,7 @@ async fn handle_divergence_investigation_request(
 }
 
 #[derive(Debug, Error)]
-enum DivergenceInvestigationError {
+pub enum DivergenceInvestigationError {
     #[error("Too many POIs in a single request, the max. is {max}")]
     TooManyPois { max: u32 },
     #[error("No indexer(s) that produced the given PoI were found in the Graphix database")]
@@ -211,23 +217,24 @@ async fn handle_new_divergence_investigation_requests(
     loop {
         tokio::time::sleep(Duration::from_secs(3)).await;
         let (req_uuid, req_contents) = store.get_first_divergence_investigation_request()?;
-        let indexers = indexers.borrow();
-        let res =
-            handle_new_divergence_investigation_request(store, &req_uuid, req_contents, &indexers)
-                .await;
+        let res = handle_new_divergence_investigation_request(
+            store,
+            &req_uuid,
+            req_contents,
+            indexers.clone(),
+        )
+        .await;
         if let Err(err) = res {
             error!(error = %err, "Failed to handle bisect request");
         }
     }
 }
 
-struct NewDivergenceInvestigationResponse {}
-
 async fn handle_new_divergence_investigation_request(
     store: &store::Store,
-    req_uuid_str: &str,
+    _req_uuid_str: &str,
     req_contents: NewDivergenceInvestigationRequest,
-    indexers: &[Arc<dyn Indexer>],
+    indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
 ) -> Result<(), DivergenceInvestigationError> {
     // The number of bisections is quadratic to the number of PoIs, so it's
     // important not to allow too many in a single request.
@@ -239,6 +246,8 @@ async fn handle_new_divergence_investigation_request(
         }
         .into());
     }
+
+    let indexers = indexers.borrow().clone();
 
     let poi_pairs = unordered_pairs_combinations(req_contents.pois.into_iter());
 
@@ -331,8 +340,9 @@ async fn handle_new_divergence_investigation_request(
             proof_of_indexing: poi2.poi.try_into().expect("poi2 conversion failed"),
         };
 
-        // TODO
-        //let context = PoiBisectingContext::new(bisection_uuid, poi1, poi2, deployment.clone())?;
+        let context = PoiBisectingContext::new(bisection_uuid, poi1, poi2, deployment.clone())
+            .expect("bisect context creation failed");
+        context.start().await.expect("bisect failed");
     }
 
     Ok(())
