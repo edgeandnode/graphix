@@ -54,11 +54,12 @@ async fn main() -> anyhow::Result<()> {
             .await
             .unwrap()
     });
-    tokio::spawn(async move {
-        handle_new_divergence_investigation_requests(&store_clone_2, rx_indexers)
-            .await
-            .unwrap()
-    });
+    // FIXME
+    //tokio::spawn(async move {
+    //    handle_new_divergence_investigation_requests(&store_clone_2, rx_indexers)
+    //        .await
+    //        .unwrap()
+    //});
 
     loop {
         info!("New main loop iteration");
