@@ -39,6 +39,8 @@ RUN apt-get update && \
 
 COPY --from=builder /usr/local/bin/graphix-api-server /usr/local/bin
 
+ENV RUST_LOG="graphix=debug"
+
 EXPOSE 3030
 
 ENTRYPOINT [ "graphix-api-server" ]

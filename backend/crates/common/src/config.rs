@@ -1,7 +1,7 @@
 use reqwest::Url;
 use serde::{Deserialize, Deserializer};
 use std::{fs::File, path::Path, sync::Arc};
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::{
     block_choice::BlockChoicePolicy,
@@ -179,20 +179,26 @@ pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn In
     // indexers.
     for config in config.network_subgraphs() {
         info!(endpoint = %config.endpoint, "Configuring network subgraph");
-        let network_subgraph = NetworkSubgraph::new(config.endpoint);
-        let mut network_subgraph_indexers = match config.query {
-            NetworkSubgraphQuery::ByAllocations => {
-                network_subgraph.indexers_by_allocations().await?
-            }
+        let network_subgraph = NetworkSubgraph::new(config.endpoint.clone());
+        let network_subgraph_indexers_res = match config.query {
+            NetworkSubgraphQuery::ByAllocations => network_subgraph.indexers_by_allocations().await,
             NetworkSubgraphQuery::ByStakedTokens => {
-                network_subgraph.indexers_by_staked_tokens().await?
+                network_subgraph.indexers_by_staked_tokens().await
             }
         };
-        if let Some(limit) = config.limit {
-            network_subgraph_indexers.truncate(limit as usize);
-        }
+        if let Ok(mut network_subgraph_indexers) = network_subgraph_indexers_res {
+            if let Some(limit) = config.limit {
+                network_subgraph_indexers.truncate(limit as usize);
+            }
 
-        indexers.extend(network_subgraph_indexers);
+            indexers.extend(network_subgraph_indexers);
+        } else {
+            warn!(
+                endpoint = %config.endpoint,
+                error = %network_subgraph_indexers_res.as_ref().unwrap_err(),
+                "Failed to configure network subgraph"
+            );
+        }
     }
 
     info!(

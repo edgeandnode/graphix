@@ -50,6 +50,8 @@ impl NetworkSubgraph {
         }
     "#;
 
+    const DEFAULT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
+
     pub fn new(endpoint: String) -> Self {
         Self {
             endpoint,
@@ -67,6 +69,7 @@ impl NetworkSubgraph {
             .client
             .post(&self.endpoint)
             .json(&request)
+            .timeout(Self::DEFAULT_TIMEOUT)
             .send()
             .await?
             .error_for_status()?
@@ -138,6 +141,7 @@ impl NetworkSubgraph {
             .client
             .post(&self.endpoint)
             .json(&request)
+            .timeout(Self::DEFAULT_TIMEOUT)
             .send()
             .await?
             .error_for_status()?
@@ -194,6 +198,7 @@ impl NetworkSubgraph {
             .client
             .post(&self.endpoint)
             .json(&request)
+            .timeout(Self::DEFAULT_TIMEOUT)
             .send()
             .await?
             .error_for_status()?
