@@ -1,4 +1,4 @@
-FROM rust:latest AS chef 
+FROM rust:slim-bullseye AS chef 
 
 WORKDIR /app
 COPY rust-toolchain.toml .
@@ -18,6 +18,9 @@ FROM chef AS builder
 ARG CARGO_PROFILE=release
 
 COPY --from=planner /app/recipe.json recipe.json
+
+RUN	apt-get update && apt-get install -y libpq-dev ca-certificates pkg-config libssl-dev
+
 # Use cargo-chef to compile dependencies only - this will be cached by Docker.
 RUN cargo chef cook --profile $CARGO_PROFILE --recipe-path recipe.json --bin graphix-api-server
 # ... and then build the rest of the application.
@@ -34,7 +37,7 @@ FROM debian:bullseye-slim
 WORKDIR /app
 
 RUN apt-get update && \
-	apt-get install -y libpq-dev ca-certificates && \
+	apt-get install -y libpq-dev ca-certificates libssl-dev && \
 	apt-get clean
 
 COPY --from=builder /usr/local/bin/graphix-api-server /usr/local/bin
