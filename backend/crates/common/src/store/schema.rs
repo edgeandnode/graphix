@@ -80,6 +80,7 @@ diesel::table! {
         id -> Text,
         poi1_id -> Int4,
         poi2_id -> Int4,
+        report_blob -> Jsonb,
         divergence_block_id -> Nullable<Int8>,
         created_at -> Timestamp,
     }

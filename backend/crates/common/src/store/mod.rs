@@ -189,10 +189,7 @@ impl Store {
             .transaction::<_, Error, _>(|conn| diesel_queries::write_pois(conn, pois, live))
     }
 
-    pub fn cross_check_report(
-        &self,
-        id: &str,
-    ) -> anyhow::Result<DivergenceInvestigationRequestWithUuid> {
+    pub fn cross_check_report(&self, id: &str) -> anyhow::Result<serde_json::Value> {
         let mut conn = self.conn()?;
         diesel_queries::get_cross_check_report(&mut conn, id)
     }
@@ -251,9 +248,10 @@ impl Store {
 
     pub fn write_divergence_bisect_report(
         &self,
+        uuid: String,
         poi1_id: i32,
         poi2_id: i32,
-        divergence_block: BigIntId,
+        report_blob: serde_json::Value,
     ) -> anyhow::Result<String> {
         use schema::{blocks, poi_divergence_bisect_reports as reports};
 
@@ -266,12 +264,14 @@ impl Store {
 
         let id = diesel::insert_into(reports::table)
             .values((
+                reports::id.eq(uuid),
                 reports::poi1_id.eq(poi1_id),
                 reports::poi2_id.eq(poi2_id),
                 reports::divergence_block_id.eq(blocks::table
                     .select(blocks::id)
-                    .filter(blocks::id.eq(divergence_block))
+                    .filter(blocks::id.eq(0))
                     .single_value()),
+                reports::report_blob.eq(report_blob),
             ))
             .returning(reports::id)
             .get_result(&mut self.conn()?)?;

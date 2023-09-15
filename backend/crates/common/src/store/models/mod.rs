@@ -11,10 +11,11 @@ use types::BlockPointer;
 pub type IntId = i32;
 pub type BigIntId = i64;
 
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Serialize, Debug)]
 pub struct PoI {
     pub id: IntId,
     pub poi: Vec<u8>,
+    #[serde(skip)]
     pub created_at: NaiveDateTime,
     pub sg_deployment: SgDeployment,
     pub indexer: IndexerRow,
@@ -67,7 +68,7 @@ pub struct NewCrossCheckReport {
     pub divergence_block_id: BigIntId,
 }
 
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Debug, Serialize)]
 pub struct Block {
     pub(super) id: BigIntId,
     _network_id: IntId,
@@ -102,11 +103,12 @@ impl From<IndexerRow> for Indexer {
     }
 }
 
-#[derive(Debug, Queryable)]
+#[derive(Debug, Queryable, Serialize)]
 pub struct IndexerRow {
     pub id: IntId,
     pub name: Option<String>,
     pub address: Option<Vec<u8>>,
+    #[serde(skip)]
     pub created_at: NaiveDateTime,
 }
 
@@ -117,11 +119,12 @@ pub struct NewIndexer {
     pub name: Option<String>,
 }
 
-#[derive(Debug, Queryable)]
+#[derive(Debug, Queryable, Serialize)]
 pub struct SgDeployment {
     pub id: IntId,
     pub cid: String,
     pub network_id: IntId,
+    #[serde(skip)]
     pub created_at: NaiveDateTime,
 }
 
@@ -168,12 +171,14 @@ impl FromSql<Jsonb, Pg> for DivergingBlock {
     }
 }
 
-#[derive(Debug, Insertable, Queryable)]
+#[derive(Debug, Insertable, Queryable, Serialize)]
 #[diesel(table_name = poi_divergence_bisect_reports)]
 pub struct PoiDivergenceBisectReport {
     pub id: String,
     pub poi1_id: IntId,
     pub poi2_id: IntId,
+    pub report_blob: serde_json::Value,
     pub divergence_block_id: Option<BigIntId>,
+    #[serde(skip)]
     pub created_at: NaiveDateTime,
 }

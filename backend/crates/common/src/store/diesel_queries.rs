@@ -154,7 +154,7 @@ pub(super) fn pois(
 pub fn get_cross_check_report(
     conn: &mut PgConnection,
     req_id: &str,
-) -> anyhow::Result<DivergenceInvestigationRequestWithUuid> {
+) -> anyhow::Result<serde_json::Value> {
     use schema::poi_divergence_bisect_reports::dsl::*;
 
     let row = poi_divergence_bisect_reports
@@ -164,12 +164,11 @@ pub fn get_cross_check_report(
     let poi1 = poi_by_id(conn, row.poi1_id)?.unwrap();
     let poi2 = poi_by_id(conn, row.poi2_id)?.unwrap();
 
-    let report = DivergenceInvestigationRequestWithUuid {
-        id: row.id,
-        req: DivergenceInvestigationRequest::new(poi1.poi_hex(), poi2.poi_hex()),
-    };
-
-    Ok(report)
+    Ok(serde_json::json! ({
+        "poi1": poi1,
+        "poi2": poi2,
+        "report": row,
+    }))
 }
 
 pub fn set_deployment_name(

@@ -30,9 +30,9 @@ pub trait Indexer: Send + Sync + Debug {
         self: Arc<Self>,
         request: PoiRequest,
     ) -> Result<ProofOfIndexing, anyhow::Error> {
-        let pois = self.proofs_of_indexing(vec![request]).await;
+        let pois = self.proofs_of_indexing(vec![request.clone()]).await;
         match pois.len() {
-            0 => return Err(anyhow!("no proof of indexing returned")),
+            0 => return Err(anyhow!("no proof of indexing returned {:?}", request)),
             1 => return Ok(pois.into_iter().next().unwrap()),
             _ => return Err(anyhow!("multiple proofs of indexing returned")),
         }

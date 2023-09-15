@@ -173,12 +173,16 @@ async fn handle_divergence_investigation_request(
     };
     let context = PoiBisectingContext::new(req.id.to_string(), poi1, poi2, deployment.clone())?;
 
-    let bisect_result = context.start().await?;
-
-    // FIXME
-    store.write_divergence_bisect_report(poi1_id, poi2_id, poi_block)?;
+    let bisect_result = context.start().await;
 
     println!("Bisect result: {:?}", bisect_result);
+
+    store.write_divergence_bisect_report(
+        req.id.to_string(),
+        poi1_id,
+        poi2_id,
+        serde_json::to_value(bisect_result.ok()).unwrap(),
+    )?;
 
     Ok(())
 }
