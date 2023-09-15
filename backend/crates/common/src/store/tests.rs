@@ -12,6 +12,13 @@ fn test_db_url() -> String {
 }
 
 #[tokio::test]
+async fn no_deployments_at_first() {
+    let store = Store::new(&test_db_url()).await.unwrap();
+    let initial_deployments = store.sg_deployments().unwrap();
+    assert!(initial_deployments.is_empty());
+}
+
+#[tokio::test]
 async fn poi_db_roundtrip() {
     let mut rng = fast_rng(0);
     let indexers = gen_indexers(&mut rng, 100);

@@ -2,7 +2,10 @@
 
 use std::collections::BTreeMap;
 
-use crate::store::{models, Store};
+use crate::store::{
+    models::{self, QueriedSgDeployment},
+    Store,
+};
 use anyhow::Context as _;
 use async_graphql::*;
 use diesel::FromSqlRow;
@@ -19,14 +22,9 @@ impl QueryRoot {
     async fn deployments(
         &self,
         ctx: &Context<'_>,
-    ) -> Result<Vec<Deployment>, async_graphql::Error> {
+    ) -> Result<Vec<QueriedSgDeployment>, async_graphql::Error> {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
-        let deployments = api_ctx.store.sg_deployments()?;
-
-        Ok(deployments
-            .into_iter()
-            .map(|id| Deployment { id })
-            .collect())
+        Ok(api_ctx.store.sg_deployments()?)
     }
 
     /// Fetches all tracked indexers in this Graphix instance.

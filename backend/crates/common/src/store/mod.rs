@@ -1,3 +1,6 @@
+//! Database access (read and write) abstractions for all Graphix backend
+//! services.
+
 use std::sync::Arc;
 
 use crate::api_types::{
@@ -22,7 +25,7 @@ mod diesel_queries;
 pub use diesel_queries;
 use uuid::Uuid;
 
-use self::models::{BigIntId, IndexerRef, WritablePoI};
+use self::models::{BigIntId, IndexerRef, QueriedSgDeployment, WritablePoI};
 
 pub mod models;
 mod schema;
@@ -67,7 +70,7 @@ macro_rules! get_block_id {
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
-/// An abstraction over all database operations. It uses [`Arc`](std::sync::Arc) internally, so
+/// An abstraction over all database operations. It uses [`Arc`] internally, so
 /// it's cheaply cloneable.
 #[derive(Clone)]
 pub struct Store {
@@ -76,6 +79,7 @@ pub struct Store {
 }
 
 impl Store {
+    /// Connects to the database and runs migrations.
     pub async fn new(db_url: &str) -> anyhow::Result<Self> {
         info!("Initializing database connection pool");
         let manager = r2d2::ConnectionManager::<PgConnection>::new(db_url);
@@ -113,16 +117,23 @@ impl Store {
         self.pool.get().unwrap()
     }
 
-    /// Returns all subgraph deployments that have ever been analyzed.
-    pub fn sg_deployments(&self) -> anyhow::Result<Vec<String>> {
+    /// Returns all subgraph deployments stored in the database.
+    pub fn sg_deployments(&self) -> anyhow::Result<Vec<QueriedSgDeployment>> {
         use schema::sg_deployments as sgd;
 
         Ok(sgd::table
-            .select(sgd::ipfs_cid)
+            .inner_join(schema::networks::table)
+            .inner_join(schema::sg_names::table)
+            .select((
+                sgd::ipfs_cid,
+                schema::sg_names::name,
+                schema::networks::name,
+            ))
             .order_by(sgd::ipfs_cid.asc())
-            .load::<String>(&mut self.conn()?)?)
+            .load::<QueriedSgDeployment>(&mut self.conn()?)?)
     }
 
+    /// Fetches a PoI from the database.
     pub fn poi(&self, poi: &str) -> anyhow::Result<Option<PoI>> {
         let mut conn = self.conn()?;
         diesel_queries::poi(&mut conn, poi)
@@ -133,11 +144,32 @@ impl Store {
         diesel_queries::set_deployment_name(&mut conn, sg_deployment_id, name)
     }
 
+    pub fn deployments_with_name(&self, name: &str) -> anyhow::Result<Vec<QueriedSgDeployment>> {
+        use schema::sg_deployments as sgd;
+
+        let mut conn = self.conn()?;
+
+        Ok(sgd::table
+            .inner_join(schema::networks::table)
+            .inner_join(schema::sg_names::table)
+            .select((
+                sgd::ipfs_cid,
+                schema::sg_names::name,
+                schema::networks::name,
+            ))
+            .filter(schema::sg_names::name.eq(name))
+            .order_by(sgd::ipfs_cid.asc())
+            .load::<QueriedSgDeployment>(&mut conn)?)
+    }
+
+    /// Deletes the network with the given name from the database, together with
+    /// **all** of its related data (indexers, deployments, etc.).
     pub fn delete_network(&self, network_name: &str) -> anyhow::Result<()> {
         let mut conn = self.conn()?;
         diesel_queries::delete_network(&mut conn, network_name)
     }
 
+    /// Returns all indexers stored in the database.
     pub fn indexers(&self) -> anyhow::Result<Vec<models::Indexer>> {
         let mut conn = self.conn()?;
         Ok(diesel_queries::indexers(&mut conn)?

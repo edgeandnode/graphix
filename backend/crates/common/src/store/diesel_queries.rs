@@ -6,8 +6,6 @@ use tracing::info;
 use super::models::WritablePoI;
 use super::PoiLiveness;
 use crate::api_types::BlockRangeInput;
-use crate::api_types::DivergenceInvestigationRequest;
-use crate::api_types::DivergenceInvestigationRequestWithUuid;
 use crate::api_types::NewDivergenceInvestigationRequest;
 use crate::store::models::{
     self, IndexerRow, NewIndexer, NewLivePoi, NewPoI, NewSgDeployment, SgDeployment,

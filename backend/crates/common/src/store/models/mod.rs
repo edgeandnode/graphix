@@ -1,5 +1,6 @@
 use super::schema::*;
 use crate::types;
+use async_graphql::SimpleObject;
 use chrono::NaiveDateTime;
 use diesel::{
     backend, deserialize::FromSql, pg::Pg, sql_types::Jsonb, AsChangeset, AsExpression, FromSqlRow,
@@ -10,6 +11,7 @@ use types::BlockPointer;
 
 pub type IntId = i32;
 pub type BigIntId = i64;
+pub type SgDeploymentCid = String;
 
 #[derive(Queryable, Serialize, Debug)]
 pub struct PoI {
@@ -117,6 +119,13 @@ pub struct IndexerRow {
 pub struct NewIndexer {
     pub address: Option<Vec<u8>>,
     pub name: Option<String>,
+}
+
+#[derive(Debug, Queryable, Serialize, SimpleObject)]
+pub struct QueriedSgDeployment {
+    pub id: SgDeploymentCid,
+    pub name: String,
+    pub network_name: String,
 }
 
 #[derive(Debug, Queryable, Serialize)]
