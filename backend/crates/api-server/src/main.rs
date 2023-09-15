@@ -5,25 +5,26 @@ use async_graphql::{
 use async_graphql_warp::{self, GraphQLResponse};
 use clap::Parser;
 use graphix_common::{api_types as schema, store::Store};
-use std::convert::Infallible;
+use std::{convert::Infallible, future::Future};
 use warp::{
     http::{self, Method},
     Filter,
 };
 
 #[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
+async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let cli_options = CliOptions::parse();
-    let store = Store::new(cli_options.database_url.as_str()).await?;
+    let server_fut = create_server(cli_options);
 
-    run_api_server(cli_options, store).await;
-
-    Ok(())
+    // Listen to requests forever.
+    Ok(server_fut.await?.await)
 }
 
-async fn run_api_server(options: CliOptions, store: Store) {
+async fn create_server(cli_options: CliOptions) -> anyhow::Result<impl Future<Output = ()>> {
+    let store = Store::new(cli_options.database_url.as_str()).await?;
+
     // GET / -> 200 OK
     let health_check_route = warp::path::end().map(|| format!("Ready to roll!"));
 
@@ -59,7 +60,7 @@ async fn run_api_server(options: CliOptions, store: Store) {
         .or(graphql_playground_route)
         .or(graphql_route);
 
-    warp::serve(routes).run(([0, 0, 0, 0], options.port)).await;
+    Ok(warp::serve(routes).run(([0, 0, 0, 0], cli_options.port)))
 }
 
 fn init_tracing() {
