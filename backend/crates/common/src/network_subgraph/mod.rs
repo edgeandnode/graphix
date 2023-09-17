@@ -2,8 +2,9 @@
 
 use anyhow::anyhow;
 use reqwest::Url;
+use serde::de::DeserializeOwned;
 use serde_derive::{Deserialize, Serialize};
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 use tracing::warn;
 
 use crate::{
@@ -14,82 +15,39 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct NetworkSubgraph {
     endpoint: String,
+    timeout: Duration,
     client: reqwest::Client,
 }
 
 impl NetworkSubgraph {
-    const INDEXERS_BY_STAKED_TOKENS_QUERY: &str = r#"
-        {
-          indexers(orderBy: stakedTokens) {
-            id
-            url
-          }
-        }
-    "#;
-
-    const DEPLOYMENTS_QUERY: &str = r#"
-        {
-          subgraphDeployments(where: { indexerAllocations_: { status_in: [Active]  }}, orderBy:stakedTokens) {
-            ipfsHash
-            indexerAllocations(orderBy:allocatedTokens) {
-              indexer {
-                id
-                url
-              }
-            }
-          }
-        }
-    "#;
-
-    const INDEXER_BY_ADDRESS_QUERY: &str = r#"
-        {
-          indexers(where: { id: $id }) {
-            url
-            defaultDisplayName
-          }
-        }
-    "#;
-
-    const DEFAULT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
-
+    /// Creates a new [`NetworkSubgraph`] with the given endpoint.
     pub fn new(endpoint: String) -> Self {
+        const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
+
         Self {
             endpoint,
+            timeout: DEFAULT_TIMEOUT,
             client: reqwest::Client::new(),
         }
     }
 
-    pub async fn indexers_by_staked_tokens(&self) -> anyhow::Result<Vec<Arc<dyn IndexerTrait>>> {
-        let request = GraphqlRequest {
-            query: Self::INDEXERS_BY_STAKED_TOKENS_QUERY.to_string(),
-            variables: BTreeMap::new(), // Our query doesn't require any variables.
-        };
+    /// Sets the timeout for requests to the network subgraph.
+    pub fn with_timeout(mut self, timeout: std::time::Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
 
-        let res: GraphqlResponse = self
-            .client
-            .post(&self.endpoint)
-            .json(&request)
-            .timeout(Self::DEFAULT_TIMEOUT)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
+    pub async fn indexers_by_staked_tokens(&self) -> anyhow::Result<Vec<Arc<dyn IndexerTrait>>> {
+        let response_data: GraphqlResponseTopIndexers = self
+            .graphql_query_no_errors(
+                queries::INDEXERS_BY_STAKED_TOKENS_QUERY,
+                vec![],
+                "error(s) querying top indexers from the network subgraph",
+            )
             .await?;
 
-        let errors = res.errors.unwrap_or_default();
-        if !errors.is_empty() {
-            return Err(anyhow::anyhow!(
-                "error(s) querying top indexers from the network subgraph: {}",
-                serde_json::to_string(&errors)?
-            ));
-        }
-
-        // Unwrap: A response that has no errors must contain data.
-        let data = res.data.unwrap();
-        let data_deserialized: GraphqlResponseTopIndexers = serde_json::from_value(data)?;
-
         let mut indexers: Vec<Arc<dyn IndexerTrait>> = vec![];
-        for indexer in data_deserialized.indexers {
+        for indexer in response_data.indexers {
             let indexer_id = indexer.id.clone();
             let real_indexer =
                 indexer_allocation_data_to_real_indexer(IndexerAllocation { indexer });
@@ -129,32 +87,17 @@ impl NetworkSubgraph {
         &self,
         address: &[u8],
     ) -> anyhow::Result<Arc<dyn IndexerTrait>> {
-        let request = GraphqlRequest {
-            query: Self::INDEXER_BY_ADDRESS_QUERY.to_string(),
-            variables: BTreeMap::from_iter(vec![(
-                "id".to_string(),
-                serde_json::to_value(hex::encode(address))?,
-            )]),
-        };
-
-        let res: GraphqlResponse = self
-            .client
-            .post(&self.endpoint)
-            .json(&request)
-            .timeout(Self::DEFAULT_TIMEOUT)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
+        let response_data: ResponseData = self
+            .graphql_query_no_errors(
+                queries::INDEXER_BY_ADDRESS_QUERY,
+                vec![(
+                    "id".to_string(),
+                    serde_json::to_value(hex::encode(address))
+                        .expect("Unable to hex encode address"),
+                )],
+                "error(s) querying indexer by address from the network subgraph",
+            )
             .await?;
-
-        let errors = res.errors.unwrap_or_default();
-        if !errors.is_empty() {
-            return Err(anyhow::anyhow!(
-                "error(s) querying indexer by address from the network subgraph: {}",
-                serde_json::to_string(&errors)?
-            ));
-        }
 
         #[derive(Debug, Deserialize)]
         #[serde(rename_all = "camelCase")]
@@ -169,11 +112,7 @@ impl NetworkSubgraph {
             default_display_name: String,
         }
 
-        // Unwrap: A response that has no errors must contain data.
-        let data = res.data.unwrap();
-        println!("data: {:?}", data);
-        let data_deserialized: ResponseData = serde_json::from_value(data)?;
-        let indexer_data = data_deserialized.indexers.first().ok_or_else(|| {
+        let indexer_data = response_data.indexers.first().ok_or_else(|| {
             anyhow::anyhow!("No indexer found for address {}", hex::encode(address))
         })?;
 
@@ -189,49 +128,56 @@ impl NetworkSubgraph {
 
     // The `curation_threshold` is denominated in GRT.
     pub async fn subgraph_deployments(&self) -> anyhow::Result<Vec<SubgraphDeployment>> {
+        let response_data: GraphqlResponseSgDeployments = self
+            .graphql_query_no_errors(
+                queries::DEPLOYMENTS_QUERY,
+                vec![],
+                "error(s) querying deployments from the network subgraph",
+            )
+            .await?;
+
+        Ok(response_data.subgraph_deployments)
+    }
+
+    async fn graphql_query_no_errors<T: DeserializeOwned>(
+        &self,
+        query: impl ToString,
+        variables: Vec<(String, serde_json::Value)>,
+        err_msg: &str,
+    ) -> anyhow::Result<T> {
+        let response = self.graphql_query(query, variables).await?;
+        let response_data = response.data.ok_or_else(|| {
+            anyhow::anyhow!(
+                "{}: {}",
+                err_msg,
+                serde_json::to_string_pretty(&response.errors.unwrap_or_default())
+                    .expect("Unable to encode query errors")
+            )
+        })?;
+
+        Ok(serde_json::from_value(response_data)?)
+    }
+
+    async fn graphql_query(
+        &self,
+        query: impl ToString,
+        variables: Vec<(String, serde_json::Value)>,
+    ) -> anyhow::Result<GraphqlResponse> {
         let request = GraphqlRequest {
-            query: Self::DEPLOYMENTS_QUERY.to_string(),
-            variables: BTreeMap::new(), // Our query doesn't require any variables.
+            query: query.to_string(),
+            variables: BTreeMap::from_iter(variables),
         };
 
-        let res: GraphqlResponse = self
+        Ok(self
             .client
             .post(&self.endpoint)
             .json(&request)
-            .timeout(Self::DEFAULT_TIMEOUT)
+            .timeout(self.timeout)
             .send()
             .await?
             .error_for_status()?
             .json()
-            .await?;
-
-        let errors = res.errors.unwrap_or_default();
-        if !errors.is_empty() {
-            return Err(anyhow::anyhow!(
-                "error(s) querying deployments from the network subgraph: {}",
-                serde_json::to_string(&errors)?
-            ));
-        }
-
-        // Unwrap: A response that has no errors must contain data.
-        let data = res.data.unwrap();
-        let data_deserialized: GraphqlResponseSgDeployments = serde_json::from_value(data)?;
-        //let page: Vec<SubgraphDeployment> = page
-        //    .into_iter()
-        //    .map(|raw_deployment| SubgraphDeployment {
-        //        // Unwrap: The id returned by the subgraph is a 32 byte long hexadecimal.
-        //        id: <[u8; 32]>::try_from(
-        //            hex::decode(raw_deployment.id.trim_start_matches("0x")).unwrap(),
-        //        )
-        //        .unwrap(),
-        //        signal_amount: u128::from_str(&raw_deployment.stakedTokens).unwrap(),
-        //        deny: raw_deployment.deniedAt > 0,
-        //    })
-        //    .collect();
-
-        //trace!(this.logger, "deployments page"; "page_size" => page.len());
-
-        Ok(data_deserialized.subgraph_deployments)
+            .await?)
     }
 }
 
@@ -311,7 +257,9 @@ mod util {
         Cid::read_bytes(cidv0.as_ref()).unwrap()
     }
 
-    // Panics if `cid` version is not v0.
+    /// # Panics
+    ///
+    /// Panics if `cid` version is not `v0`.
     pub fn cid_v0_to_bytes32(cid: &Cid) -> [u8; 32] {
         assert!(cid.version() == tiny_cid::Version::V0);
         let cid_bytes = cid.to_bytes();
@@ -323,4 +271,35 @@ mod util {
         bytes.copy_from_slice(&cid_bytes[2..]);
         bytes
     }
+
+    #[cfg(test)]
+    mod tests {
+        use quickcheck::{Arbitrary, Gen};
+        use quickcheck_macros::quickcheck;
+
+        #[derive(Debug, Clone)]
+        struct Bytes([u8; 32]);
+
+        impl Arbitrary for Bytes {
+            fn arbitrary(g: &mut Gen) -> Self {
+                let mut bytes = [0; 32];
+                bytes.fill_with(|| Arbitrary::arbitrary(g));
+                Self(bytes)
+            }
+        }
+
+        #[quickcheck]
+        fn convert_to_cid_v0_and_back(bytes32: Bytes) {
+            let cid = super::bytes32_to_cid_v0(bytes32.0);
+            let bytes32_back = super::cid_v0_to_bytes32(&cid);
+            assert_eq!(bytes32.0, bytes32_back);
+        }
+    }
+}
+
+mod queries {
+    pub const INDEXERS_BY_STAKED_TOKENS_QUERY: &str =
+        include_str!("queries/indexers_by_stacked_tokens.graphql");
+    pub const DEPLOYMENTS_QUERY: &str = include_str!("queries/deployments.graphql");
+    pub const INDEXER_BY_ADDRESS_QUERY: &str = include_str!("queries/indexer_by_address.graphql");
 }
