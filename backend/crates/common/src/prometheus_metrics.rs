@@ -48,6 +48,7 @@ impl PrometheusMetrics {
 
 #[derive(Debug)]
 pub struct PrometheusExporter {
+    binding: SocketAddr,
     _exporter: prometheus_exporter::Exporter,
 }
 
@@ -61,7 +62,28 @@ impl PrometheusExporter {
         };
 
         Ok(Self {
+            binding,
             _exporter: exporter,
         })
+    }
+
+    pub fn binding(&self) -> &SocketAddr {
+        &self.binding
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn server_is_alive() {
+        let exporter = PrometheusExporter::start(13370, prometheus::Registry::new()).unwrap();
+        reqwest::get(&format!(
+            "http://0.0.0.0:{}/metrics",
+            exporter.binding().port()
+        ))
+        .await
+        .unwrap();
     }
 }
