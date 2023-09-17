@@ -1,11 +1,8 @@
 mod bisect;
 mod utils;
 
-use anyhow::Context;
 use clap::Parser;
-use graphix_common::api_types::{
-    DivergenceInvestigationRequestWithUuid, NewDivergenceInvestigationRequest,
-};
+use graphix_common::api_types::NewDivergenceInvestigationRequest;
 use graphix_common::prelude::{BlockPointer, Config, Indexer, ProofOfIndexing, SubgraphDeployment};
 use graphix_common::queries::{query_indexing_statuses, query_proofs_of_indexing};
 use graphix_common::{config, store};
@@ -46,16 +43,9 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Initializing bisect request handler");
     let store_clone = store.clone();
-    let store_clone_2 = store.clone();
     let (tx_indexers, rx_indexers) = watch::channel(vec![]);
-    let rx_indexers_clone = rx_indexers.clone();
     tokio::spawn(async move {
-        handle_divergence_investigation_requests(&store_clone, rx_indexers_clone)
-            .await
-            .unwrap()
-    });
-    tokio::spawn(async move {
-        handle_new_divergence_investigation_requests(&store_clone_2, rx_indexers)
+        handle_new_divergence_investigation_requests(&store_clone, rx_indexers)
             .await
             .unwrap()
     });
@@ -117,79 +107,6 @@ fn deduplicate_indexers(indexers: &[Arc<dyn Indexer>]) -> Vec<Arc<dyn Indexer>> 
 struct CliOptions {
     #[clap(long)]
     config: PathBuf,
-}
-
-async fn handle_divergence_investigation_requests(
-    store: &store::Store,
-    indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
-) -> anyhow::Result<()> {
-    loop {
-        let next_request = store.recv_cross_check_report_request().await?;
-        let res =
-            handle_divergence_investigation_request(store, indexers.clone(), next_request).await;
-        if let Err(err) = res {
-            error!(error = %err, "Failed to handle bisect request");
-        }
-    }
-}
-
-async fn handle_divergence_investigation_request(
-    store: &store::Store,
-    indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
-    req: DivergenceInvestigationRequestWithUuid,
-) -> anyhow::Result<()> {
-    let poi_block = store
-        .poi(&req.req.poi1)?
-        .context("POI not found")?
-        .block
-        .number;
-    let poi1 = store.poi(&req.req.poi1)?.context("POI not found")?;
-    let poi2 = store.poi(&req.req.poi2)?.context("POI not found")?;
-    let poi1_id = poi1.id;
-    let poi2_id = poi2.id;
-    let indexer1 = indexers
-        .borrow()
-        .iter()
-        .find(|indexer| indexer.address() == poi1.indexer.address.as_deref())
-        .context("Indexer not found")?
-        .clone();
-    let indexer2 = indexers
-        .borrow()
-        .iter()
-        .find(|indexer| indexer.address() == poi2.indexer.address.as_deref())
-        .context("Indexer not found")?
-        .clone();
-    let deployment = SubgraphDeployment(poi1.sg_deployment.cid);
-    let block = BlockPointer {
-        number: poi_block as _,
-        hash: None,
-    };
-    let poi1 = ProofOfIndexing {
-        indexer: indexer1.clone(),
-        deployment: deployment.clone(),
-        block,
-        proof_of_indexing: poi1.poi.try_into()?,
-    };
-    let poi2 = ProofOfIndexing {
-        indexer: indexer2.clone(),
-        deployment: deployment.clone(),
-        block,
-        proof_of_indexing: poi2.poi.try_into()?,
-    };
-    let context = PoiBisectingContext::new(req.id.to_string(), poi1, poi2, deployment.clone())?;
-
-    let bisect_result = context.start().await;
-
-    println!("Bisect result: {:?}", bisect_result);
-
-    store.write_divergence_bisect_report(
-        req.id.to_string(),
-        poi1_id,
-        poi2_id,
-        serde_json::to_value(bisect_result.ok()).unwrap(),
-    )?;
-
-    Ok(())
 }
 
 #[derive(Debug, Error)]

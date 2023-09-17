@@ -10,7 +10,6 @@ use anyhow::Context as _;
 use async_graphql::*;
 use diesel::FromSqlRow;
 use serde::{Deserialize, Serialize};
-use tracing::debug;
 
 type HexBytesWith0xPrefix = String;
 
@@ -179,23 +178,20 @@ impl MutationRoot {}
 
 #[Object]
 impl MutationRoot {
+    /// Deprecated.
     async fn launch_cross_check_report(
         &self,
         ctx: &Context<'_>,
         req: DivergenceInvestigationRequest,
     ) -> Result<DivergenceInvestigationResponse> {
-        let api_ctx = ctx.data::<ApiSchemaContext>()?;
-        let store = &api_ctx.store;
+        let req = NewDivergenceInvestigationRequest {
+            pois: vec![req.poi1.clone(), req.poi2.clone()],
+            query_block_caches: Some(req.query_block_caches()),
+            query_eth_call_caches: Some(req.query_eth_call_caches()),
+            query_entity_changes: Some(req.query_entity_changes()),
+        };
 
-        let id = store.queue_cross_check_report(req.clone())?.to_string();
-        debug!(
-            poi1 = req.poi1.as_str(),
-            poi2 = req.poi2.as_str(),
-            id,
-            "Received a launch_cross_check_report request"
-        );
-
-        Ok(DivergenceInvestigationResponse { id })
+        self.launch_divergence_investigation(ctx, req).await
     }
 
     async fn launch_divergence_investigation(
