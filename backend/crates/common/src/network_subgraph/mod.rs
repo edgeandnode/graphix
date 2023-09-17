@@ -87,14 +87,12 @@ impl NetworkSubgraph {
         &self,
         address: &[u8],
     ) -> anyhow::Result<Arc<dyn IndexerTrait>> {
+        let hex_encoded_addr_json = serde_json::to_value(format!("0x{}", hex::encode(address)))
+            .expect("Unable to hex encode address");
         let response_data: ResponseData = self
             .graphql_query_no_errors(
                 queries::INDEXER_BY_ADDRESS_QUERY,
-                vec![(
-                    "id".to_string(),
-                    serde_json::to_value(hex::encode(address))
-                        .expect("Unable to hex encode address"),
-                )],
+                vec![("id".to_string(), hex_encoded_addr_json)],
                 "error(s) querying indexer by address from the network subgraph",
             )
             .await?;
@@ -113,7 +111,7 @@ impl NetworkSubgraph {
         }
 
         let indexer_data = response_data.indexers.first().ok_or_else(|| {
-            anyhow::anyhow!("No indexer found for address {}", hex::encode(address))
+            anyhow::anyhow!("No indexer found for address 0x{}", hex::encode(address))
         })?;
 
         let indexer = Arc::new(RealIndexer::new(IndexerConfig {
@@ -167,6 +165,8 @@ impl NetworkSubgraph {
             query: query.to_string(),
             variables: BTreeMap::from_iter(variables),
         };
+
+        tracing::trace!(timeout = ?self.timeout, endpoint = self.endpoint, "Sending GraphQL request");
 
         Ok(self
             .client
@@ -299,7 +299,51 @@ mod util {
 
 mod queries {
     pub const INDEXERS_BY_STAKED_TOKENS_QUERY: &str =
-        include_str!("queries/indexers_by_stacked_tokens.graphql");
+        include_str!("queries/indexers_by_staked_tokens.graphql");
     pub const DEPLOYMENTS_QUERY: &str = include_str!("queries/deployments.graphql");
     pub const INDEXER_BY_ADDRESS_QUERY: &str = include_str!("queries/indexer_by_address.graphql");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mainnet_network_subgraph() -> NetworkSubgraph {
+        NetworkSubgraph::new(
+            "https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-mainnet"
+                .to_string(),
+        )
+    }
+
+    #[tokio::test]
+    async fn mainnet_indexers_by_staked_tokens_no_panic() {
+        let network_sg = mainnet_network_subgraph();
+        let indexers = network_sg.indexers_by_staked_tokens().await.unwrap();
+        assert!(indexers.len() > 0);
+    }
+
+    #[tokio::test]
+    async fn mainnet_indexers_by_allocations_no_panic() {
+        let network_sg = mainnet_network_subgraph();
+        let indexers = network_sg.indexers_by_allocations().await.unwrap();
+        assert!(indexers.len() > 0);
+    }
+
+    #[tokio::test]
+    async fn mainnet_deployments_no_panic() {
+        let network_sg = mainnet_network_subgraph();
+        let deployments = network_sg.subgraph_deployments().await.unwrap();
+        assert!(deployments.len() > 0);
+    }
+
+    #[tokio::test]
+    #[should_panic] // FIXME
+    async fn mainnet_fetch_indexer() {
+        let network_sg = mainnet_network_subgraph();
+        // ellipfra.eth:
+        // https://thegraph.com/explorer/profile/0x62a0bd1d110ff4e5b793119e95fc07c9d1fc8c4a?view=Indexing&chain=mainnet
+        let addr = hex::decode("62a0bd1d110ff4e5b793119e95fc07c9d1fc8c4a").unwrap();
+        let indexer = network_sg.indexer_by_address(&addr).await.unwrap();
+        assert_eq!(indexer.address(), Some(&addr[..]));
+    }
 }

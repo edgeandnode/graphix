@@ -52,6 +52,10 @@ impl Indexer for MockIndexer {
         }
     }
 
+    async fn ping(self: Arc<Self>) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     async fn proofs_of_indexing(
         self: Arc<Self>,
         requests: Vec<PoiRequest>,

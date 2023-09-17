@@ -118,6 +118,12 @@ impl Indexer for RealIndexer {
         self.address.as_deref()
     }
 
+    async fn ping(self: Arc<Self>) -> anyhow::Result<()> {
+        let request = gql_types::Typename::build_query(gql_types::typename::Variables);
+        self.graphql_query(request).await?;
+        Ok(())
+    }
+
     async fn indexing_statuses(self: Arc<Self>) -> Result<Vec<IndexingStatus>, anyhow::Error> {
         let request =
             gql_types::IndexingStatuses::build_query(gql_types::indexing_statuses::Variables);
@@ -298,6 +304,16 @@ mod gql_types {
         }
         Ok(hex::decode(&s[2..])?)
     }
+
+    /// `__typename`
+    #[derive(GraphQLQuery)]
+    #[graphql(
+        schema_path = "graphql/indexer/schema.gql",
+        query_path = "graphql/indexer/queries/typename.gql",
+        response_derives = "Debug",
+        variables_derives = "Debug"
+    )]
+    pub struct Typename;
 
     /// Indexing Statuses
 

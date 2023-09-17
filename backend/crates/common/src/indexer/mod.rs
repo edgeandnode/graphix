@@ -19,6 +19,8 @@ pub trait Indexer: Send + Sync + Debug {
 
     fn address(&self) -> Option<&[u8]>;
 
+    async fn ping(self: Arc<Self>) -> anyhow::Result<()>;
+
     async fn indexing_statuses(self: Arc<Self>) -> anyhow::Result<Vec<IndexingStatus>>;
 
     async fn proofs_of_indexing(self: Arc<Self>, requests: Vec<PoiRequest>)

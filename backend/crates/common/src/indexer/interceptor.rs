@@ -41,6 +41,10 @@ impl Indexer for IndexerInterceptor {
         None
     }
 
+    async fn ping(self: Arc<Self>) -> anyhow::Result<()> {
+        self.target.clone().ping().await
+    }
+
     async fn indexing_statuses(self: Arc<Self>) -> Result<Vec<IndexingStatus>, anyhow::Error> {
         let statuses = self.target.clone().indexing_statuses().await?;
         let hijacked_statuses = statuses
