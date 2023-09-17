@@ -1,18 +1,24 @@
 use crate::block_choice::BlockChoicePolicy;
 use crate::indexer::Indexer;
 use crate::prelude::{IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment};
-use crate::prometheus_metrics::metrics;
+use crate::PrometheusMetrics;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tracing::*;
 
-/// Queries all `indexingStatuses` for all `indexers`.
+/// Queries all `indexingStatuses` for all the given indexers.
 #[instrument(skip_all)]
-pub async fn query_indexing_statuses(indexers: Vec<Arc<dyn Indexer>>) -> Vec<IndexingStatus> {
+pub async fn query_indexing_statuses(
+    indexers: Vec<Arc<dyn Indexer>>,
+    metrics: &PrometheusMetrics,
+) -> Vec<IndexingStatus> {
     let indexer_count = indexers.len();
     debug!(indexers = indexer_count, "Querying indexing statuses...");
+
+    let span = span!(Level::TRACE, "query_indexing_statuses");
+    let enter_span = span.enter();
 
     let mut futures = FuturesUnordered::new();
     for indexer in indexers {
@@ -24,24 +30,15 @@ pub async fn query_indexing_statuses(indexers: Vec<Arc<dyn Indexer>>) -> Vec<Ind
     let mut query_failures = 0;
 
     while let Some((indexer, query_res)) = futures.next().await {
-        if query_res.is_ok() {
-            query_successes += 1;
-            metrics()
-                .indexing_statuses_requests
-                .get_metric_with_label_values(&[indexer.id(), "1"])
-                .unwrap()
-                .inc();
-        } else {
-            query_failures += 1;
-            metrics()
-                .indexing_statuses_requests
-                .get_metric_with_label_values(&[indexer.id(), "0"])
-                .unwrap()
-                .inc();
-        }
-
         match query_res {
             Ok(statuses) => {
+                query_successes += 1;
+                metrics
+                    .indexing_statuses_requests
+                    .get_metric_with_label_values(&[indexer.id(), "1"])
+                    .unwrap()
+                    .inc();
+
                 debug!(
                     indexer_id = %indexer.id(),
                     statuses = %statuses.len(),
@@ -51,6 +48,13 @@ pub async fn query_indexing_statuses(indexers: Vec<Arc<dyn Indexer>>) -> Vec<Ind
             }
 
             Err(error) => {
+                query_failures += 1;
+                metrics
+                    .indexing_statuses_requests
+                    .get_metric_with_label_values(&[indexer.id(), "0"])
+                    .unwrap()
+                    .inc();
+
                 warn!(
                     indexer_id = %indexer.id(),
                     %error,
@@ -59,6 +63,8 @@ pub async fn query_indexing_statuses(indexers: Vec<Arc<dyn Indexer>>) -> Vec<Ind
             }
         }
     }
+
+    std::mem::drop(enter_span);
 
     info!(
         indexers = indexer_count,
@@ -76,6 +82,9 @@ pub async fn query_proofs_of_indexing(
     block_choice_policy: BlockChoicePolicy,
 ) -> Vec<ProofOfIndexing> {
     info!("Query POIs for recent common blocks across indexers");
+
+    let span = span!(Level::TRACE, "query_proofs_of_indexing");
+    let _enter_span = span.enter();
 
     // Identify all indexers
     let indexers = indexing_statuses
@@ -114,7 +123,7 @@ pub async fn query_proofs_of_indexing(
         }));
 
     // Fetch POIs for the most recent common blocks
-    indexers
+    let pois = indexers
         .iter()
         .map(|indexer| async {
             let poi_requests = latest_blocks
@@ -151,5 +160,7 @@ pub async fn query_proofs_of_indexing(
         .await
         .into_iter()
         .flatten()
-        .collect::<Vec<_>>()
+        .collect::<Vec<_>>();
+
+    pois
 }

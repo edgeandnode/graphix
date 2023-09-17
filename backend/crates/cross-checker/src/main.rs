@@ -8,8 +8,8 @@ use graphix_common::api_types::{
 };
 use graphix_common::prelude::{BlockPointer, Config, Indexer, ProofOfIndexing, SubgraphDeployment};
 use graphix_common::queries::{query_indexing_statuses, query_proofs_of_indexing};
-use graphix_common::PrometheusExporter;
 use graphix_common::{config, store};
+use graphix_common::{metrics, PrometheusExporter};
 use prometheus_exporter::prometheus;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -71,7 +71,7 @@ async fn main() -> anyhow::Result<()> {
 
         tx_indexers.send(indexers.clone())?;
 
-        let indexing_statuses = query_indexing_statuses(indexers).await;
+        let indexing_statuses = query_indexing_statuses(indexers, metrics()).await;
 
         info!("Monitor proofs of indexing");
         let pois = query_proofs_of_indexing(indexing_statuses, config.block_choice_policy).await;
@@ -226,7 +226,7 @@ async fn handle_new_divergence_investigation_requests(
 ) -> anyhow::Result<()> {
     loop {
         tokio::time::sleep(Duration::from_secs(3)).await;
-        info!("Checking for new divergence investigation requests");
+        debug!("Checking for new divergence investigation requests");
         let (req_uuid, req_contents) =
             if let Some(x) = store.get_first_divergence_investigation_request()? {
                 x
@@ -243,8 +243,8 @@ async fn handle_new_divergence_investigation_requests(
         .await;
         if let Err(err) = res {
             error!(error = %err, "Failed to handle bisect request");
-            store.delete_divergence_investigation_request(&req_uuid)?;
         }
+        store.delete_divergence_investigation_request(&req_uuid)?;
     }
 }
 

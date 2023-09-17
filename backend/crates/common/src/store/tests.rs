@@ -1,5 +1,6 @@
 use crate::api_types::NewDivergenceInvestigationRequest;
 use crate::block_choice::BlockChoicePolicy;
+use crate::prometheus_metrics::metrics;
 use crate::test_utils::{fast_rng, gen::gen_indexers};
 use crate::{
     queries,
@@ -68,7 +69,7 @@ async fn poi_db_roundtrip() {
     let mut rng = fast_rng(0);
     let indexers = gen_indexers(&mut rng, 100);
 
-    let indexing_statuses = queries::query_indexing_statuses(indexers).await;
+    let indexing_statuses = queries::query_indexing_statuses(indexers, metrics()).await;
     let pois =
         queries::query_proofs_of_indexing(indexing_statuses, BlockChoicePolicy::Earliest).await;
 

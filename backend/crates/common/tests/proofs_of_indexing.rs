@@ -1,6 +1,6 @@
 use graphix_common::block_choice::BlockChoicePolicy;
-use graphix_common::queries;
 use graphix_common::test_utils::{fast_rng, gen::gen_indexers};
+use graphix_common::{metrics, queries};
 use itertools::Itertools;
 use std::collections::BTreeSet;
 
@@ -12,7 +12,7 @@ async fn proofs_of_indexing() {
         let max_indexers = i;
         let indexers = gen_indexers(&mut rng, max_indexers as usize);
 
-        let indexing_statuses = queries::query_indexing_statuses(indexers).await;
+        let indexing_statuses = queries::query_indexing_statuses(indexers, metrics()).await;
         let pois =
             queries::query_proofs_of_indexing(indexing_statuses, BlockChoicePolicy::Earliest);
 

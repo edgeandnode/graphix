@@ -11,7 +11,7 @@ mod types;
 #[cfg(any(test, feature = "tests"))]
 pub mod test_utils;
 
-pub use prometheus_metrics::{PrometheusExporter, PrometheusMetrics};
+pub use prometheus_metrics::{metrics, PrometheusExporter, PrometheusMetrics};
 
 pub mod prelude {
     pub use super::config::*;
