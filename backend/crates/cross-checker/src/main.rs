@@ -199,7 +199,7 @@ pub enum DivergenceInvestigationError {
     #[error("No indexer(s) that produced the given PoI were found in the Graphix database")]
     IndexerNotFound { poi: String },
     #[error(
-        "The two PoIs were produced by the same indexer, bisecting the difference is not possible"
+        "The two PoIs were produced by the same indexer ({indexer_id}), bisecting the difference is not possible"
     )]
     SameIndexer { indexer_id: String },
     #[error("The two PoIs were produced for different deployments, they cannot be compared: {poi1}: {poi1_deployment}, {poi2}: {poi2_deployment}")]
@@ -248,6 +248,110 @@ async fn handle_new_divergence_investigation_requests(
     }
 }
 
+async fn handle_new_divergence_investigation_request_pair(
+    store: &store::Store,
+    indexers: &[Arc<dyn Indexer>],
+    req_uuid_str: &str,
+    poi1_s: &str,
+    poi2_s: &str,
+) -> Result<(), DivergenceInvestigationError> {
+    debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Bisecting PoIs");
+
+    let poi1 = store
+        .poi(&poi1_s)
+        .map_err(DivergenceInvestigationError::Database)
+        .and_then(|poi_opt| {
+            if let Some(poi) = poi_opt {
+                Ok(poi)
+            } else {
+                Err(DivergenceInvestigationError::IndexerNotFound {
+                    poi: poi1_s.to_string(),
+                })
+            }
+        })?;
+    let poi2 = store
+        .poi(&poi2_s)
+        .map_err(DivergenceInvestigationError::Database)
+        .and_then(|poi_opt| {
+            if let Some(poi) = poi_opt {
+                Ok(poi)
+            } else {
+                Err(DivergenceInvestigationError::IndexerNotFound {
+                    poi: poi2_s.to_string(),
+                })
+            }
+        })?;
+
+    if poi1.sg_deployment.cid != poi2.sg_deployment.cid {
+        return Err(DivergenceInvestigationError::DifferentDeployments {
+            poi1: poi1_s.to_string(),
+            poi2: poi2_s.to_string(),
+            poi1_deployment: poi1.sg_deployment.cid.to_string(),
+            poi2_deployment: poi2.sg_deployment.cid.to_string(),
+        }
+        .into());
+    }
+
+    if poi1.block.number != poi2.block.number {
+        return Err(DivergenceInvestigationError::DifferentBlocks {
+            poi1: poi1_s.to_string(),
+            poi2: poi2_s.to_string(),
+            poi1_block: poi1.block.number,
+            poi2_block: poi2.block.number,
+        }
+        .into());
+    }
+
+    let deployment = SubgraphDeployment(poi1.sg_deployment.cid);
+    let block = BlockPointer {
+        number: poi1.block.number as _,
+        hash: None,
+    };
+
+    let indexer1 = indexers
+        .iter()
+        .find(|indexer| indexer.address() == poi1.indexer.address.as_deref())
+        .cloned()
+        .ok_or(DivergenceInvestigationError::IndexerNotFound {
+            poi: poi1_s.to_string(),
+        })?;
+    let indexer2 = indexers
+        .iter()
+        .find(|indexer| indexer.address() == poi2.indexer.address.as_deref())
+        .cloned()
+        .ok_or(DivergenceInvestigationError::IndexerNotFound {
+            poi: poi2_s.to_string(),
+        })?;
+
+    if indexer1.id() == indexer2.id() {
+        return Err(DivergenceInvestigationError::SameIndexer {
+            indexer_id: indexer1.id().to_string(),
+        }
+        .into());
+    }
+
+    let bisection_uuid = Uuid::new_v4().to_string();
+
+    let poi1 = ProofOfIndexing {
+        indexer: indexer1.clone(),
+        deployment: deployment.clone(),
+        block,
+        proof_of_indexing: poi1.poi.try_into().expect("poi1 conversion failed"),
+    };
+    let poi2 = ProofOfIndexing {
+        indexer: indexer2.clone(),
+        deployment: deployment.clone(),
+        block,
+        proof_of_indexing: poi2.poi.try_into().expect("poi2 conversion failed"),
+    };
+
+    let context = PoiBisectingContext::new(bisection_uuid, poi1, poi2, deployment.clone())
+        .expect("bisect context creation failed");
+    context.start().await.expect("bisect failed");
+
+    Ok(())
+}
+
 async fn handle_new_divergence_investigation_request(
     store: &store::Store,
     req_uuid_str: &str,
@@ -270,99 +374,20 @@ async fn handle_new_divergence_investigation_request(
     let poi_pairs = unordered_pairs_combinations(req_contents.pois.into_iter());
 
     for (poi1_s, poi2_s) in poi_pairs.into_iter() {
-        debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Bisecting PoIs");
-        let poi1 = store
-            .poi(&poi1_s)
-            .map_err(DivergenceInvestigationError::Database)
-            .and_then(|poi_opt| {
-                if let Some(poi) = poi_opt {
-                    Ok(poi)
-                } else {
-                    Err(DivergenceInvestigationError::IndexerNotFound {
-                        poi: poi1_s.to_string(),
-                    })
-                }
-            })?;
-        let poi2 = store
-            .poi(&poi2_s)
-            .map_err(DivergenceInvestigationError::Database)
-            .and_then(|poi_opt| {
-                if let Some(poi) = poi_opt {
-                    Ok(poi)
-                } else {
-                    Err(DivergenceInvestigationError::IndexerNotFound {
-                        poi: poi2_s.to_string(),
-                    })
-                }
-            })?;
-
-        if poi1.sg_deployment.cid != poi2.sg_deployment.cid {
-            return Err(DivergenceInvestigationError::DifferentDeployments {
-                poi1: poi1_s.to_string(),
-                poi2: poi2_s.to_string(),
-                poi1_deployment: poi1.sg_deployment.cid.to_string(),
-                poi2_deployment: poi2.sg_deployment.cid.to_string(),
-            }
-            .into());
+        if let Err(e) = handle_new_divergence_investigation_request_pair(
+            store,
+            &indexers,
+            req_uuid_str,
+            &poi1_s,
+            &poi2_s,
+        )
+        .await
+        {
+            error!(req_uuid_str, error = %e, "Failed to bisect PoIs");
         }
-
-        if poi1.block.number != poi2.block.number {
-            return Err(DivergenceInvestigationError::DifferentBlocks {
-                poi1: poi1_s.to_string(),
-                poi2: poi2_s.to_string(),
-                poi1_block: poi1.block.number,
-                poi2_block: poi2.block.number,
-            }
-            .into());
-        }
-
-        let deployment = SubgraphDeployment(poi1.sg_deployment.cid);
-        let block = BlockPointer {
-            number: poi1.block.number as _,
-            hash: None,
-        };
-
-        let indexer1 = indexers
-            .iter()
-            .find(|indexer| indexer.address() == poi1.indexer.address.as_deref())
-            .cloned()
-            .ok_or(DivergenceInvestigationError::IndexerNotFound {
-                poi: poi1_s.to_string(),
-            })?;
-        let indexer2 = indexers
-            .iter()
-            .find(|indexer| indexer.address() == poi2.indexer.address.as_deref())
-            .cloned()
-            .ok_or(DivergenceInvestigationError::IndexerNotFound {
-                poi: poi2_s.to_string(),
-            })?;
-
-        if indexer1.id() == indexer2.id() {
-            return Err(DivergenceInvestigationError::SameIndexer {
-                indexer_id: indexer1.id().to_string(),
-            }
-            .into());
-        }
-
-        let bisection_uuid = Uuid::new_v4().to_string();
-
-        let poi1 = ProofOfIndexing {
-            indexer: indexer1.clone(),
-            deployment: deployment.clone(),
-            block,
-            proof_of_indexing: poi1.poi.try_into().expect("poi1 conversion failed"),
-        };
-        let poi2 = ProofOfIndexing {
-            indexer: indexer2.clone(),
-            deployment: deployment.clone(),
-            block,
-            proof_of_indexing: poi2.poi.try_into().expect("poi2 conversion failed"),
-        };
-
-        let context = PoiBisectingContext::new(bisection_uuid, poi1, poi2, deployment.clone())
-            .expect("bisect context creation failed");
-        context.start().await.expect("bisect failed");
     }
+
+    info!(req_uuid = req_uuid_str, "Finished bisecting PoIs");
 
     Ok(())
 }
