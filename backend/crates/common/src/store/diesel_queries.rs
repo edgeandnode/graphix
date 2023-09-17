@@ -196,16 +196,20 @@ pub fn set_deployment_name(
 
 pub fn get_first_divergence_investigation_request(
     conn: &mut PgConnection,
-) -> anyhow::Result<(String, NewDivergenceInvestigationRequest)> {
+) -> anyhow::Result<Option<(String, NewDivergenceInvestigationRequest)>> {
     use schema::divergence_investigation_requests as requests;
 
-    let (uuid_string, jsonb) = requests::table
+    let req_opt = requests::table
         .select((requests::uuid, requests::request_contents))
-        .first::<(String, serde_json::Value)>(conn)?;
+        .first::<(String, serde_json::Value)>(conn)
+        .optional()?;
 
-    let request_contents = serde_json::from_value(jsonb)?;
-
-    Ok((uuid_string, request_contents))
+    if let Some((uuid_string, jsonb)) = req_opt {
+        let request_contents = serde_json::from_value(jsonb)?;
+        Ok(Some((uuid_string, request_contents)))
+    } else {
+        Ok(None)
+    }
 }
 
 pub fn create_divergence_investigation_reqest(

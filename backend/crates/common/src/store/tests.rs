@@ -1,3 +1,4 @@
+use crate::api_types::NewDivergenceInvestigationRequest;
 use crate::block_choice::BlockChoicePolicy;
 use crate::tests::{fast_rng, gen::gen_indexers};
 use crate::{
@@ -16,6 +17,50 @@ async fn no_deployments_at_first() {
     let store = Store::new(&test_db_url()).await.unwrap();
     let initial_deployments = store.sg_deployments().unwrap();
     assert!(initial_deployments.is_empty());
+}
+
+#[tokio::test]
+#[should_panic] // FIXME
+async fn deployments_with_name() {
+    let store = Store::new(&test_db_url()).await.unwrap();
+
+    let ipfs_cid1 = "QmNY7gDNXHECV8SXoEY7hbfg4BX1aDMxTBDiFuG4huaSGA";
+    let ipfs_cid2 = "QmYzsCjrVwwXtdsNm3PZVNziLGmb9o513GUzkq5wwhgXDT";
+
+    store.create_sg_deployment("mainnet", ipfs_cid1).unwrap();
+    store.create_sg_deployment("mainnet", ipfs_cid2).unwrap();
+    store.set_deployment_name(ipfs_cid2, "foo").unwrap();
+
+    let deployments = store.deployments_with_name("foo").unwrap();
+    assert!(deployments.len() == 1);
+    assert_eq!(deployments[0].id, ipfs_cid1);
+    assert_eq!(deployments[0].name, "foo");
+}
+
+#[tokio::test]
+async fn create_and_delete_divergence_investigation_request() {
+    let store = Store::new(&test_db_url()).await.unwrap();
+    let req_uuid = store
+        .create_divergence_investigation(NewDivergenceInvestigationRequest {
+            pois: vec![],
+            query_block_caches: None,
+            query_entity_changes: None,
+            query_eth_call_caches: None,
+        })
+        .unwrap();
+
+    let req = store
+        .get_first_divergence_investigation_request()
+        .unwrap()
+        .unwrap();
+    assert_eq!(req.0, req_uuid);
+    store
+        .delete_divergence_investigation_request(&req_uuid)
+        .unwrap();
+    assert!(store
+        .get_first_divergence_investigation_request()
+        .unwrap()
+        .is_none());
 }
 
 #[tokio::test]

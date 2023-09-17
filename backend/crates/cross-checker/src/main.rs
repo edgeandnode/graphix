@@ -45,21 +45,20 @@ async fn main() -> anyhow::Result<()> {
     let _exporter = PrometheusExporter::start(config.prometheus_port, registry.clone()).unwrap();
 
     info!("Initializing bisect request handler");
-    let store_clone_1 = store.clone();
+    let store_clone = store.clone();
     let store_clone_2 = store.clone();
     let (tx_indexers, rx_indexers) = watch::channel(vec![]);
     let rx_indexers_clone = rx_indexers.clone();
     tokio::spawn(async move {
-        handle_divergence_investigation_requests(&store_clone_1, rx_indexers_clone)
+        handle_divergence_investigation_requests(&store_clone, rx_indexers_clone)
             .await
             .unwrap()
     });
-    // FIXME
-    //tokio::spawn(async move {
-    //    handle_new_divergence_investigation_requests(&store_clone_2, rx_indexers)
-    //        .await
-    //        .unwrap()
-    //});
+    tokio::spawn(async move {
+        handle_new_divergence_investigation_requests(&store_clone_2, rx_indexers)
+            .await
+            .unwrap()
+    });
 
     loop {
         info!("New main loop iteration");
@@ -97,6 +96,7 @@ fn init_tracing() {
 }
 
 fn deduplicate_indexers(indexers: &[Arc<dyn Indexer>]) -> Vec<Arc<dyn Indexer>> {
+    info!(len = indexers.len(), "Deduplicating indexers");
     let mut seen = HashSet::new();
     let mut deduplicated = vec![];
     for indexer in indexers {
@@ -105,6 +105,11 @@ fn deduplicate_indexers(indexers: &[Arc<dyn Indexer>]) -> Vec<Arc<dyn Indexer>> 
             seen.insert(indexer.id().to_string());
         }
     }
+    info!(
+        len = deduplicated.len(),
+        delta = indexers.len() - deduplicated.len(),
+        "Successfully deduplicated indexers"
+    );
     deduplicated
 }
 
@@ -221,7 +226,14 @@ async fn handle_new_divergence_investigation_requests(
 ) -> anyhow::Result<()> {
     loop {
         tokio::time::sleep(Duration::from_secs(3)).await;
-        let (req_uuid, req_contents) = store.get_first_divergence_investigation_request()?;
+        info!("Checking for new divergence investigation requests");
+        let (req_uuid, req_contents) =
+            if let Some(x) = store.get_first_divergence_investigation_request()? {
+                x
+            } else {
+                continue;
+            };
+        info!(req_uuid, "Found new divergence investigation request");
         let res = handle_new_divergence_investigation_request(
             store,
             &req_uuid,
@@ -231,13 +243,14 @@ async fn handle_new_divergence_investigation_requests(
         .await;
         if let Err(err) = res {
             error!(error = %err, "Failed to handle bisect request");
+            store.delete_divergence_investigation_request(&req_uuid)?;
         }
     }
 }
 
 async fn handle_new_divergence_investigation_request(
     store: &store::Store,
-    _req_uuid_str: &str,
+    req_uuid_str: &str,
     req_contents: NewDivergenceInvestigationRequest,
     indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
 ) -> Result<(), DivergenceInvestigationError> {
@@ -257,6 +270,7 @@ async fn handle_new_divergence_investigation_request(
     let poi_pairs = unordered_pairs_combinations(req_contents.pois.into_iter());
 
     for (poi1_s, poi2_s) in poi_pairs.into_iter() {
+        debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Bisecting PoIs");
         let poi1 = store
             .poi(&poi1_s)
             .map_err(DivergenceInvestigationError::Database)

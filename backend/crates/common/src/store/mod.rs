@@ -133,6 +133,23 @@ impl Store {
             .load::<QueriedSgDeployment>(&mut self.conn()?)?)
     }
 
+    pub fn create_sg_deployment(&self, network_name: &str, ipfs_cid: &str) -> anyhow::Result<()> {
+        use schema::sg_deployments as sgd;
+
+        diesel::insert_into(sgd::table)
+            .values((
+                sgd::ipfs_cid.eq(ipfs_cid),
+                sgd::network.eq(schema::networks::table
+                    .select(schema::networks::id)
+                    .filter(schema::networks::name.eq(network_name))
+                    .single_value()
+                    .assume_not_null()),
+            ))
+            .execute(&mut self.conn()?)?;
+
+        Ok(())
+    }
+
     /// Fetches a PoI from the database.
     pub fn poi(&self, poi: &str) -> anyhow::Result<Option<PoI>> {
         let mut conn = self.conn()?;
@@ -270,12 +287,25 @@ impl Store {
 
     pub fn get_first_divergence_investigation_request(
         &self,
-    ) -> anyhow::Result<(String, NewDivergenceInvestigationRequest)> {
+    ) -> anyhow::Result<Option<(String, NewDivergenceInvestigationRequest)>> {
         let mut conn = self.conn()?;
-        let (uuid_string, req_contents) =
-            diesel_queries::get_first_divergence_investigation_request(&mut conn)?;
+        if let Some((uuid_string, req_contents)) =
+            diesel_queries::get_first_divergence_investigation_request(&mut conn)?
+        {
+            Ok(Some((uuid_string, req_contents)))
+        } else {
+            Ok(None)
+        }
+    }
 
-        Ok((uuid_string, req_contents))
+    pub fn delete_divergence_investigation_request(&self, req_uuid: &str) -> anyhow::Result<()> {
+        use schema::divergence_investigation_requests as requests;
+
+        diesel::delete(requests::table)
+            .filter(requests::uuid.eq(req_uuid))
+            .execute(&mut self.conn()?)?;
+
+        Ok(())
     }
 
     pub fn write_divergence_bisect_report(

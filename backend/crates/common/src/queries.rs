@@ -12,7 +12,7 @@ use tracing::*;
 #[instrument(skip_all)]
 pub async fn query_indexing_statuses(indexers: Vec<Arc<dyn Indexer>>) -> Vec<IndexingStatus> {
     let indexer_count = indexers.len();
-    info!(indexers = indexer_count, "Querying indexing statuses...");
+    debug!(indexers = indexer_count, "Querying indexing statuses...");
 
     let mut futures = FuturesUnordered::new();
     for indexer in indexers {
@@ -139,7 +139,7 @@ pub async fn query_proofs_of_indexing(
 
             let pois = indexer.clone().proofs_of_indexing(poi_requests).await;
 
-            info!(
+            debug!(
                 id = %indexer.id(), pois = %pois.len(),
                 "Successfully queried POIs from indexer"
             );
