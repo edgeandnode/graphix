@@ -4,8 +4,7 @@
 use std::sync::Arc;
 
 use crate::api_types::{
-    DivergenceInvestigationRequest, DivergenceInvestigationRequestWithUuid,
-    NewDivergenceInvestigationRequest,
+    DivergenceInvestigationRequest, DivergenceInvestigationRequestWithUuid, SgDeploymentsQuery,
 };
 use crate::{api_types::BlockRangeInput, store::models::PoI};
 use anyhow::Error;
@@ -118,10 +117,13 @@ impl Store {
     }
 
     /// Returns all subgraph deployments stored in the database.
-    pub fn sg_deployments(&self) -> anyhow::Result<Vec<QueriedSgDeployment>> {
+    pub fn sg_deployments(
+        &self,
+        filter: SgDeploymentsQuery,
+    ) -> anyhow::Result<Vec<QueriedSgDeployment>> {
         use schema::sg_deployments as sgd;
 
-        Ok(sgd::table
+        let mut query = sgd::table
             .inner_join(schema::networks::table)
             .inner_join(schema::sg_names::table)
             .select((
@@ -130,7 +132,22 @@ impl Store {
                 schema::networks::name,
             ))
             .order_by(sgd::ipfs_cid.asc())
-            .load::<QueriedSgDeployment>(&mut self.conn()?)?)
+            .into_boxed();
+
+        if let Some(network) = filter.network {
+            query = query.filter(schema::networks::name.eq(network));
+        }
+        if let Some(name) = filter.name {
+            query = query.filter(schema::sg_names::name.eq(name));
+        }
+        if let Some(ipfs_cid) = filter.ipfs_cid {
+            query = query.filter(sgd::ipfs_cid.eq(ipfs_cid));
+        }
+        if let Some(limit) = filter.limit {
+            query = query.limit(limit.into());
+        }
+
+        Ok(query.load::<QueriedSgDeployment>(&mut self.conn()?)?)
     }
 
     pub fn create_sg_deployment(&self, network_name: &str, ipfs_cid: &str) -> anyhow::Result<()> {
@@ -271,7 +288,7 @@ impl Store {
 
     pub fn create_divergence_investigation(
         &self,
-        req: NewDivergenceInvestigationRequest,
+        req: DivergenceInvestigationRequest,
     ) -> anyhow::Result<String> {
         let uuid_string = Uuid::new_v4().to_string();
 
@@ -287,7 +304,7 @@ impl Store {
 
     pub fn get_first_divergence_investigation_request(
         &self,
-    ) -> anyhow::Result<Option<(String, NewDivergenceInvestigationRequest)>> {
+    ) -> anyhow::Result<Option<(String, DivergenceInvestigationRequest)>> {
         let mut conn = self.conn()?;
         if let Some((uuid_string, req_contents)) =
             diesel_queries::get_first_divergence_investigation_request(&mut conn)?

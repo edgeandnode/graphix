@@ -21,9 +21,10 @@ impl QueryRoot {
     async fn deployments(
         &self,
         ctx: &Context<'_>,
+        filter: SgDeploymentsQuery,
     ) -> Result<Vec<QueriedSgDeployment>, async_graphql::Error> {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
-        Ok(api_ctx.store.sg_deployments()?)
+        Ok(api_ctx.store.sg_deployments(filter)?)
     }
 
     /// Fetches all tracked indexers in this Graphix instance.
@@ -174,30 +175,12 @@ impl QueryRoot {
 
 pub struct MutationRoot;
 
-impl MutationRoot {}
-
 #[Object]
 impl MutationRoot {
-    /// Deprecated.
-    async fn launch_cross_check_report(
-        &self,
-        ctx: &Context<'_>,
-        req: DivergenceInvestigationRequest,
-    ) -> Result<DivergenceInvestigationResponse> {
-        let req = NewDivergenceInvestigationRequest {
-            pois: vec![req.poi1.clone(), req.poi2.clone()],
-            query_block_caches: Some(req.query_block_caches()),
-            query_eth_call_caches: Some(req.query_eth_call_caches()),
-            query_entity_changes: Some(req.query_entity_changes()),
-        };
-
-        self.launch_divergence_investigation(ctx, req).await
-    }
-
     async fn launch_divergence_investigation(
         &self,
         ctx: &Context<'_>,
-        req: NewDivergenceInvestigationRequest,
+        req: DivergenceInvestigationRequest,
     ) -> Result<DivergenceInvestigationResponse> {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let store = &api_ctx.store;
@@ -234,33 +217,14 @@ impl MutationRoot {
 }
 
 #[derive(InputObject, Serialize, Deserialize, Debug, Clone, FromSqlRow)]
-pub struct NewDivergenceInvestigationRequest {
+pub struct DivergenceInvestigationRequest {
     pub pois: Vec<String>,
     pub query_block_caches: Option<bool>,
     pub query_eth_call_caches: Option<bool>,
     pub query_entity_changes: Option<bool>,
 }
 
-#[derive(InputObject, Serialize, Deserialize, Debug, Clone, FromSqlRow)]
-pub struct DivergenceInvestigationRequest {
-    pub poi1: String,
-    pub poi2: String,
-    pub query_block_caches: Option<bool>,
-    pub query_eth_call_caches: Option<bool>,
-    pub query_entity_changes: Option<bool>,
-}
-
 impl DivergenceInvestigationRequest {
-    pub fn new(poi1: String, poi2: String) -> Self {
-        Self {
-            poi1,
-            poi2,
-            query_block_caches: None,
-            query_eth_call_caches: None,
-            query_entity_changes: None,
-        }
-    }
-
     pub fn query_block_caches(&self) -> bool {
         self.query_block_caches.unwrap_or(true)
     }
@@ -278,6 +242,23 @@ impl DivergenceInvestigationRequest {
 pub struct DivergenceInvestigationRequestWithUuid {
     pub id: String,
     pub req: DivergenceInvestigationRequest,
+}
+
+#[derive(InputObject)]
+pub struct SgDeploymentsQuery {
+    pub network: Option<String>,
+    pub name: Option<String>,
+    pub ipfs_cid: Option<String>,
+    pub limit: Option<u32>,
+}
+
+impl SgDeploymentsQuery {
+    pub const ALL: Self = Self {
+        network: None,
+        name: None,
+        ipfs_cid: None,
+        limit: None,
+    };
 }
 
 #[derive(InputObject)]

@@ -1,4 +1,4 @@
-use crate::api_types::NewDivergenceInvestigationRequest;
+use crate::api_types::{DivergenceInvestigationRequest, SgDeploymentsQuery};
 use crate::block_choice::BlockChoicePolicy;
 use crate::prometheus_metrics::metrics;
 use crate::test_utils::{fast_rng, gen::gen_indexers};
@@ -16,7 +16,7 @@ fn test_db_url() -> String {
 #[tokio::test]
 async fn no_deployments_at_first() {
     let store = Store::new(&test_db_url()).await.unwrap();
-    let initial_deployments = store.sg_deployments().unwrap();
+    let initial_deployments = store.sg_deployments(SgDeploymentsQuery::ALL).unwrap();
     assert!(initial_deployments.is_empty());
 }
 
@@ -42,7 +42,7 @@ async fn deployments_with_name() {
 async fn create_and_delete_divergence_investigation_request() {
     let store = Store::new(&test_db_url()).await.unwrap();
     let req_uuid = store
-        .create_divergence_investigation(NewDivergenceInvestigationRequest {
+        .create_divergence_investigation(DivergenceInvestigationRequest {
             pois: vec![],
             query_block_caches: None,
             query_entity_changes: None,

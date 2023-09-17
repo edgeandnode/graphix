@@ -2,7 +2,7 @@ mod bisect;
 mod utils;
 
 use clap::Parser;
-use graphix_common::api_types::NewDivergenceInvestigationRequest;
+use graphix_common::api_types::DivergenceInvestigationRequest;
 use graphix_common::prelude::{BlockPointer, Config, Indexer, ProofOfIndexing, SubgraphDeployment};
 use graphix_common::queries::{query_indexing_statuses, query_proofs_of_indexing};
 use graphix_common::{config, store};
@@ -272,7 +272,7 @@ async fn handle_new_divergence_investigation_request_pair(
 async fn handle_new_divergence_investigation_request(
     store: &store::Store,
     req_uuid_str: &str,
-    req_contents: NewDivergenceInvestigationRequest,
+    req_contents: DivergenceInvestigationRequest,
     indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
 ) -> Result<(), DivergenceInvestigationError> {
     // The number of bisections is quadratic to the number of PoIs, so it's

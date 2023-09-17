@@ -6,7 +6,7 @@ use tracing::info;
 use super::models::WritablePoI;
 use super::PoiLiveness;
 use crate::api_types::BlockRangeInput;
-use crate::api_types::NewDivergenceInvestigationRequest;
+use crate::api_types::DivergenceInvestigationRequest;
 use crate::store::models::{
     self, IndexerRow, NewIndexer, NewLivePoi, NewPoI, NewSgDeployment, SgDeployment,
 };
@@ -196,7 +196,7 @@ pub fn set_deployment_name(
 
 pub fn get_first_divergence_investigation_request(
     conn: &mut PgConnection,
-) -> anyhow::Result<Option<(String, NewDivergenceInvestigationRequest)>> {
+) -> anyhow::Result<Option<(String, DivergenceInvestigationRequest)>> {
     use schema::divergence_investigation_requests as requests;
 
     let req_opt = requests::table
