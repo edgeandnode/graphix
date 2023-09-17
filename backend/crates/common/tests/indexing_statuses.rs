@@ -2,7 +2,7 @@ use futures::{future, stream::FuturesUnordered, StreamExt};
 use graphix_common::prelude::IndexingStatus;
 
 use graphix_common::queries::query_indexing_statuses;
-use graphix_common::tests::{fast_rng, gen::*};
+use graphix_common::test_utils::{fast_rng, gen::*};
 
 #[tokio::test]
 async fn indexing_statuses() {

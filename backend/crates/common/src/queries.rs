@@ -4,7 +4,7 @@ use crate::prelude::{IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeploy
 use crate::prometheus_metrics::metrics;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
-use std::collections::{hash_map::RandomState, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tracing::*;
 
@@ -84,7 +84,7 @@ pub async fn query_proofs_of_indexing(
         .collect::<HashSet<_>>();
 
     // Identify all deployments
-    let deployments: HashSet<SubgraphDeployment, RandomState> = HashSet::from_iter(
+    let deployments: HashSet<SubgraphDeployment> = HashSet::from_iter(
         indexing_statuses
             .iter()
             .map(|status| status.deployment.clone()),

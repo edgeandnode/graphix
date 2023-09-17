@@ -1,6 +1,6 @@
 use crate::api_types::NewDivergenceInvestigationRequest;
 use crate::block_choice::BlockChoicePolicy;
-use crate::tests::{fast_rng, gen::gen_indexers};
+use crate::test_utils::{fast_rng, gen::gen_indexers};
 use crate::{
     queries,
     store::{diesel_queries, PoiLiveness, Store},

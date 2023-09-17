@@ -1,6 +1,6 @@
 use graphix_common::block_choice::BlockChoicePolicy;
 use graphix_common::queries;
-use graphix_common::tests::{fast_rng, gen::gen_indexers};
+use graphix_common::test_utils::{fast_rng, gen::gen_indexers};
 use itertools::Itertools;
 use std::collections::BTreeSet;
 

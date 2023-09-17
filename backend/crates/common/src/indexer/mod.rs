@@ -40,18 +40,21 @@ pub trait Indexer: Send + Sync + Debug {
         }
     }
 
+    /// Returns the cached Ethereum calls for the given block hash.
     async fn cached_eth_calls(
         self: Arc<Self>,
         network: &str,
         block_hash: &[u8],
     ) -> anyhow::Result<Vec<CachedEthereumCall>>;
 
+    /// Returns the block cache contents for the given block hash.
     async fn block_cache_contents(
         self: Arc<Self>,
         network: &str,
         block_hash: &[u8],
     ) -> anyhow::Result<Option<serde_json::Value>>;
 
+    /// Returns the entity changes for the given block number.
     async fn entity_changes(
         self: Arc<Self>,
         subgraph_id: &str,
