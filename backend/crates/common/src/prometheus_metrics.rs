@@ -53,6 +53,8 @@ pub struct PrometheusExporter {
 }
 
 impl PrometheusExporter {
+    /// Starts exporting Prometheus metrics at `http://0.0.0.0:{port}/metrics`. The server
+    /// will keep running until the returned [`PrometheusExporter`] is dropped.
     pub fn start(port: u16, registry: prometheus::Registry) -> anyhow::Result<Self> {
         let binding = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port));
         let exporter = {
@@ -67,8 +69,9 @@ impl PrometheusExporter {
         })
     }
 
-    pub fn binding(&self) -> &SocketAddr {
-        &self.binding
+    /// Returns the port this Prometheus exporter is bound to.
+    pub fn port(&self) -> u16 {
+        self.binding.port()
     }
 }
 
@@ -79,11 +82,8 @@ mod tests {
     #[tokio::test]
     async fn server_is_alive() {
         let exporter = PrometheusExporter::start(13370, prometheus::Registry::new()).unwrap();
-        reqwest::get(&format!(
-            "http://0.0.0.0:{}/metrics",
-            exporter.binding().port()
-        ))
-        .await
-        .unwrap();
+        reqwest::get(&format!("http://0.0.0.0:{}/metrics", exporter.port()))
+            .await
+            .unwrap();
     }
 }
