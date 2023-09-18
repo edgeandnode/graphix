@@ -951,6 +951,7 @@ dependencies = [
  "eventuals",
  "futures",
  "futures-retry",
+ "graphix-common",
  "graphql_client",
  "hex",
  "itertools",

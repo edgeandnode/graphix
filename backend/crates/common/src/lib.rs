@@ -8,7 +8,7 @@ pub mod queries;
 pub mod store;
 mod types;
 
-#[cfg(any(test, feature = "tests"))]
+#[cfg(feature = "tests")]
 pub mod test_utils;
 
 pub use prometheus_metrics::{metrics, PrometheusExporter, PrometheusMetrics};
