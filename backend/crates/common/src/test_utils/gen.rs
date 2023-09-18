@@ -1,9 +1,12 @@
-use std::{iter::repeat_with, sync::Arc};
+use std::iter::repeat_with;
+use std::sync::Arc;
 
-use crate::prelude::{BlockPointer, Bytes32, Indexer, SubgraphDeployment};
-use rand::{distributions::Alphanumeric, seq::IteratorRandom, Rng};
+use rand::distributions::Alphanumeric;
+use rand::seq::IteratorRandom;
+use rand::Rng;
 
 use super::mocks::{DeploymentDetails, MockIndexer, PartialProofOfIndexing};
+use crate::prelude::{BlockPointer, Bytes32, Indexer, SubgraphDeployment};
 
 pub fn gen_deployments() -> Vec<SubgraphDeployment> {
     vec![

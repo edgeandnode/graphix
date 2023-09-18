@@ -1,16 +1,17 @@
 #![allow(dead_code)]
 
+use std::collections::BTreeMap;
+use std::sync::Arc;
+use std::time::Duration;
+
 use anyhow::anyhow;
 use reqwest::Url;
 use serde::de::DeserializeOwned;
 use serde_derive::{Deserialize, Serialize};
-use std::{collections::BTreeMap, sync::Arc, time::Duration};
 use tracing::warn;
 
-use crate::{
-    config::{IndexerConfig, IndexerUrls},
-    prelude::{Indexer as IndexerTrait, RealIndexer},
-};
+use crate::config::{IndexerConfig, IndexerUrls};
+use crate::prelude::{Indexer as IndexerTrait, RealIndexer};
 
 #[derive(Debug, Clone)]
 pub struct NetworkSubgraph {

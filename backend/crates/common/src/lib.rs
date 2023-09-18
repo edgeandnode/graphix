@@ -1,6 +1,6 @@
-pub mod api_types;
 pub mod block_choice;
 pub mod config;
+pub mod graphql_api;
 mod indexer;
 pub mod network_subgraph;
 mod prometheus_metrics;

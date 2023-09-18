@@ -1,15 +1,17 @@
 mod interceptor;
 mod real_indexer;
 
+use std::collections::HashMap;
+use std::fmt::Debug;
+use std::hash::Hash;
+use std::sync::Arc;
+
+use anyhow::anyhow;
+use async_trait::async_trait;
 pub use interceptor::IndexerInterceptor;
 pub use real_indexer::RealIndexer;
 
 use crate::types::{IndexingStatus, PoiRequest, ProofOfIndexing};
-use anyhow::anyhow;
-use async_trait::async_trait;
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::{fmt::Debug, hash::Hash};
 
 #[async_trait]
 pub trait Indexer: Send + Sync + Debug {

@@ -1,9 +1,11 @@
 pub mod gen;
 pub mod mocks;
 
-use once_cell::sync::Lazy;
-use rand::{rngs::OsRng, rngs::SmallRng, RngCore, SeedableRng};
 use std::env;
+
+use once_cell::sync::Lazy;
+use rand::rngs::{OsRng, SmallRng};
+use rand::{RngCore, SeedableRng};
 
 pub static TEST_SEED: Lazy<u64> = Lazy::new(|| {
     let seed = env::var("TEST_SEED")

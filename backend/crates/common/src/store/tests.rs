@@ -1,13 +1,14 @@
-use crate::api_types::{DivergenceInvestigationRequest, SgDeploymentsQuery};
-use crate::block_choice::BlockChoicePolicy;
-use crate::prometheus_metrics::metrics;
-use crate::test_utils::{fast_rng, gen::gen_indexers};
-use crate::{
-    queries,
-    store::{diesel_queries, PoiLiveness, Store},
-};
-use diesel::Connection;
 use std::collections::BTreeSet;
+
+use diesel::Connection;
+
+use crate::block_choice::BlockChoicePolicy;
+use crate::graphql_api::types::SgDeploymentsQuery;
+use crate::prometheus_metrics::metrics;
+use crate::queries;
+use crate::store::{diesel_queries, PoiLiveness, Store};
+use crate::test_utils::fast_rng;
+use crate::test_utils::gen::gen_indexers;
 
 fn test_db_url() -> String {
     std::env::var("GRAPHIX_TEST_DB_URL").expect("GRAPHIX_TEST_DB_URL must be set to run tests")
@@ -16,7 +17,7 @@ fn test_db_url() -> String {
 #[tokio::test]
 async fn no_deployments_at_first() {
     let store = Store::new(&test_db_url()).await.unwrap();
-    let initial_deployments = store.sg_deployments(SgDeploymentsQuery::ALL).unwrap();
+    let initial_deployments = store.sg_deployments(SgDeploymentsQuery::default()).unwrap();
     assert!(initial_deployments.is_empty());
 }
 
@@ -32,36 +33,29 @@ async fn deployments_with_name() {
     store.create_sg_deployment("mainnet", ipfs_cid2).unwrap();
     store.set_deployment_name(ipfs_cid2, "foo").unwrap();
 
-    let deployments = store.deployments_with_name("foo").unwrap();
+    let deployments = {
+        let mut filter = SgDeploymentsQuery::default();
+        filter.name = Some("foo".to_string());
+        store.sg_deployments(filter).unwrap()
+    };
     assert!(deployments.len() == 1);
     assert_eq!(deployments[0].id, ipfs_cid1);
     assert_eq!(deployments[0].name, "foo");
 }
 
 #[tokio::test]
-async fn create_and_delete_divergence_investigation_request() {
+async fn create_divergence_investigation_request() {
     let store = Store::new(&test_db_url()).await.unwrap();
-    let req_uuid = store
-        .create_divergence_investigation(DivergenceInvestigationRequest {
-            pois: vec![],
-            query_block_caches: None,
-            query_entity_changes: None,
-            query_eth_call_caches: None,
-        })
+    let uuid = uuid::Uuid::new_v4().to_string();
+    store
+        .create_or_update_divergence_investigation_request(&uuid, serde_json::json!({}))
         .unwrap();
 
     let req = store
-        .get_first_divergence_investigation_request()
+        .get_first_pending_divergence_investigation_request()
         .unwrap()
         .unwrap();
-    assert_eq!(req.0, req_uuid);
-    store
-        .delete_divergence_investigation_request(&req_uuid)
-        .unwrap();
-    assert!(store
-        .get_first_divergence_investigation_request()
-        .unwrap()
-        .is_none());
+    assert_eq!(req.0, uuid);
 }
 
 #[tokio::test]
@@ -74,7 +68,7 @@ async fn poi_db_roundtrip() {
         queries::query_proofs_of_indexing(indexing_statuses, BlockChoicePolicy::Earliest).await;
 
     let store = Store::new(&test_db_url()).await.unwrap();
-    let mut conn = store.test_conn();
+    let mut conn = store.conn().unwrap();
     conn.test_transaction::<_, (), _>(|conn| {
         diesel_queries::write_pois(conn, &pois.clone(), PoiLiveness::NotLive).unwrap();
         let all_deployments: Vec<String> =

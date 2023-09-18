@@ -1,12 +1,14 @@
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
+
+use futures::stream::FuturesUnordered;
+use futures::StreamExt;
+use tracing::*;
+
 use crate::block_choice::BlockChoicePolicy;
 use crate::indexer::Indexer;
 use crate::prelude::{IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment};
 use crate::PrometheusMetrics;
-use futures::stream::FuturesUnordered;
-use futures::StreamExt;
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-use tracing::*;
 
 /// Queries all `indexingStatuses` for all the given indexers.
 #[instrument(skip_all)]
@@ -111,7 +113,7 @@ pub async fn query_proofs_of_indexing(
             )
         }));
 
-    // For each deployment, chooose a block on which to query the PoI
+    // For each deployment, chooose a block on which to query the Poi
     let latest_blocks: HashMap<SubgraphDeployment, Option<u64>> =
         HashMap::from_iter(deployments.iter().map(|deployment| {
             (

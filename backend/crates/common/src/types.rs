@@ -1,7 +1,11 @@
-use serde::Serialize;
-use std::{fmt, ops::Deref, sync::Arc};
+use std::fmt;
+use std::ops::Deref;
+use std::sync::Arc;
 
-use crate::{indexer::Indexer, store::models::WritablePoI};
+use serde::Serialize;
+
+use crate::indexer::Indexer;
+use crate::store::models::WritablePoi;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
 pub struct BlockPointer {
@@ -99,7 +103,7 @@ impl PartialEq for ProofOfIndexing {
     }
 }
 
-impl WritablePoI for ProofOfIndexing {
+impl WritablePoi for ProofOfIndexing {
     fn deployment_cid(&self) -> &str {
         self.deployment.as_str()
     }

@@ -1,8 +1,10 @@
+use std::collections::BTreeSet;
+
 use graphix_common::block_choice::BlockChoicePolicy;
-use graphix_common::test_utils::{fast_rng, gen::gen_indexers};
+use graphix_common::test_utils::fast_rng;
+use graphix_common::test_utils::gen::gen_indexers;
 use graphix_common::{metrics, queries};
 use itertools::Itertools;
-use std::collections::BTreeSet;
 
 #[tokio::test]
 async fn proofs_of_indexing() {

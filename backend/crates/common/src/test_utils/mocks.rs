@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
+use anyhow::anyhow;
+use async_trait::async_trait;
+
 use crate::prelude::{
     BlockPointer, Bytes32, CachedEthereumCall, EntityChanges, Indexer, IndexingStatus, PoiRequest,
     ProofOfIndexing, SubgraphDeployment,
 };
-use anyhow::anyhow;
-use async_trait::async_trait;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DeploymentDetails {

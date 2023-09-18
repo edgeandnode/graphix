@@ -931,6 +931,7 @@ dependencies = [
  "async-graphql-warp",
  "clap",
  "graphix-common",
+ "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",

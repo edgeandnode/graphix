@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 
-use std::{collections::HashSet, hash::Hash, sync::Arc};
+use std::collections::HashSet;
+use std::hash::Hash;
+use std::sync::Arc;
 
 use graphix_common::prelude::Indexer;
 use graphix_common::store;
 
-use crate::DivergenceInvestigationError;
+use crate::bisect::DivergenceInvestigationError;
 
 /// Creates all combinations of elements in the iterator, without duplicates.
 /// Elements are never paired with themselves.
@@ -22,7 +24,7 @@ where
     pairs
 }
 
-/// Given a PoI, find any of the indexers that have been known to produce it.
+/// Given a Poi, find any of the indexers that have been known to produce it.
 pub fn find_any_indexer_for_poi(
     store: &store::Store,
     poi_s: &str,

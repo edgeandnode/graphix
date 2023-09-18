@@ -1,20 +1,21 @@
-use super::schema::*;
-use crate::types;
 use async_graphql::SimpleObject;
 use chrono::NaiveDateTime;
-use diesel::{
-    backend, deserialize::FromSql, pg::Pg, sql_types::Jsonb, AsChangeset, AsExpression, FromSqlRow,
-    Insertable, Queryable,
-};
+use diesel::deserialize::FromSql;
+use diesel::pg::Pg;
+use diesel::sql_types::Jsonb;
+use diesel::{backend, AsChangeset, AsExpression, FromSqlRow, Insertable, Queryable};
 use serde::{Deserialize, Serialize};
 use types::BlockPointer;
+
+use super::schema::*;
+use crate::types;
 
 pub type IntId = i32;
 pub type BigIntId = i64;
 pub type SgDeploymentCid = String;
 
 #[derive(Queryable, Serialize, Debug)]
-pub struct PoI {
+pub struct Poi {
     pub id: IntId,
     pub poi: Vec<u8>,
     #[serde(skip)]
@@ -24,7 +25,7 @@ pub struct PoI {
     pub block: Block,
 }
 
-impl PoI {
+impl Poi {
     pub fn poi_hex(&self) -> String {
         hex::encode(&self.poi)
     }
@@ -38,7 +39,7 @@ pub enum IndexerRef<'a> {
 
 #[derive(Insertable, Debug)]
 #[diesel(table_name = pois)]
-pub struct NewPoI {
+pub struct NewPoi {
     pub poi: Vec<u8>,
     pub created_at: NaiveDateTime,
     pub sg_deployment_id: IntId,
@@ -46,28 +47,12 @@ pub struct NewPoI {
     pub block_id: BigIntId,
 }
 
-pub trait WritablePoI {
+pub trait WritablePoi {
     fn deployment_cid(&self) -> &str;
     fn indexer_id(&self) -> &str;
     fn indexer_address(&self) -> Option<&[u8]>;
     fn block(&self) -> BlockPointer;
     fn proof_of_indexing(&self) -> &[u8];
-}
-
-#[derive(Insertable, Debug)]
-#[diesel(table_name = block_cache_entries)]
-pub struct NewBlockCacheEntry {
-    pub indexer_id: IntId,
-    pub block_id: BigIntId,
-    pub block_data: serde_json::Value,
-}
-
-#[derive(Insertable, Debug)]
-#[diesel(table_name = poi_divergence_bisect_reports)]
-pub struct NewCrossCheckReport {
-    pub poi1_id: IntId,
-    pub poi2_id: IntId,
-    pub divergence_block_id: BigIntId,
 }
 
 #[derive(Queryable, Debug, Serialize)]
@@ -178,16 +163,4 @@ impl FromSql<Jsonb, Pg> for DivergingBlock {
         let value = <serde_json::Value as FromSql<Jsonb, Pg>>::from_sql(bytes)?;
         Ok(serde_json::from_value(value)?)
     }
-}
-
-#[derive(Debug, Insertable, Queryable, Serialize)]
-#[diesel(table_name = poi_divergence_bisect_reports)]
-pub struct PoiDivergenceBisectReport {
-    pub id: String,
-    pub poi1_id: IntId,
-    pub poi2_id: IntId,
-    pub report_blob: serde_json::Value,
-    pub divergence_block_id: Option<BigIntId>,
-    #[serde(skip)]
-    pub created_at: NaiveDateTime,
 }

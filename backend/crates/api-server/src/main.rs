@@ -1,15 +1,14 @@
-use async_graphql::{
-    http::{playground_source, GraphQLPlaygroundConfig},
-    Request,
-};
+use std::convert::Infallible;
+use std::future::Future;
+
+use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
+use async_graphql::Request;
 use async_graphql_warp::{self, GraphQLResponse};
 use clap::Parser;
-use graphix_common::{api_types as schema, store::Store};
-use std::{convert::Infallible, future::Future};
-use warp::{
-    http::{self, Method},
-    Filter,
-};
+use graphix_common::graphql_api::{self};
+use graphix_common::store::Store;
+use warp::http::{self, Method};
+use warp::Filter;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -29,10 +28,10 @@ async fn create_server(cli_options: CliOptions) -> anyhow::Result<impl Future<Ou
     let health_check_route = warp::path::end().map(|| format!("Ready to roll!"));
 
     // GraphQL API
-    let api_context = schema::ApiSchemaContext { store };
-    let api_schema = schema::api_schema(api_context);
+    let api_context = graphql_api::ApiSchemaContext { store };
+    let api_schema = graphql_api::api_schema(api_context);
     let api = async_graphql_warp::graphql(api_schema).and_then(
-        |(schema, request): (schema::ApiSchema, Request)| async move {
+        |(schema, request): (graphql_api::ApiSchema, Request)| async move {
             Ok::<_, Infallible>(GraphQLResponse::from(schema.execute(request).await))
         },
     );

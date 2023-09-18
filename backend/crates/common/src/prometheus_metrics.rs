@@ -1,7 +1,5 @@
-use std::{
-    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
-    sync::OnceLock,
-};
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::sync::OnceLock;
 
 // It's important to use the exported crate `prometheus_exporter::prometheus`
 // instead of `prometheus`, as different versions of that crate have

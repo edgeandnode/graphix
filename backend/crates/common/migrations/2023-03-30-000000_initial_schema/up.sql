@@ -86,56 +86,18 @@ CREATE TABLE live_pois (
   UNIQUE (sg_deployment_id, indexer_id)
 );
 
-CREATE TABLE poi_divergence_bisect_reports (
-  id TEXT PRIMARY KEY,
-  poi1_id INTEGER NOT NULL REFERENCES pois(id) ON DELETE RESTRICT,
-  poi2_id INTEGER NOT NULL REFERENCES pois(id) ON DELETE RESTRICT,
-  divergence_block_id BIGINT REFERENCES blocks(id),
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  UNIQUE (poi1_id, poi2_id),
-  -- We always "normalize" the ordering between PoI 1 & 2.
-  CHECK (poi1_id < poi2_id)
-);
+-- Divergence investigations.
 
-CREATE INDEX ON poi_divergence_bisect_reports (divergence_block_id);
-
--- Indexer metadata.
-
-CREATE TABLE block_cache_entries (
-  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  indexer_id INTEGER NOT NULL REFERENCES indexers(id),
-  block_id BIGINT NOT NULL REFERENCES blocks(id),
-  block_data JSONB NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX ON block_cache_entries (indexer_id, block_id);
-
-CREATE TABLE eth_call_cache_entries (
-  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  indexer_id INTEGER NOT NULL REFERENCES indexers(id),
-  block_id BIGINT NOT NULL REFERENCES blocks(id),
-  eth_call_data JSONB NOT NULL,
-  eth_call_result JSONB NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX ON eth_call_cache_entries (indexer_id, block_id);
-
-CREATE TABLE entity_changes_in_block (
-  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  indexer_id INTEGER NOT NULL REFERENCES indexers(id),
-  block_id BIGINT NOT NULL REFERENCES blocks(id),
-  entity_change_data JSONB NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX ON entity_changes_in_block (indexer_id, block_id);
-
-CREATE TABLE divergence_investigation_requests (
+CREATE TABLE pending_divergence_investigation_requests (
   -- We're wasting space and performance by using UUID as TEXT, but it's simpler
   -- and operations on this table won't be a bottleneck.
   uuid TEXT PRIMARY KEY,
-  request_contents JSONB NOT NULL,
+  request JSONB NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE divergence_investigation_reports (
+  uuid TEXT PRIMARY KEY,
+  report JSONB NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
