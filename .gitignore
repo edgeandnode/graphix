@@ -1,5 +1,14 @@
-ops/compose/data/*
-/target
+### IDEs
+.vscode/
+.idea/
+
+### OS
 .DS_Store
+
+### Rust
+/target
+
+### Project specific
+ops/compose/data/*
 /frontend/dist
 frontend/graphql/api_schema.graphql
