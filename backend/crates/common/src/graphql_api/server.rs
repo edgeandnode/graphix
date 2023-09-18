@@ -169,6 +169,16 @@ impl QueryRoot {
                 serde_json::from_value(report_json)
                     .expect("Can't deserialize report from database"),
             )
+        } else if api_ctx
+            .store
+            .divergence_investigation_request_exists(&uuid)?
+        {
+            Ok(Some(DivergenceInvestigationReport {
+                uuid,
+                status: DivergenceInvestigationStatus::InProgress,
+                bisection_runs: vec![],
+                error: None,
+            }))
         } else {
             Ok(None)
         }
@@ -187,14 +197,14 @@ impl MutationRoot {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let store = &api_ctx.store;
 
-        let uuid = uuid::Uuid::new_v4().to_string();
         let request_serialized = serde_json::to_value(req).unwrap();
-        store.create_or_update_divergence_investigation_request(&uuid, request_serialized)?;
+        let uuid = store.create_divergence_investigation_request(request_serialized)?;
 
         let report = DivergenceInvestigationReport {
             uuid: uuid.clone(),
             status: DivergenceInvestigationStatus::Pending,
             bisection_runs: vec![],
+            error: None,
         };
 
         Ok(report)

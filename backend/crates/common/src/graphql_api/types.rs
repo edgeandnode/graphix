@@ -29,10 +29,11 @@ mod divergence_investigation {
     pub struct DivergenceInvestigationReport {
         pub uuid: UuidString,
         pub status: DivergenceInvestigationStatus,
-        pub bisection_runs: Vec<BisectionRun>,
+        pub bisection_runs: Vec<BisectionRunReport>,
+        pub error: Option<String>,
     }
 
-    #[derive(Debug, Serialize, SimpleObject, Deserialize)]
+    #[derive(Debug, Clone, Serialize, SimpleObject, Deserialize)]
     pub struct DivergenceBlockBounds {
         pub lower_bound: PartialBlock,
         pub upper_bound: PartialBlock,
@@ -46,12 +47,21 @@ mod divergence_investigation {
         pub entity_changes: Option<serde_json::Value>,
     }
 
-    #[derive(Debug, SimpleObject, Serialize, Deserialize)]
-    pub struct BisectionRun {
+    #[derive(Debug, Clone, SimpleObject, Serialize, Deserialize)]
+    pub struct BisectionRunReport {
         pub uuid: UuidString,
         pub poi1: HexBytesWith0xPrefix,
         pub poi2: HexBytesWith0xPrefix,
         pub divergence_block_bounds: DivergenceBlockBounds,
+        pub bisects: Vec<BisectionReport>,
+        pub error: Option<String>,
+    }
+
+    #[derive(Debug, Clone, SimpleObject, Serialize, Deserialize)]
+    pub struct BisectionReport {
+        pub block: PartialBlock,
+        pub indexer1_response: String,
+        pub indexer2_response: String,
     }
 
     #[derive(InputObject, Deserialize, Debug, Clone, FromSqlRow, Serialize)]
@@ -129,7 +139,7 @@ pub struct Block {
 }
 
 /// A block number that may or may not also have an associated hash.
-#[derive(Debug, Serialize, SimpleObject, Deserialize)]
+#[derive(Debug, Clone, Serialize, SimpleObject, Deserialize)]
 pub struct PartialBlock {
     pub number: i64,
     pub hash: Option<String>,

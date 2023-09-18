@@ -1,7 +1,10 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use graphix_common::graphql_api::types::DivergenceInvestigationRequest;
+use graphix_common::graphql_api::types::{
+    BisectionReport, BisectionRunReport, DivergenceBlockBounds, DivergenceInvestigationReport,
+    DivergenceInvestigationRequest, DivergenceInvestigationStatus, PartialBlock,
+};
 use graphix_common::prelude::{
     BlockPointer, DivergingBlock as DivergentBlock, Indexer, PoiRequest, ProofOfIndexing,
     SubgraphDeployment,
@@ -31,6 +34,7 @@ impl From<DivergingBlock> for DivergentBlock {
 
 #[derive(Clone)]
 pub struct PoiBisectingContext {
+    report: BisectionRunReport,
     bisection_id: String,
     poi1: ProofOfIndexing,
     poi2: ProofOfIndexing,
@@ -39,6 +43,7 @@ pub struct PoiBisectingContext {
 
 impl PoiBisectingContext {
     pub fn new(
+        report: BisectionRunReport,
         bisection_id: String,
         poi1: ProofOfIndexing,
         poi2: ProofOfIndexing,
@@ -58,6 +63,7 @@ impl PoiBisectingContext {
         //anyhow::ensure!(poi1.indexer.address() != poi2.indexer.address());
 
         Ok(Self {
+            report,
             bisection_id,
             poi1,
             poi2,
@@ -65,7 +71,7 @@ impl PoiBisectingContext {
         })
     }
 
-    pub async fn start(self) -> anyhow::Result<u64> {
+    pub async fn start(mut self) -> (BisectionRunReport, u64) {
         let indexer1 = self.poi1.indexer;
         let indexer2 = self.poi2.indexer;
         let deployment = self.deployment;
@@ -94,20 +100,37 @@ impl PoiBisectingContext {
                 "Bisecting Pois"
             );
 
-            let poi1_fut = indexer1.clone().proof_of_indexing(PoiRequest {
-                deployment: deployment.clone(),
-                block_number,
-            });
-            let poi2_fut = indexer2.clone().proof_of_indexing(PoiRequest {
-                deployment: deployment.clone(),
-                block_number,
-            });
+            let poi1 = indexer1
+                .clone()
+                .proof_of_indexing(PoiRequest {
+                    deployment: deployment.clone(),
+                    block_number,
+                })
+                .await;
+            let poi2 = indexer2
+                .clone()
+                .proof_of_indexing(PoiRequest {
+                    deployment: deployment.clone(),
+                    block_number,
+                })
+                .await;
 
-            let (poi1, poi2) = futures::try_join!(poi1_fut, poi2_fut)?;
-            if poi1 == poi2 {
+            let bisect = BisectionReport {
+                block: PartialBlock {
+                    number: block_number as _,
+                    hash: None,
+                },
+                indexer1_response: format!("{:?}", poi1),
+                indexer2_response: format!("{:?}", poi2),
+            };
+            self.report.bisects.push(bisect);
+
+            if poi1.ok() == poi2.ok() {
                 bounds = block_number..=*bounds.end();
+                self.report.divergence_block_bounds.lower_bound.number = block_number as _;
             } else {
                 bounds = *bounds.start()..=block_number;
+                self.report.divergence_block_bounds.upper_bound.number = block_number as _;
             }
 
             if bounds.start() == bounds.end() {
@@ -116,7 +139,7 @@ impl PoiBisectingContext {
         }
 
         let diverging_block = *bounds.start();
-        Ok(diverging_block)
+        (self.report, diverging_block)
     }
 }
 
@@ -156,28 +179,34 @@ pub async fn handle_divergence_investigation_requests(
         debug!("Checking for new divergence investigation requests");
 
         let (req_uuid, req_contents_blob) = {
-            let req_opt = store.get_first_pending_divergence_investigation_request()?;
-            if let Some(req) = req_opt {
-                req
-            } else {
-                tokio::time::sleep(Duration::from_secs(3)).await;
-                continue;
+            loop {
+                let req_opt = store.get_first_pending_divergence_investigation_request()?;
+                if let Some(req) = req_opt {
+                    break req;
+                } else {
+                    tokio::time::sleep(Duration::from_secs(3)).await;
+                    continue;
+                }
             }
         };
+        debug!(req_uuid, "Found new divergence investigation request");
 
         let req_contents =
             serde_json::from_value(req_contents_blob).expect("invalid request blob; this is a bug");
-        info!(req_uuid, "Found new divergence investigation request");
-        let res = handle_divergence_investigation_request(
+        let report = handle_divergence_investigation_request(
             store,
             &req_uuid,
             req_contents,
             indexers.clone(),
         )
         .await;
-        if let Err(err) = res {
-            error!(error = %err, "Failed to handle bisect request");
-        }
+
+        let serialized_report = serde_json::to_value(&report).unwrap();
+        debug!(
+            req_uuid,
+            "Writing divergence investigation report to database"
+        );
+        store.create_or_update_divergence_investigation_report(&req_uuid, serialized_report)?;
         store.delete_divergence_investigation_request(&req_uuid)?;
     }
 }
@@ -188,10 +217,29 @@ async fn handle_divergence_investigation_request_pair(
     req_uuid_str: &str,
     poi1_s: &str,
     poi2_s: &str,
-) -> Result<(), DivergenceInvestigationError> {
+) -> BisectionRunReport {
     debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Bisecting Pois");
 
-    let poi1 = store
+    let mut report = BisectionRunReport {
+        bisects: vec![],
+        uuid: Uuid::new_v4().to_string(),
+        poi1: poi1_s.to_string(),
+        poi2: poi2_s.to_string(),
+        divergence_block_bounds: DivergenceBlockBounds {
+            lower_bound: PartialBlock {
+                number: 1,
+                hash: None,
+            },
+            upper_bound: PartialBlock {
+                number: 1 as _,
+                hash: None,
+            },
+        },
+        error: None,
+    };
+
+    debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Fetching Pois");
+    let poi1 = match store
         .poi(&poi1_s)
         .map_err(DivergenceInvestigationError::Database)
         .and_then(|poi_opt| {
@@ -202,8 +250,14 @@ async fn handle_divergence_investigation_request_pair(
                     poi: poi1_s.to_string(),
                 })
             }
-        })?;
-    let poi2 = store
+        }) {
+        Ok(poi) => poi,
+        Err(err) => {
+            report.error = Some(err.to_string());
+            return report;
+        }
+    };
+    let poi2 = match store
         .poi(&poi2_s)
         .map_err(DivergenceInvestigationError::Database)
         .and_then(|poi_opt| {
@@ -214,26 +268,38 @@ async fn handle_divergence_investigation_request_pair(
                     poi: poi2_s.to_string(),
                 })
             }
-        })?;
+        }) {
+        Ok(poi) => poi,
+        Err(err) => {
+            report.error = Some(err.to_string());
+            return report;
+        }
+    };
+    debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Fetched Pois");
+    report.divergence_block_bounds.upper_bound.number = poi1.block.number as _;
 
     if poi1.sg_deployment.cid != poi2.sg_deployment.cid {
-        return Err(DivergenceInvestigationError::DifferentDeployments {
-            poi1: poi1_s.to_string(),
-            poi2: poi2_s.to_string(),
-            poi1_deployment: poi1.sg_deployment.cid.to_string(),
-            poi2_deployment: poi2.sg_deployment.cid.to_string(),
-        }
-        .into());
+        report.error = Some(
+            DivergenceInvestigationError::DifferentDeployments {
+                poi1: poi1_s.to_string(),
+                poi2: poi2_s.to_string(),
+                poi1_deployment: poi1.sg_deployment.cid.to_string(),
+                poi2_deployment: poi2.sg_deployment.cid.to_string(),
+            }
+            .to_string(),
+        );
     }
 
     if poi1.block.number != poi2.block.number {
-        return Err(DivergenceInvestigationError::DifferentBlocks {
-            poi1: poi1_s.to_string(),
-            poi2: poi2_s.to_string(),
-            poi1_block: poi1.block.number,
-            poi2_block: poi2.block.number,
-        }
-        .into());
+        report.error = Some(
+            DivergenceInvestigationError::DifferentBlocks {
+                poi1: poi1_s.to_string(),
+                poi2: poi2_s.to_string(),
+                poi1_block: poi1.block.number,
+                poi2_block: poi2.block.number,
+            }
+            .to_string(),
+        );
     }
 
     let deployment = SubgraphDeployment(poi1.sg_deployment.cid);
@@ -242,26 +308,43 @@ async fn handle_divergence_investigation_request_pair(
         hash: None,
     };
 
-    let indexer1 = indexers
+    debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Fetching indexers");
+    let indexer1 = match indexers
         .iter()
-        .find(|indexer| indexer.address() == poi1.indexer.address.as_deref())
+        .find(|indexer| Some(indexer.id()) == poi1.indexer.name.as_deref())
         .cloned()
         .ok_or(DivergenceInvestigationError::IndexerNotFound {
             poi: poi1_s.to_string(),
-        })?;
-    let indexer2 = indexers
+        }) {
+        Ok(indexer) => indexer,
+        Err(err) => {
+            report.error = Some(err.to_string());
+            return report;
+        }
+    };
+    let indexer2 = match indexers
         .iter()
-        .find(|indexer| indexer.address() == poi2.indexer.address.as_deref())
+        .find(|indexer| Some(indexer.id()) == poi2.indexer.name.as_deref())
         .cloned()
         .ok_or(DivergenceInvestigationError::IndexerNotFound {
             poi: poi2_s.to_string(),
-        })?;
-
-    if indexer1.id() == indexer2.id() {
-        return Err(DivergenceInvestigationError::SameIndexer {
-            indexer_id: indexer1.id().to_string(),
+        }) {
+        Ok(indexer) => indexer,
+        Err(err) => {
+            report.error = Some(err.to_string());
+            return report;
         }
-        .into());
+    };
+
+    debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Fetched indexers");
+    if indexer1.id() == indexer2.id() {
+        report.error = Some(
+            DivergenceInvestigationError::SameIndexer {
+                indexer_id: indexer1.id().to_string(),
+            }
+            .to_string(),
+        );
+        return report;
     }
 
     let bisection_uuid = Uuid::new_v4().to_string();
@@ -279,11 +362,11 @@ async fn handle_divergence_investigation_request_pair(
         proof_of_indexing: poi2.poi.try_into().expect("poi2 conversion failed"),
     };
 
-    let context = PoiBisectingContext::new(bisection_uuid, poi1, poi2, deployment.clone())
+    let context = PoiBisectingContext::new(report, bisection_uuid, poi1, poi2, deployment.clone())
         .expect("bisect context creation failed");
-    context.start().await.expect("bisect failed");
+    let (report, _block_num) = context.start().await;
 
-    Ok(())
+    report
 }
 
 async fn handle_divergence_investigation_request(
@@ -291,16 +374,27 @@ async fn handle_divergence_investigation_request(
     req_uuid_str: &str,
     req_contents: DivergenceInvestigationRequest,
     indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
-) -> Result<(), DivergenceInvestigationError> {
+) -> DivergenceInvestigationReport {
+    let uuid = req_uuid_str.to_string();
+    let mut report = DivergenceInvestigationReport {
+        uuid: uuid.clone(),
+        status: DivergenceInvestigationStatus::Complete,
+        bisection_runs: vec![],
+        error: None,
+    };
+
     // The number of bisections is quadratic to the number of Pois, so it's
     // important not to allow too many in a single request.
     const MAX_NUMBER_OF_POIS_PER_REQUEST: u32 = 4;
 
     if req_contents.pois.len() > MAX_NUMBER_OF_POIS_PER_REQUEST as usize {
-        return Err(DivergenceInvestigationError::TooManyPois {
-            max: MAX_NUMBER_OF_POIS_PER_REQUEST,
-        }
-        .into());
+        report.error = Some(
+            DivergenceInvestigationError::TooManyPois {
+                max: MAX_NUMBER_OF_POIS_PER_REQUEST,
+            }
+            .to_string(),
+        );
+        return report;
     }
 
     let indexers = indexers.borrow().clone();
@@ -308,20 +402,24 @@ async fn handle_divergence_investigation_request(
     let poi_pairs = unordered_pairs_combinations(req_contents.pois.into_iter());
 
     for (poi1_s, poi2_s) in poi_pairs.into_iter() {
-        if let Err(e) = handle_divergence_investigation_request_pair(
+        let bisection_run_report = handle_divergence_investigation_request_pair(
             store,
             &indexers,
             req_uuid_str,
             &poi1_s,
             &poi2_s,
         )
-        .await
+        .await;
+        debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Finished bisection run");
+        report.bisection_runs.push(bisection_run_report);
+        let report_json = serde_json::to_value(&report).unwrap();
+        if let Err(err) = store.create_or_update_divergence_investigation_report(&uuid, report_json)
         {
-            error!(req_uuid_str, error = %e, "Failed to bisect Pois");
+            error!(req_uuid = req_uuid_str, error = %err, "Failed to upsert divergence investigation report to the database");
         }
     }
 
     info!(req_uuid = req_uuid_str, "Finished bisecting Pois");
 
-    Ok(())
+    report
 }

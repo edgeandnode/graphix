@@ -204,6 +204,20 @@ impl Store {
             .optional()?)
     }
 
+    pub fn create_divergence_investigation_request(
+        &self,
+        request: serde_json::Value,
+    ) -> anyhow::Result<String> {
+        use schema::pending_divergence_investigation_requests as requests;
+
+        let uuid = uuid::Uuid::new_v4().to_string();
+        diesel::insert_into(requests::table)
+            .values((requests::uuid.eq(&uuid), requests::request.eq(&request)))
+            .execute(&mut self.conn()?)?;
+
+        Ok(uuid)
+    }
+
     /// Fetches the divergence investigation report with the given UUID, if it
     /// exists.
     pub fn divergence_investigation_report(
@@ -219,21 +233,32 @@ impl Store {
             .optional()?)
     }
 
-    pub fn create_or_update_divergence_investigation_request(
+    pub fn create_or_update_divergence_investigation_report(
         &self,
         uuid: &str,
-        request: serde_json::Value,
+        report: serde_json::Value,
     ) -> anyhow::Result<()> {
-        use schema::pending_divergence_investigation_requests as requests;
+        use schema::divergence_investigation_reports as reports;
 
-        diesel::insert_into(requests::table)
-            .values((requests::uuid.eq(&uuid), requests::request.eq(&request)))
-            .on_conflict(requests::uuid)
+        diesel::insert_into(reports::table)
+            .values((reports::uuid.eq(&uuid), reports::report.eq(&report)))
+            .on_conflict(reports::uuid)
             .do_update()
-            .set(requests::request.eq(&request))
+            .set(reports::report.eq(&report))
             .execute(&mut self.conn()?)?;
 
         Ok(())
+    }
+
+    pub fn divergence_investigation_request_exists(&self, uuid: &str) -> anyhow::Result<bool> {
+        use schema::pending_divergence_investigation_requests as requests;
+
+        let exists = requests::table
+            .filter(requests::uuid.eq(uuid))
+            .count()
+            .get_result::<i64>(&mut self.conn()?)?
+            > 0;
+        Ok(exists)
     }
 
     pub fn delete_divergence_investigation_request(&self, uuid: &str) -> anyhow::Result<()> {

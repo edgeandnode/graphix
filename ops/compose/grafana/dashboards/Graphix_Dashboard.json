@@ -97,7 +97,7 @@
           },
           "endTimePath": "endTime",
           "groupBy": "",
-          "queryText": "query {\n deployments(filter: {}) { id }\n}",
+          "queryText": "query {\n deployments(filter: {}) { id\n networkName\n name\n   }\n}",
           "refId": "A",
           "timePath": ""
         }
@@ -490,6 +490,6 @@
   "timezone": "",
   "title": "Graphix Dashboard",
   "uid": "dee4d09d-0dbc-4af2-b4a2-2fcb9ecf35cc",
-  "version": 4,
+  "version": 5,
   "weekStart": ""
 }

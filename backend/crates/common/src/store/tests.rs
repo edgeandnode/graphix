@@ -46,9 +46,8 @@ async fn deployments_with_name() {
 #[tokio::test]
 async fn create_divergence_investigation_request() {
     let store = Store::new(&test_db_url()).await.unwrap();
-    let uuid = uuid::Uuid::new_v4().to_string();
-    store
-        .create_or_update_divergence_investigation_request(&uuid, serde_json::json!({}))
+    let uuid = store
+        .create_divergence_investigation_request(serde_json::json!({}))
         .unwrap();
 
     let req = store
