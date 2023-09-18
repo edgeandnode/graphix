@@ -153,14 +153,17 @@ pub async fn handle_divergence_investigation_requests(
     indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
 ) -> anyhow::Result<()> {
     loop {
-        tokio::time::sleep(Duration::from_secs(3)).await;
         debug!("Checking for new divergence investigation requests");
-        let (req_uuid, req_contents_blob) =
-            if let Some(x) = store.get_first_pending_divergence_investigation_request()? {
-                x
+
+        let (req_uuid, req_contents_blob) = {
+            let req_opt = store.get_first_pending_divergence_investigation_request()?;
+            if let Some(req) = req_opt {
+                req
             } else {
+                tokio::time::sleep(Duration::from_secs(3)).await;
                 continue;
-            };
+            }
+        };
 
         let req_contents =
             serde_json::from_value(req_contents_blob).expect("invalid request blob; this is a bug");

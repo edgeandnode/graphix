@@ -10,6 +10,19 @@ use graphix_common::store::Store;
 use warp::http::{self, Method};
 use warp::Filter;
 
+#[derive(Parser, Debug)]
+pub struct CliOptions {
+    #[clap(long, default_value = "80", env = "GRAPHIX_PORT")]
+    pub port: u16,
+
+    #[clap(
+        long,
+        default_value = "postgresql://localhost:5432/graphix",
+        env = "GRAPHIX_DATABASE_URL"
+    )]
+    pub database_url: String,
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     init_tracing();
@@ -64,17 +77,4 @@ async fn create_server(cli_options: CliOptions) -> anyhow::Result<impl Future<Ou
 
 fn init_tracing() {
     tracing_subscriber::fmt::init();
-}
-
-#[derive(Parser, Debug)]
-pub struct CliOptions {
-    #[clap(long, default_value = "80", env = "GRAPHIX_PORT")]
-    pub port: u16,
-
-    #[clap(
-        long,
-        default_value = "postgresql://localhost:5432/graphix",
-        env = "GRAPHIX_DATABASE_URL"
-    )]
-    pub database_url: String,
 }

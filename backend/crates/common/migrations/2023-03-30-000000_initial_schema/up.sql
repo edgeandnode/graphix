@@ -38,7 +38,7 @@ CREATE INDEX ON sg_deployments (ipfs_cid);
 
 CREATE TABLE sg_names (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  sg_deployment_id INTEGER NOT NULL REFERENCES sg_deployments(id) ON DELETE CASCADE,
+  sg_deployment_id INTEGER NOT NULL UNIQUE REFERENCES sg_deployments(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
