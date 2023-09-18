@@ -72,10 +72,10 @@ impl Store {
 
         let mut query = sgd::table
             .inner_join(schema::networks::table)
-            .inner_join(schema::sg_names::table)
+            .left_join(schema::sg_names::table)
             .select((
                 sgd::ipfs_cid,
-                schema::sg_names::name,
+                schema::sg_names::name.nullable(),
                 schema::networks::name,
             ))
             .order_by(sgd::ipfs_cid.asc())
@@ -139,12 +139,7 @@ impl Store {
         let mut query = indexers::table.into_boxed();
 
         if let Some(address) = filter.address {
-            let address = hex::decode(
-                address
-                    .strip_prefix("0x")
-                    .ok_or_else(|| anyhow::anyhow!("bad address"))?,
-            )?;
-            query = query.filter(indexers::address.eq(address));
+            query = query.filter(indexers::name.eq(address));
         }
         if let Some(limit) = filter.limit {
             query = query.limit(limit.into());

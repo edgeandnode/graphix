@@ -40,7 +40,7 @@ async fn deployments_with_name() {
     };
     assert!(deployments.len() == 1);
     assert_eq!(deployments[0].id, ipfs_cid1);
-    assert_eq!(deployments[0].name, "foo");
+    assert_eq!(deployments[0].name, Some("foo".to_string()));
 }
 
 #[tokio::test]

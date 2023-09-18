@@ -52,14 +52,14 @@ impl QueryRoot {
     async fn live_proofs_of_indexing(
         &self,
         ctx: &Context<'_>,
-        request: PoisQuery,
+        filter: PoisQuery,
     ) -> Result<Vec<ProofOfIndexing>> {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let pois = api_ctx.store.live_pois(
             None,
-            Some(&request.deployments),
-            request.block_range,
-            request.limit,
+            Some(&filter.deployments),
+            filter.block_range,
+            filter.limit,
         )?;
 
         Ok(pois.into_iter().map(ProofOfIndexing::from).collect())
@@ -161,11 +161,17 @@ impl QueryRoot {
         &self,
         ctx: &Context<'_>,
         uuid: String,
-    ) -> Result<String> {
+    ) -> Result<Option<DivergenceInvestigationReport>> {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
-        let request = api_ctx.store.divergence_investigation_report(&uuid)?;
 
-        Ok(serde_json::to_string(&request).unwrap())
+        if let Some(report_json) = api_ctx.store.divergence_investigation_report(&uuid)? {
+            Ok(
+                serde_json::from_value(report_json)
+                    .expect("Can't deserialize report from database"),
+            )
+        } else {
+            Ok(None)
+        }
     }
 }
 

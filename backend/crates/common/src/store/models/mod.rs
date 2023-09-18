@@ -109,7 +109,7 @@ pub struct NewIndexer {
 #[derive(Debug, Queryable, Serialize, SimpleObject)]
 pub struct QueriedSgDeployment {
     pub id: SgDeploymentCid,
-    pub name: String,
+    pub name: Option<String>,
     pub network_name: String,
 }
 
