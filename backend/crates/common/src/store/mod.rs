@@ -1,28 +1,22 @@
-use std::sync::Arc;
+//! Database access (read and write) abstractions for all Graphix backend
+//! services.
 
-use crate::api_types::{
-    DivergenceInvestigationRequest, DivergenceInvestigationRequestWithUuid,
-    NewDivergenceInvestigationRequest,
-};
-use crate::{api_types::BlockRangeInput, store::models::PoI};
 use anyhow::Error;
 use diesel::prelude::*;
-use diesel::{
-    r2d2::{self, ConnectionManager, Pool, PooledConnection},
-    Connection, PgConnection,
-};
+use diesel::r2d2::{self, ConnectionManager, Pool, PooledConnection};
+use diesel::{Connection, PgConnection};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use sqlx::postgres::PgListener;
-use tokio::sync::Mutex;
 use tracing::info;
+
+use crate::graphql_api::types::{BlockRangeInput, IndexersQuery, SgDeploymentsQuery};
+use crate::store::models::{IndexerRow, Poi};
 
 // Provides the diesel queries, callers should handle connection pooling and transactions.
 mod diesel_queries;
 #[cfg(tests)]
 pub use diesel_queries;
-use uuid::Uuid;
 
-use self::models::{BigIntId, IndexerRef, WritablePoI};
+use self::models::{QueriedSgDeployment, WritablePoi};
 
 pub mod models;
 mod schema;
@@ -30,62 +24,22 @@ mod schema;
 #[cfg(test)]
 mod tests;
 
-macro_rules! indexer_ref {
-    ( $indexer:expr ) => {{
-        match $indexer {
-            IndexerRef::Id(i) => indexers::table
-                .select(indexers::id)
-                .filter(indexers::id.eq(i))
-                .into_boxed(),
-            IndexerRef::Address(addr) => indexers::table
-                .select(indexers::id)
-                .filter(indexers::address.eq(addr))
-                .into_boxed(),
-        }
-        .single_value()
-        .assume_not_null()
-    }};
-}
-
-macro_rules! get_block_id {
-    ( $block_hash:expr, $network:expr ) => {{
-        blocks::table
-            .select(blocks::id)
-            .filter(
-                blocks::hash.eq($block_hash).and(
-                    blocks::network_id.eq(networks::table
-                        .select(networks::id)
-                        .filter(networks::name.eq($network))
-                        .single_value()
-                        .assume_not_null()),
-                ),
-            )
-            .single_value()
-            .assume_not_null()
-    }};
-}
-
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
-/// An abstraction over all database operations. It uses [`Arc`](std::sync::Arc) internally, so
+/// An abstraction over all database operations. It uses [`Arc`] internally, so
 /// it's cheaply cloneable.
 #[derive(Clone)]
 pub struct Store {
     pool: Pool<ConnectionManager<PgConnection>>,
-    listener: Arc<Mutex<PgListener>>,
 }
 
 impl Store {
+    /// Connects to the database and runs migrations.
     pub async fn new(db_url: &str) -> anyhow::Result<Self> {
         info!("Initializing database connection pool");
         let manager = r2d2::ConnectionManager::<PgConnection>::new(db_url);
         let pool = r2d2::Builder::new().build(manager)?;
-        let mut listener = PgListener::connect(db_url).await?;
-        listener.listen("cross_check_reports").await?;
-        let store = Self {
-            pool,
-            listener: Arc::new(Mutex::new(listener)),
-        };
+        let store = Self { pool };
         store.run_migrations()?;
         Ok(store)
     }
@@ -108,24 +62,56 @@ impl Store {
         Ok(self.pool.get()?)
     }
 
-    #[cfg(test)]
-    pub fn test_conn(&self) -> PooledConnection<ConnectionManager<PgConnection>> {
-        self.pool.get().unwrap()
-    }
-
-    /// Returns all subgraph deployments that have ever been analyzed.
-    pub fn sg_deployments(&self) -> anyhow::Result<Vec<String>> {
+    /// Returns subgraph deployments stored in the database that match the
+    /// filtering criteria.
+    pub fn sg_deployments(
+        &self,
+        filter: SgDeploymentsQuery,
+    ) -> anyhow::Result<Vec<QueriedSgDeployment>> {
         use schema::sg_deployments as sgd;
 
-        Ok(sgd::table
-            .select(sgd::ipfs_cid)
+        let mut query = sgd::table
+            .inner_join(schema::networks::table)
+            .left_join(schema::sg_names::table)
+            .select((
+                sgd::ipfs_cid,
+                schema::sg_names::name.nullable(),
+                schema::networks::name,
+            ))
             .order_by(sgd::ipfs_cid.asc())
-            .load::<String>(&mut self.conn()?)?)
+            .into_boxed();
+
+        if let Some(network) = filter.network {
+            query = query.filter(schema::networks::name.eq(network));
+        }
+        if let Some(name) = filter.name {
+            query = query.filter(schema::sg_names::name.eq(name));
+        }
+        if let Some(ipfs_cid) = filter.ipfs_cid {
+            query = query.filter(sgd::ipfs_cid.eq(ipfs_cid));
+        }
+        if let Some(limit) = filter.limit {
+            query = query.limit(limit.into());
+        }
+
+        Ok(query.load::<QueriedSgDeployment>(&mut self.conn()?)?)
     }
 
-    pub fn poi(&self, poi: &str) -> anyhow::Result<Option<PoI>> {
-        let mut conn = self.conn()?;
-        diesel_queries::poi(&mut conn, poi)
+    pub fn create_sg_deployment(&self, network_name: &str, ipfs_cid: &str) -> anyhow::Result<()> {
+        use schema::sg_deployments as sgd;
+
+        diesel::insert_into(sgd::table)
+            .values((
+                sgd::ipfs_cid.eq(ipfs_cid),
+                sgd::network.eq(schema::networks::table
+                    .select(schema::networks::id)
+                    .filter(schema::networks::name.eq(network_name))
+                    .single_value()
+                    .assume_not_null()),
+            ))
+            .execute(&mut self.conn()?)?;
+
+        Ok(())
     }
 
     pub fn set_deployment_name(&self, sg_deployment_id: &str, name: &str) -> anyhow::Result<()> {
@@ -133,17 +119,35 @@ impl Store {
         diesel_queries::set_deployment_name(&mut conn, sg_deployment_id, name)
     }
 
+    /// Fetches a Poi from the database.
+    pub fn poi(&self, poi: &str) -> anyhow::Result<Option<Poi>> {
+        let mut conn = self.conn()?;
+        diesel_queries::poi(&mut conn, poi)
+    }
+
+    /// Deletes the network with the given name from the database, together with
+    /// **all** of its related data (indexers, deployments, etc.).
     pub fn delete_network(&self, network_name: &str) -> anyhow::Result<()> {
         let mut conn = self.conn()?;
         diesel_queries::delete_network(&mut conn, network_name)
     }
 
-    pub fn indexers(&self) -> anyhow::Result<Vec<models::Indexer>> {
-        let mut conn = self.conn()?;
-        Ok(diesel_queries::indexers(&mut conn)?
-            .into_iter()
-            .map(Into::into)
-            .collect())
+    /// Returns all indexers stored in the database.
+    pub fn indexers(&self, filter: IndexersQuery) -> anyhow::Result<Vec<models::Indexer>> {
+        use schema::indexers;
+
+        let mut query = indexers::table.into_boxed();
+
+        if let Some(address) = filter.address {
+            query = query.filter(indexers::name.eq(address));
+        }
+        if let Some(limit) = filter.limit {
+            query = query.limit(limit.into());
+        }
+
+        let rows = query.load::<IndexerRow>(&mut self.conn()?)?;
+
+        Ok(rows.into_iter().map(Into::into).collect())
     }
 
     /// Queries the database for proofs of indexing that refer to the specified
@@ -153,7 +157,7 @@ impl Store {
         sg_deployments: &[String],
         block_range: Option<BlockRangeInput>,
         limit: Option<u16>,
-    ) -> anyhow::Result<Vec<PoI>> {
+    ) -> anyhow::Result<Vec<Poi>> {
         let mut conn = self.conn()?;
         diesel_queries::pois(
             &mut conn,
@@ -172,7 +176,7 @@ impl Store {
         sg_deployments_cids: Option<&[String]>,
         block_range: Option<BlockRangeInput>,
         limit: Option<u16>,
-    ) -> anyhow::Result<Vec<PoI>> {
+    ) -> anyhow::Result<Vec<Poi>> {
         let mut conn = self.conn()?;
         diesel_queries::pois(
             &mut conn,
@@ -184,216 +188,87 @@ impl Store {
         )
     }
 
-    pub fn write_pois(&self, pois: &[impl WritablePoI], live: PoiLiveness) -> anyhow::Result<()> {
+    pub fn write_pois(&self, pois: &[impl WritablePoi], live: PoiLiveness) -> anyhow::Result<()> {
         self.conn()?
             .transaction::<_, Error, _>(|conn| diesel_queries::write_pois(conn, pois, live))
     }
 
-    pub fn cross_check_report(
+    pub fn get_first_pending_divergence_investigation_request(
         &self,
-        id: &str,
-    ) -> anyhow::Result<DivergenceInvestigationRequestWithUuid> {
-        let mut conn = self.conn()?;
-        diesel_queries::get_cross_check_report(&mut conn, id)
+    ) -> anyhow::Result<Option<(String, serde_json::Value)>> {
+        use schema::pending_divergence_investigation_requests as requests;
+
+        Ok(requests::table
+            .select((requests::uuid, requests::request))
+            .first::<(String, serde_json::Value)>(&mut self.conn()?)
+            .optional()?)
     }
 
-    pub async fn recv_cross_check_report_request(
+    pub fn create_divergence_investigation_request(
         &self,
-    ) -> anyhow::Result<DivergenceInvestigationRequestWithUuid> {
-        let notification = self.listener.lock().await.recv().await?;
-        assert_eq!(notification.channel(), "cross_check_reports");
-        let payload = serde_json::from_str(notification.payload())?;
-        Ok(payload)
-    }
-
-    pub fn queue_cross_check_report(
-        &self,
-        req: DivergenceInvestigationRequest,
+        request: serde_json::Value,
     ) -> anyhow::Result<String> {
-        let uuid = Uuid::new_v4().to_string();
-        let with_uuid = DivergenceInvestigationRequestWithUuid {
-            id: uuid.clone(),
-            req,
-        };
+        use schema::pending_divergence_investigation_requests as requests;
 
-        diesel::dsl::sql_query("SELECT pg_notify('cross_check_reports', $1);")
-            .bind::<diesel::sql_types::Text, _>(serde_json::to_string(&with_uuid)?)
+        let uuid = uuid::Uuid::new_v4().to_string();
+        diesel::insert_into(requests::table)
+            .values((requests::uuid.eq(&uuid), requests::request.eq(&request)))
             .execute(&mut self.conn()?)?;
 
         Ok(uuid)
     }
 
-    pub fn create_divergence_investigation(
+    /// Fetches the divergence investigation report with the given UUID, if it
+    /// exists.
+    pub fn divergence_investigation_report(
         &self,
-        req: NewDivergenceInvestigationRequest,
-    ) -> anyhow::Result<String> {
-        let uuid_string = Uuid::new_v4().to_string();
+        uuid: &str,
+    ) -> anyhow::Result<Option<serde_json::Value>> {
+        use schema::divergence_investigation_reports as reports;
 
-        let conn = &mut self.conn()?;
-        diesel_queries::create_divergence_investigation_reqest(
-            conn,
-            uuid_string.to_string(),
-            serde_json::to_value(req)?,
-        )?;
-
-        Ok(uuid_string)
+        Ok(reports::table
+            .select(reports::report)
+            .filter(reports::uuid.eq(uuid))
+            .first(&mut self.conn()?)
+            .optional()?)
     }
 
-    pub fn get_first_divergence_investigation_request(
+    pub fn create_or_update_divergence_investigation_report(
         &self,
-    ) -> anyhow::Result<(String, NewDivergenceInvestigationRequest)> {
-        let mut conn = self.conn()?;
-        let (uuid_string, req_contents) =
-            diesel_queries::get_first_divergence_investigation_request(&mut conn)?;
+        uuid: &str,
+        report: serde_json::Value,
+    ) -> anyhow::Result<()> {
+        use schema::divergence_investigation_reports as reports;
 
-        Ok((uuid_string, req_contents))
+        diesel::insert_into(reports::table)
+            .values((reports::uuid.eq(&uuid), reports::report.eq(&report)))
+            .on_conflict(reports::uuid)
+            .do_update()
+            .set(reports::report.eq(&report))
+            .execute(&mut self.conn()?)?;
+
+        Ok(())
     }
 
-    pub fn write_divergence_bisect_report(
-        &self,
-        poi1_id: i32,
-        poi2_id: i32,
-        divergence_block: BigIntId,
-    ) -> anyhow::Result<String> {
-        use schema::{blocks, poi_divergence_bisect_reports as reports};
+    pub fn divergence_investigation_request_exists(&self, uuid: &str) -> anyhow::Result<bool> {
+        use schema::pending_divergence_investigation_requests as requests;
 
-        // Normalize pairing order to avoid duplicates.
-        let (poi1_id, poi2_id) = if poi1_id < poi2_id {
-            (poi1_id, poi2_id)
-        } else {
-            (poi2_id, poi1_id)
-        };
-
-        let id = diesel::insert_into(reports::table)
-            .values((
-                reports::poi1_id.eq(poi1_id),
-                reports::poi2_id.eq(poi2_id),
-                reports::divergence_block_id.eq(blocks::table
-                    .select(blocks::id)
-                    .filter(blocks::id.eq(divergence_block))
-                    .single_value()),
-            ))
-            .returning(reports::id)
-            .get_result(&mut self.conn()?)?;
-
-        Ok(id)
+        let exists = requests::table
+            .filter(requests::uuid.eq(uuid))
+            .count()
+            .get_result::<i64>(&mut self.conn()?)?
+            > 0;
+        Ok(exists)
     }
 
-    pub fn write_block_cache_entry(
-        &self,
-        indexer: IndexerRef,
-        network: &str,
-        block_hash: &[u8],
-        block_data_json: serde_json::Value,
-    ) -> anyhow::Result<BigIntId> {
-        use schema::{block_cache_entries as entries, blocks, indexers, networks};
+    pub fn delete_divergence_investigation_request(&self, uuid: &str) -> anyhow::Result<()> {
+        use schema::pending_divergence_investigation_requests as requests;
 
-        let id = diesel::insert_into(entries::table)
-            .values((
-                entries::indexer_id.eq(indexer_ref!(indexer)),
-                entries::block_id.eq(get_block_id!(block_hash, network)),
-                entries::block_data.eq(block_data_json),
-            ))
-            .returning(entries::id)
-            .get_result(&mut self.conn()?)?;
+        diesel::delete(requests::table.filter(requests::uuid.eq(uuid)))
+            .execute(&mut self.conn()?)?;
 
-        Ok(id)
+        Ok(())
     }
-
-    pub fn write_eth_call_cache_entry(
-        &self,
-        indexer: IndexerRef,
-        network: &str,
-        block_hash: &[u8],
-        eth_call_data: serde_json::Value,
-        eth_call_result: serde_json::Value,
-    ) -> anyhow::Result<BigIntId> {
-        use schema::{blocks, eth_call_cache_entries as entries, indexers, networks};
-
-        let id = diesel::insert_into(entries::table)
-            .values((
-                entries::indexer_id.eq(indexer_ref!(indexer)),
-                entries::block_id.eq(get_block_id!(block_hash, network)),
-                entries::eth_call_data.eq(eth_call_data),
-                entries::eth_call_result.eq(eth_call_result),
-            ))
-            .returning(entries::id)
-            .get_result(&mut self.conn()?)?;
-
-        Ok(id)
-    }
-
-    pub fn write_entity_changes_in_block(
-        &self,
-        indexer: IndexerRef,
-        network: &str,
-        block_hash: &[u8],
-        entity_changes: serde_json::Value,
-    ) -> anyhow::Result<BigIntId> {
-        use schema::{blocks, entity_changes_in_block as changes, indexers, networks};
-
-        let id = diesel::insert_into(changes::table)
-            .values((
-                changes::indexer_id.eq(indexer_ref!(indexer)),
-                changes::block_id.eq(get_block_id!(block_hash, network)),
-                changes::entity_change_data.eq(entity_changes),
-            ))
-            .returning(changes::id)
-            .get_result(&mut self.conn()?)?;
-
-        Ok(id)
-    }
-
-    pub fn read_report_metadata(&self, _poi1: &str, _poi2: &str) -> anyhow::Result<()> {
-        todo!("read_report_metadata")
-    }
-
-    // pub fn poi_divergence_bisect_reports(
-    //     &self,
-    //     indexer1: Filter,
-    //     indexer2: Filter,
-    // ) -> anyhow::Result<Vec<models::PoiDivergenceBisectReport>> {
-    //     use schema::poi_divergence_bisect_reports::dsl::*;
-
-    //     let mut query = poi_divergence_bisect_reports
-    //         .filter(sql)
-    //         .filter(poi1_id.eq(foo).and(poi2_id.eq(bar)))
-    //         .distinct_on((block_number, indexer1, indexer2, deployment))
-    //         .into_boxed();
-
-    //     if let Some(indexer) = indexer1_s {
-    //         query = query.filter(indexer1.eq(indexer));
-    //     }
-
-    //     if let Some(indexer) = indexer2_s {
-    //         query = query.filter(indexer2.eq(indexer));
-    //     }
-
-    //     query = query
-    //         .order_by((
-    //             block_number.desc(),
-    //             deployment.asc(),
-    //             indexer1.asc(),
-    //             indexer2.asc(),
-    //         ))
-    //         .limit(5000);
-
-    //     Ok(query.load::<models::PoiCrossCheckReport>(&self.conn()?)?)
-    // }
-
-    // pub fn write_poi_cross_check_reports(
-    //     &self,
-    //     reports: Vec<models::PoiCrossCheckReport>,
-    // ) -> anyhow::Result<()> {
-    //     let len = reports.len();
-    //     diesel::insert_into(schema::poi_cross_check_reports::table)
-    //         .values(reports)
-    //         .on_conflict_do_nothing()
-    //         .execute(&self.conn()?)?;
-
-    //     info!(%len, "Wrote POI cross check reports to database");
-    //     Ok(())
-    // }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

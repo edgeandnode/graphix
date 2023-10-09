@@ -38,5 +38,8 @@ tests = ["rand", "once_cell"]
 reqwest = { version = "0.11", features = ["blocking"] }
 
 [dev-dependencies]
-rand = { version = "0.8.4", features = ["small_rng"] }
+graphix-common = { path = ".", features = ["tests"] }
 once_cell = { version = "1.9.0" }
+quickcheck = "1"
+quickcheck_macros = "1"
+rand = { version = "0.8.4", features = ["small_rng"] }

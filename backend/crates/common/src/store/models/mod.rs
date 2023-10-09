@@ -1,27 +1,31 @@
-use super::schema::*;
-use crate::types;
+use async_graphql::SimpleObject;
 use chrono::NaiveDateTime;
-use diesel::{
-    backend, deserialize::FromSql, pg::Pg, sql_types::Jsonb, AsChangeset, AsExpression, FromSqlRow,
-    Insertable, Queryable,
-};
+use diesel::deserialize::FromSql;
+use diesel::pg::Pg;
+use diesel::sql_types::Jsonb;
+use diesel::{backend, AsChangeset, AsExpression, FromSqlRow, Insertable, Queryable};
 use serde::{Deserialize, Serialize};
 use types::BlockPointer;
 
+use super::schema::*;
+use crate::types;
+
 pub type IntId = i32;
 pub type BigIntId = i64;
+pub type SgDeploymentCid = String;
 
-#[derive(Queryable, Debug)]
-pub struct PoI {
+#[derive(Queryable, Serialize, Debug)]
+pub struct Poi {
     pub id: IntId,
     pub poi: Vec<u8>,
+    #[serde(skip)]
     pub created_at: NaiveDateTime,
     pub sg_deployment: SgDeployment,
     pub indexer: IndexerRow,
     pub block: Block,
 }
 
-impl PoI {
+impl Poi {
     pub fn poi_hex(&self) -> String {
         hex::encode(&self.poi)
     }
@@ -35,7 +39,7 @@ pub enum IndexerRef<'a> {
 
 #[derive(Insertable, Debug)]
 #[diesel(table_name = pois)]
-pub struct NewPoI {
+pub struct NewPoi {
     pub poi: Vec<u8>,
     pub created_at: NaiveDateTime,
     pub sg_deployment_id: IntId,
@@ -43,7 +47,7 @@ pub struct NewPoI {
     pub block_id: BigIntId,
 }
 
-pub trait WritablePoI {
+pub trait WritablePoi {
     fn deployment_cid(&self) -> &str;
     fn indexer_id(&self) -> &str;
     fn indexer_address(&self) -> Option<&[u8]>;
@@ -51,23 +55,7 @@ pub trait WritablePoI {
     fn proof_of_indexing(&self) -> &[u8];
 }
 
-#[derive(Insertable, Debug)]
-#[diesel(table_name = block_cache_entries)]
-pub struct NewBlockCacheEntry {
-    pub indexer_id: IntId,
-    pub block_id: BigIntId,
-    pub block_data: serde_json::Value,
-}
-
-#[derive(Insertable, Debug)]
-#[diesel(table_name = poi_divergence_bisect_reports)]
-pub struct NewCrossCheckReport {
-    pub poi1_id: IntId,
-    pub poi2_id: IntId,
-    pub divergence_block_id: BigIntId,
-}
-
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Debug, Serialize)]
 pub struct Block {
     pub(super) id: BigIntId,
     _network_id: IntId,
@@ -102,11 +90,12 @@ impl From<IndexerRow> for Indexer {
     }
 }
 
-#[derive(Debug, Queryable)]
+#[derive(Debug, Queryable, Serialize)]
 pub struct IndexerRow {
     pub id: IntId,
     pub name: Option<String>,
     pub address: Option<Vec<u8>>,
+    #[serde(skip)]
     pub created_at: NaiveDateTime,
 }
 
@@ -117,11 +106,19 @@ pub struct NewIndexer {
     pub name: Option<String>,
 }
 
-#[derive(Debug, Queryable)]
+#[derive(Debug, Queryable, Serialize, SimpleObject)]
+pub struct QueriedSgDeployment {
+    pub id: SgDeploymentCid,
+    pub name: Option<String>,
+    pub network_name: String,
+}
+
+#[derive(Debug, Queryable, Serialize)]
 pub struct SgDeployment {
     pub id: IntId,
     pub cid: String,
     pub network_id: IntId,
+    #[serde(skip)]
     pub created_at: NaiveDateTime,
 }
 
@@ -166,14 +163,4 @@ impl FromSql<Jsonb, Pg> for DivergingBlock {
         let value = <serde_json::Value as FromSql<Jsonb, Pg>>::from_sql(bytes)?;
         Ok(serde_json::from_value(value)?)
     }
-}
-
-#[derive(Debug, Insertable, Queryable)]
-#[diesel(table_name = poi_divergence_bisect_reports)]
-pub struct PoiDivergenceBisectReport {
-    pub id: String,
-    pub poi1_id: IntId,
-    pub poi2_id: IntId,
-    pub divergence_block_id: Option<BigIntId>,
-    pub created_at: NaiveDateTime,
 }

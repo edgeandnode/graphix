@@ -1,4 +1,4 @@
-FROM rust:latest AS chef 
+FROM rust:slim-bullseye AS chef 
 
 WORKDIR /app
 COPY rust-toolchain.toml .
@@ -18,6 +18,9 @@ FROM chef AS builder
 ARG CARGO_PROFILE=release
 
 COPY --from=planner /app/recipe.json recipe.json
+
+RUN	apt-get update && apt-get install -y libpq-dev ca-certificates pkg-config libssl-dev
+
 # Use cargo-chef to compile dependencies only - this will be cached by Docker.
 RUN cargo chef cook --profile $CARGO_PROFILE --recipe-path recipe.json --bin graphix-cross-checker
 # ... and then build the rest of the application.
@@ -29,12 +32,12 @@ RUN cargo build --profile $CARGO_PROFILE --bin graphix-cross-checker
 RUN cp target/release/graphix-cross-checker /usr/local/bin | true && \
 	cp target/debug/graphix-cross-checker /usr/local/bin | true
 
-FROM debian:bullseye-slim
+FROM debian:buster-slim
 
 WORKDIR /app
 
 RUN apt-get update && \
-	apt-get install -y libpq-dev ca-certificates && \
+	apt-get install -y libpq-dev ca-certificates libssl-dev && \
 	apt-get clean
 
 COPY --from=builder /usr/local/bin/graphix-cross-checker /usr/local/bin

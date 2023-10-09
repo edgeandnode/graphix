@@ -2,38 +2,23 @@
 
 databaseUrl: postgres://graphix:password@postgres-graphix:5432/graphix
 sources:
-  - type: indexer
-    name: testnet-indexer-03
-    urls:
-      status: https://testnet-indexer-03-europe-cent.thegraph.com/status
-  - type: indexer
-    name: ellipra
-    urls:
-      status: http://graph-testnet.ellipfra.net/status
+ # - type: networkSubgraph
+ #   endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-goerli
+ #   query: byAllocations
+ #   stakeThreshold: 0.0
+ #   limit: 1000
   - type: networkSubgraph
-    endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-goerli
+    endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-mainnet
     query: byAllocations
     stakeThreshold: 0.0
-    limit: 20 # Disabled for now
+    limit: 1000
   - type: networkSubgraph
     endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-arbitrum
     query: byAllocations
     stakeThreshold: 0.0
-    limit: 20
+    limit: 1000
   - type: networkSubgraph
     endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-arbitrum
     query: byStakedTokens
     stakeThreshold: 0.0
-    limit: 40
-  # - type: indexerByAddress
-  #   address: "0x56577167dcdd1a3de2e58d53fc2be0b622d82a7c"
-  # Example interceptors
-  # - id: testnet-indexer-03-interceptor
-  #   type: interceptor
-  #   target: testnet-indexer-03
-  #   poiByte: 255
-  # - id: testnet-indexer-03-interceptor2
-  #   type: interceptor
-  #   target: testnet-indexer-03
-  #   poiByte: 255
-
+    limit: 1000

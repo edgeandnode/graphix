@@ -1,15 +1,17 @@
 mod interceptor;
 mod real_indexer;
 
+use std::collections::HashMap;
+use std::fmt::Debug;
+use std::hash::Hash;
+use std::sync::Arc;
+
+use anyhow::anyhow;
+use async_trait::async_trait;
 pub use interceptor::IndexerInterceptor;
 pub use real_indexer::RealIndexer;
 
 use crate::types::{IndexingStatus, PoiRequest, ProofOfIndexing};
-use anyhow::anyhow;
-use async_trait::async_trait;
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::{fmt::Debug, hash::Hash};
 
 #[async_trait]
 pub trait Indexer: Send + Sync + Debug {
@@ -18,6 +20,8 @@ pub trait Indexer: Send + Sync + Debug {
     fn id(&self) -> &str;
 
     fn address(&self) -> Option<&[u8]>;
+
+    async fn ping(self: Arc<Self>) -> anyhow::Result<()>;
 
     async fn indexing_statuses(self: Arc<Self>) -> anyhow::Result<Vec<IndexingStatus>>;
 
@@ -30,26 +34,29 @@ pub trait Indexer: Send + Sync + Debug {
         self: Arc<Self>,
         request: PoiRequest,
     ) -> Result<ProofOfIndexing, anyhow::Error> {
-        let pois = self.proofs_of_indexing(vec![request]).await;
+        let pois = self.proofs_of_indexing(vec![request.clone()]).await;
         match pois.len() {
-            0 => return Err(anyhow!("no proof of indexing returned")),
+            0 => return Err(anyhow!("no proof of indexing returned {:?}", request)),
             1 => return Ok(pois.into_iter().next().unwrap()),
             _ => return Err(anyhow!("multiple proofs of indexing returned")),
         }
     }
 
+    /// Returns the cached Ethereum calls for the given block hash.
     async fn cached_eth_calls(
         self: Arc<Self>,
         network: &str,
         block_hash: &[u8],
     ) -> anyhow::Result<Vec<CachedEthereumCall>>;
 
+    /// Returns the block cache contents for the given block hash.
     async fn block_cache_contents(
         self: Arc<Self>,
         network: &str,
         block_hash: &[u8],
     ) -> anyhow::Result<Option<serde_json::Value>>;
 
+    /// Returns the entity changes for the given block number.
     async fn entity_changes(
         self: Arc<Self>,
         subgraph_id: &str,

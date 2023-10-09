@@ -1,6 +1,6 @@
-pub mod api_types;
 pub mod block_choice;
 pub mod config;
+pub mod graphql_api;
 mod indexer;
 pub mod network_subgraph;
 mod prometheus_metrics;
@@ -8,10 +8,10 @@ pub mod queries;
 pub mod store;
 mod types;
 
-#[cfg(any(test, feature = "tests"))]
-pub mod tests;
+#[cfg(feature = "tests")]
+pub mod test_utils;
 
-pub use prometheus_metrics::{PrometheusExporter, PrometheusMetrics};
+pub use prometheus_metrics::{metrics, PrometheusExporter, PrometheusMetrics};
 
 pub mod prelude {
     pub use super::config::*;

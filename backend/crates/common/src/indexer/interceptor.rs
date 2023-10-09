@@ -2,16 +2,16 @@
 
 use std::sync::Arc;
 
-use crate::indexer::Indexer;
-use crate::prelude::Bytes32;
-use crate::types::{IndexingStatus, PoiRequest, ProofOfIndexing};
 use async_trait::async_trait;
 
 use super::{CachedEthereumCall, EntityChanges};
+use crate::indexer::Indexer;
+use crate::prelude::Bytes32;
+use crate::types::{IndexingStatus, PoiRequest, ProofOfIndexing};
 
 /// Pretends to be an indexer by routing requests a
 /// [`RealIndexer`](crate::indexer::RealIndexer) and then intercepting the
-/// responses to generate diverging PoIs. The divergent pois will consist of a
+/// responses to generate diverging Pois. The divergent pois will consist of a
 /// repetition of `poi_byte`. Interceptors have no [`Indexer::address`].
 #[derive(Debug)]
 pub struct IndexerInterceptor {
@@ -39,6 +39,10 @@ impl Indexer for IndexerInterceptor {
 
     fn address(&self) -> Option<&[u8]> {
         None
+    }
+
+    async fn ping(self: Arc<Self>) -> anyhow::Result<()> {
+        self.target.clone().ping().await
     }
 
     async fn indexing_statuses(self: Arc<Self>) -> Result<Vec<IndexingStatus>, anyhow::Error> {

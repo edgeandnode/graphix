@@ -1,19 +1,19 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use anyhow::anyhow;
 use async_trait::async_trait;
 use graphql_client::{GraphQLQuery, Response};
 use reqwest::IntoUrl;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use tracing::*;
 
 use super::{CachedEthereumCall, EntityChanges, Indexer};
-use crate::{
-    config::IndexerUrls,
-    prelude::{IndexerConfig, WithIndexer},
-    prometheus_metrics::metrics,
-    types::{BlockPointer, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment},
-};
+use crate::config::IndexerUrls;
+use crate::prelude::{IndexerConfig, WithIndexer};
+use crate::prometheus_metrics::metrics;
+use crate::types::{BlockPointer, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment};
 
 const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
@@ -118,6 +118,12 @@ impl Indexer for RealIndexer {
         self.address.as_deref()
     }
 
+    async fn ping(self: Arc<Self>) -> anyhow::Result<()> {
+        let request = gql_types::Typename::build_query(gql_types::typename::Variables);
+        self.graphql_query(request).await?;
+        Ok(())
+    }
+
     async fn indexing_statuses(self: Arc<Self>) -> Result<Vec<IndexingStatus>, anyhow::Error> {
         let request =
             gql_types::IndexingStatuses::build_query(gql_types::indexing_statuses::Variables);
@@ -161,7 +167,7 @@ impl Indexer for RealIndexer {
             trace!(
                 indexer = %self.id(),
                 batch_size = requests.len(),
-                "Requesting public PoIs batch"
+                "Requesting public Pois batch"
             );
 
             let result = self.clone().proofs_of_indexing_batch(requests).await;
@@ -298,6 +304,16 @@ mod gql_types {
         }
         Ok(hex::decode(&s[2..])?)
     }
+
+    /// `__typename`
+    #[derive(GraphQLQuery)]
+    #[graphql(
+        schema_path = "graphql/indexer/schema.gql",
+        query_path = "graphql/indexer/queries/typename.gql",
+        response_derives = "Debug",
+        variables_derives = "Debug"
+    )]
+    pub struct Typename;
 
     /// Indexing Statuses
 

@@ -1,8 +1,9 @@
-use async_graphql::{EmptySubscription, Schema};
-use graphix_common::api_types::{MutationRoot, QueryRoot};
 use std::env;
 use std::fs::File;
 use std::io::*;
+
+use async_graphql::{EmptySubscription, Schema};
+use graphix_common::graphql_api::{MutationRoot, QueryRoot};
 
 fn main() -> std::io::Result<()> {
     // We're only interested in re-generating the API schema if build

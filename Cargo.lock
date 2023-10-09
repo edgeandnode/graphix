@@ -694,6 +694,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_logger"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a19187fea3ac7e84da7dacf48de0c45d63c6a76f9490dae389aead16c243fce3"
+dependencies = [
+ "log",
+ "regex",
+]
+
+[[package]]
 name = "errno"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -921,6 +931,7 @@ dependencies = [
  "async-graphql-warp",
  "clap",
  "graphix-common",
+ "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -940,12 +951,15 @@ dependencies = [
  "eventuals",
  "futures",
  "futures-retry",
+ "graphix-common",
  "graphql_client",
  "hex",
  "itertools",
  "once_cell",
  "prometheus",
  "prometheus_exporter",
+ "quickcheck",
+ "quickcheck_macros",
  "rand",
  "reqwest",
  "serde",
@@ -974,6 +988,7 @@ dependencies = [
  "once_cell",
  "prometheus_exporter",
  "rand",
+ "serde_json",
  "thiserror",
  "tokio",
  "tracing",
@@ -1913,6 +1928,28 @@ name = "protobuf"
 version = "2.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "106dd99e98437432fed6519dedecfade6a06a73bb7b2a1e019fdd2bee5778d94"
+
+[[package]]
+name = "quickcheck"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "588f6378e4dd99458b60ec275b4477add41ce4fa9f64dcba6f15adccb19b50d6"
+dependencies = [
+ "env_logger",
+ "log",
+ "rand",
+]
+
+[[package]]
+name = "quickcheck_macros"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b22a693222d716a9587786f37ac3f6b4faedb5b80c23914e7303ff5a1d8016e9"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
 
 [[package]]
 name = "quote"

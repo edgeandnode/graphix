@@ -1,0 +1,6 @@
+{
+  indexers(orderBy: stakedTokens) {
+    id
+    url
+  }
+}

@@ -1,37 +1,50 @@
-use async_graphql::{
-    http::{playground_source, GraphQLPlaygroundConfig},
-    Request,
-};
+use std::convert::Infallible;
+use std::future::Future;
+
+use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
+use async_graphql::Request;
 use async_graphql_warp::{self, GraphQLResponse};
 use clap::Parser;
-use graphix_common::{api_types as schema, store::Store};
-use std::convert::Infallible;
-use warp::{
-    http::{self, Method},
-    Filter,
-};
+use graphix_common::graphql_api::{self};
+use graphix_common::store::Store;
+use warp::http::{self, Method};
+use warp::Filter;
+
+#[derive(Parser, Debug)]
+pub struct CliOptions {
+    #[clap(long, default_value = "80", env = "GRAPHIX_PORT")]
+    pub port: u16,
+
+    #[clap(
+        long,
+        default_value = "postgresql://localhost:5432/graphix",
+        env = "GRAPHIX_DATABASE_URL"
+    )]
+    pub database_url: String,
+}
 
 #[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
+async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let cli_options = CliOptions::parse();
-    let store = Store::new(cli_options.database_url.as_str()).await?;
+    let server_fut = create_server(cli_options);
 
-    run_api_server(cli_options, store).await;
-
-    Ok(())
+    // Listen to requests forever.
+    Ok(server_fut.await?.await)
 }
 
-async fn run_api_server(options: CliOptions, store: Store) {
+async fn create_server(cli_options: CliOptions) -> anyhow::Result<impl Future<Output = ()>> {
+    let store = Store::new(cli_options.database_url.as_str()).await?;
+
     // GET / -> 200 OK
     let health_check_route = warp::path::end().map(|| format!("Ready to roll!"));
 
     // GraphQL API
-    let api_context = schema::ApiSchemaContext { store };
-    let api_schema = schema::api_schema(api_context);
+    let api_context = graphql_api::ApiSchemaContext { store };
+    let api_schema = graphql_api::api_schema(api_context);
     let api = async_graphql_warp::graphql(api_schema).and_then(
-        |(schema, request): (schema::ApiSchema, Request)| async move {
+        |(schema, request): (graphql_api::ApiSchema, Request)| async move {
             Ok::<_, Infallible>(GraphQLResponse::from(schema.execute(request).await))
         },
     );
@@ -59,22 +72,9 @@ async fn run_api_server(options: CliOptions, store: Store) {
         .or(graphql_playground_route)
         .or(graphql_route);
 
-    warp::serve(routes).run(([0, 0, 0, 0], options.port)).await;
+    Ok(warp::serve(routes).run(([0, 0, 0, 0], cli_options.port)))
 }
 
 fn init_tracing() {
     tracing_subscriber::fmt::init();
-}
-
-#[derive(Parser, Debug)]
-pub struct CliOptions {
-    #[clap(long, default_value = "80", env = "GRAPHIX_PORT")]
-    pub port: u16,
-
-    #[clap(
-        long,
-        default_value = "postgresql://localhost:5432/graphix",
-        env = "GRAPHIX_DATABASE_URL"
-    )]
-    pub database_url: String,
 }

@@ -1,13 +1,14 @@
+use std::fs::File;
+use std::path::Path;
+use std::sync::Arc;
+
 use reqwest::Url;
 use serde::{Deserialize, Deserializer};
-use std::{fs::File, path::Path, sync::Arc};
 use tracing::{info, warn};
 
-use crate::{
-    block_choice::BlockChoicePolicy,
-    indexer::{Indexer, IndexerInterceptor, RealIndexer},
-    network_subgraph::NetworkSubgraph,
-};
+use crate::block_choice::BlockChoicePolicy;
+use crate::indexer::{Indexer, IndexerInterceptor, RealIndexer};
+use crate::network_subgraph::NetworkSubgraph;
 
 /// A [`serde`]-compatible representation of Graphix's YAML configuration file.
 #[derive(Debug, Clone, Deserialize)]

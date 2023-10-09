@@ -1,0 +1,14 @@
+{
+  subgraphDeployments(
+    where: { indexerAllocations_: { status_in: [Active] } }
+    orderBy: stakedTokens
+  ) {
+    ipfsHash
+    indexerAllocations(orderBy: allocatedTokens) {
+      indexer {
+        id
+        url
+      }
+    }
+  }
+}

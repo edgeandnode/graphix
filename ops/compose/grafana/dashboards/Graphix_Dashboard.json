@@ -24,7 +24,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -83,7 +82,7 @@
         },
         "showHeader": true
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "9.5.1",
       "targets": [
         {
           "aliasBy": "",
@@ -98,7 +97,7 @@
           },
           "endTimePath": "endTime",
           "groupBy": "",
-          "queryText": "query {\n deployments { id }\n}",
+          "queryText": "query {\n deployments(filter: {}) { id\n networkName\n name\n   }\n}",
           "refId": "A",
           "timePath": ""
         }
@@ -342,7 +341,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "9.5.1",
       "targets": [
         {
           "aliasBy": "",
@@ -358,7 +357,7 @@
           "endTimePath": "endTime",
           "groupBy": "",
           "hide": false,
-          "queryText": "query {\n indexers {\n id\n }\n}",
+          "queryText": "query {\n indexers(filter: {}) {\n id\n }\n}",
           "refId": "A",
           "timePath": ""
         }
@@ -484,13 +483,13 @@
     "list": []
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Graphix Dashboard",
   "uid": "dee4d09d-0dbc-4af2-b4a2-2fcb9ecf35cc",
-  "version": 1,
+  "version": 5,
   "weekStart": ""
 }
