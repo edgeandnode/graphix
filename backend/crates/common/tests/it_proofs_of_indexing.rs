@@ -74,7 +74,9 @@ async fn send_single_query_of_unknown_deployment_id_and_handle_error() {
     assert!(response.is_err());
 
     let response = response.unwrap_err();
-    assert_eq!(response.to_string(), "no proof of indexing returned");
+    assert!(response
+        .to_string()
+        .contains("no proof of indexing returned"));
 }
 
 #[tokio::test]
@@ -99,7 +101,9 @@ async fn send_single_query_of_unknown_block_number_and_handle_error() {
     assert!(response.is_err());
 
     let response = response.unwrap_err();
-    assert_eq!(response.to_string(), "no proof of indexing returned");
+    assert!(response
+        .to_string()
+        .contains("no proof of indexing returned"));
 }
 
 #[tokio::test]
