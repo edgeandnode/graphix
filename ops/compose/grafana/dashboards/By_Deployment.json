@@ -102,7 +102,7 @@
           "endTimePath": "endTime",
           "groupBy": "",
           "hide": false,
-          "queryText": "{\n liveProofsOfIndexing(filter: { deployments: [\"$deployment\"] }) {\n hash\n indexer {\n id\n }\n }\n}",
+          "queryText": "{\n liveProofsOfIndexing(request: { deployments: [\"$deployment\"] }) {\n hash\n indexer {\n id\n }\n }\n}",
           "refId": "A",
           "timePath": ""
         }
@@ -186,7 +186,7 @@
         },
         "showHeader": true
       },
-      "pluginVersion": "9.5.1",
+      "pluginVersion": "9.5.2",
       "targets": [
         {
           "aliasBy": "",
@@ -201,7 +201,7 @@
           },
           "endTimePath": "endTime",
           "groupBy": "",
-          "queryText": "{\n liveProofsOfIndexing(filter: { deployments: [\"$deployment\"] }) {\n indexer {\n id\n }\n block {\n number\n }\n hash\n }\n}",
+          "queryText": "{\n liveProofsOfIndexing(request: { deployments: [\"$deployment\"] }) {\n indexer {\n id\n }\n block {\n number\n }\n hash\n }\n}",
           "refId": "A",
           "timePath": ""
         }
@@ -247,6 +247,6 @@
   "timezone": "",
   "title": "By Deployment",
   "uid": "c76a3ad9-175c-4ac7-874b-901cd316a2a3",
-  "version": 13,
+  "version": 14,
   "weekStart": ""
 }
