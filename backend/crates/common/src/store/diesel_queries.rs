@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use chrono::Utc;
 use diesel::prelude::*;
 use diesel::sql_types;
@@ -153,41 +155,72 @@ pub(super) fn write_pois(
     pois: &[impl WritablePoi],
     live: PoiLiveness,
 ) -> anyhow::Result<()> {
+    use diesel::insert_into;
     use schema::pois;
 
     let len = pois.len();
 
+    // Group PoIs by deployment
+    let mut grouped_pois: BTreeMap<_, Vec<_>> = BTreeMap::new();
     for poi in pois {
-        let sg_deployment_id = get_or_insert_deployment(conn, poi.deployment_cid())?;
-        let indexer_id = get_or_insert_indexer(conn, poi.indexer_id(), poi.indexer_address())?;
-        let block_id = get_or_insert_block(conn, poi.block())?;
+        grouped_pois
+            .entry(poi.deployment_cid())
+            .or_insert_with(Vec::new)
+            .push(poi);
+    }
 
-        let new_poi = NewPoi {
-            sg_deployment_id,
-            indexer_id,
-            block_id,
-            poi: poi.proof_of_indexing().to_vec(),
-            created_at: Utc::now().naive_utc(),
-        };
+    for (deployment, poi_group) in grouped_pois {
+        let sg_deployment_id = get_or_insert_deployment(conn, deployment)?;
+        let block_ptr = poi_group[0].block();
 
-        let poi_id = diesel::insert_into(pois::table)
-            .values(new_poi)
-            .returning(pois::id)
-            .on_conflict_do_nothing()
-            .get_result::<i32>(conn)?;
+        // Make sure all PoIs have the same block ptr
+        if !poi_group.iter().all(|poi| poi.block() == block_ptr) {
+            return Err(anyhow::anyhow!(
+                "All PoIs for a given deployment must have the same block"
+            ));
+        }
+
+        let block_id = get_or_insert_block(conn, block_ptr)?;
+
+        let new_pois: Vec<_> = poi_group
+            .iter()
+            .map(|poi| {
+                let indexer_id =
+                    get_or_insert_indexer(conn, poi.indexer_id(), poi.indexer_address())?;
+
+                Ok(NewPoi {
+                    sg_deployment_id,
+                    indexer_id,
+                    block_id,
+                    poi: poi.proof_of_indexing().to_vec(),
+                    created_at: Utc::now().naive_utc(),
+                })
+            })
+            .collect::<anyhow::Result<_>>()?;
+
+        // Insert all PoIs for this deployment
+        let id_and_indexer: Vec<(i32, i32)> = insert_into(pois::table)
+            .values(&new_pois)
+            .returning((pois::id, pois::indexer_id))
+            .get_results(conn)?;
 
         if live == PoiLiveness::Live {
-            let value = NewLivePoi {
-                poi_id,
-                sg_deployment_id,
-                indexer_id,
-            };
-            diesel::insert_into(live_pois::table)
-                .values(&value)
-                .on_conflict((live_pois::sg_deployment_id, live_pois::indexer_id))
-                .do_update()
-                .set(&value)
-                .execute(conn)?;
+            // Clear any live pois for this deployment
+            diesel::delete(
+                live_pois::table.filter(live_pois::sg_deployment_id.eq(sg_deployment_id)),
+            )
+            .execute(conn)?;
+
+            for (poi_id, indexer_id) in id_and_indexer {
+                let value = NewLivePoi {
+                    poi_id,
+                    sg_deployment_id,
+                    indexer_id,
+                };
+                diesel::insert_into(live_pois::table)
+                    .values(&value)
+                    .execute(conn)?;
+            }
         }
     }
 

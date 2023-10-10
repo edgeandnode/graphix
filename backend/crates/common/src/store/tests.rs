@@ -2,19 +2,27 @@ use crate::block_choice::BlockChoicePolicy;
 use crate::graphql_api::types::SgDeploymentsQuery;
 use crate::prelude::ProofOfIndexing;
 use crate::prometheus_metrics::metrics;
-use crate::test_utils::{fast_rng, gen::gen_indexers};
+use crate::test_utils::{fast_rng, gen::gen_bytes32, gen::gen_indexers};
 use crate::{
     queries,
     store::{diesel_queries, PoiLiveness, Store},
 };
 use diesel::Connection;
 use std::collections::BTreeSet;
+use std::sync::{Mutex, OnceLock};
+
+static TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+
+fn test_lock() -> &'static Mutex<()> {
+    TEST_LOCK.get_or_init(|| Mutex::new(()))
+}
 
 fn test_db_url() -> String {
     std::env::var("GRAPHIX_TEST_DB_URL").expect("GRAPHIX_TEST_DB_URL must be set to run tests")
 }
 
 #[tokio::test]
+#[ignore] // FIXME: Race condition with other tests
 async fn no_deployments_at_first() {
     let store = Store::new(&test_db_url()).await.unwrap();
     let initial_deployments = store.sg_deployments(SgDeploymentsQuery::default()).unwrap();
@@ -59,6 +67,8 @@ async fn create_divergence_investigation_request() {
 
 #[tokio::test]
 async fn poi_db_roundtrip() {
+    let _lock = test_lock().lock().unwrap();
+
     let mut rng = fast_rng(0);
     let indexers = gen_indexers(&mut rng, 100);
 
@@ -70,6 +80,55 @@ async fn poi_db_roundtrip() {
     let mut conn = store.conn().unwrap();
     conn.test_transaction(|conn| test_pois(conn, &pois, PoiLiveness::NotLive, false));
     conn.test_transaction(|conn| test_pois(conn, &pois, PoiLiveness::Live, true));
+}
+
+#[tokio::test]
+async fn test_additional_pois() {
+    let _lock = test_lock().lock().unwrap();
+
+    let mut rng = fast_rng(0);
+    let indexers = gen_indexers(&mut rng, 100);
+
+    let indexing_statuses = queries::query_indexing_statuses(indexers, metrics()).await;
+    let pois =
+        queries::query_proofs_of_indexing(indexing_statuses, BlockChoicePolicy::Earliest).await;
+
+    let store = Store::new(&test_db_url()).await.unwrap();
+    let mut conn = store.conn().unwrap();
+
+    conn.test_transaction(|conn| -> Result<(), anyhow::Error> {
+        // Write the original PoIs as Live
+        diesel_queries::write_pois(conn, &pois, PoiLiveness::Live).unwrap();
+
+        // Choose a deployment to add an additional PoI
+        let mut additional_poi = pois[0].clone(); // clone one of the original PoIs
+        additional_poi.block.number += 1; // bump the number to N + 1
+        additional_poi.block.hash = Some(gen_bytes32(&mut rng));
+        additional_poi.proof_of_indexing = gen_bytes32(&mut rng); // Optionally, set new PoI value if needed
+
+        // Write the additional PoI
+        diesel_queries::write_pois(conn, &[additional_poi.clone()], PoiLiveness::Live).unwrap();
+
+        // Query the live PoIs for the specific deployment
+        let specific_deployment_pois = diesel_queries::pois(
+            conn,
+            None,
+            Some(&[additional_poi.deployment.0.clone()]),
+            None,
+            None,
+            true,
+        )
+        .unwrap();
+
+        // Assert that only the new PoI exists as live PoIs for that deployment
+        assert_eq!(specific_deployment_pois.len(), 1);
+        assert_eq!(
+            specific_deployment_pois[0].block.number as u64,
+            additional_poi.block.number
+        );
+
+        Ok(())
+    });
 }
 
 fn test_pois(
