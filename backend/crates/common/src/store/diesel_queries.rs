@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use chrono::Utc;
 use diesel::prelude::*;
 use diesel::sql_types;
@@ -6,6 +8,7 @@ use tracing::info;
 use super::models::WritablePoi;
 use super::PoiLiveness;
 use crate::graphql_api::types::BlockRangeInput;
+use crate::prelude::BlockPointer;
 use crate::store::models::{
     self, IndexerRow, NewIndexer, NewLivePoi, NewPoi, NewSgDeployment, SgDeployment,
 };
@@ -152,71 +155,105 @@ pub(super) fn write_pois(
     pois: &[impl WritablePoi],
     live: PoiLiveness,
 ) -> anyhow::Result<()> {
-    use schema::{blocks, pois};
+    use diesel::insert_into;
+    use schema::pois;
 
     let len = pois.len();
 
+    // Group PoIs by deployment
+    let mut grouped_pois: BTreeMap<_, Vec<_>> = BTreeMap::new();
     for poi in pois {
-        let sg_deployment_id = get_or_insert_deployment(conn, poi.deployment_cid())?;
+        grouped_pois
+            .entry(poi.deployment_cid())
+            .or_insert_with(Vec::new)
+            .push(poi);
+    }
 
-        let indexer_id = get_or_insert_indexer(conn, poi.indexer_id(), poi.indexer_address())?;
+    for (deployment, poi_group) in grouped_pois {
+        let sg_deployment_id = get_or_insert_deployment(conn, deployment)?;
+        let block_ptr = poi_group[0].block();
 
-        let block_id = {
-            // First, attempt to find the existing block by hash
-            // TODO: also filter by network to be extra safe
-            let existing_block: Option<models::Block> = blocks::table
-                .filter(blocks::hash.eq(&poi.block().hash.unwrap().0.as_slice()))
-                .get_result(conn)
-                .optional()?;
+        // Make sure all PoIs have the same block ptr
+        if !poi_group.iter().all(|poi| poi.block() == block_ptr) {
+            return Err(anyhow::anyhow!(
+                "All PoIs for a given deployment must have the same block"
+            ));
+        }
 
-            if let Some(existing_block) = existing_block {
-                // If the block exists, use its id
-                existing_block.id
-            } else {
-                // If the block doesn't exist, insert a new one and return its id
-                let new_block = models::NewBlock {
-                    number: poi.block().number as i64,
-                    hash: poi.block().hash.unwrap().0.to_vec(),
-                    network_id: 1, // Network assumed to be mainnet, see also: hardcoded-mainnet,
-                };
-                diesel::insert_into(blocks::table)
-                    .values(&new_block)
-                    .returning(blocks::id)
-                    .get_result(conn)?
-            }
-        };
+        let block_id = get_or_insert_block(conn, block_ptr)?;
 
-        let new_poi = NewPoi {
-            sg_deployment_id,
-            indexer_id,
-            block_id,
-            poi: poi.proof_of_indexing().to_vec(),
-            created_at: Utc::now().naive_utc(),
-        };
+        let new_pois: Vec<_> = poi_group
+            .iter()
+            .map(|poi| {
+                let indexer_id =
+                    get_or_insert_indexer(conn, poi.indexer_id(), poi.indexer_address())?;
 
-        let poi_id = diesel::insert_into(pois::table)
-            .values(new_poi)
-            .returning(pois::id)
-            .on_conflict_do_nothing()
-            .get_result::<i32>(conn)?;
+                Ok(NewPoi {
+                    sg_deployment_id,
+                    indexer_id,
+                    block_id,
+                    poi: poi.proof_of_indexing().to_vec(),
+                    created_at: Utc::now().naive_utc(),
+                })
+            })
+            .collect::<anyhow::Result<_>>()?;
+
+        // Insert all PoIs for this deployment
+        let id_and_indexer: Vec<(i32, i32)> = insert_into(pois::table)
+            .values(&new_pois)
+            .returning((pois::id, pois::indexer_id))
+            .get_results(conn)?;
 
         if live == PoiLiveness::Live {
-            let value = NewLivePoi {
-                poi_id,
-                sg_deployment_id,
-                indexer_id,
-            };
-            diesel::insert_into(live_pois::table)
-                .values(&value)
-                .on_conflict((live_pois::sg_deployment_id, live_pois::indexer_id))
-                .do_update()
-                .set(&value)
-                .execute(conn)?;
+            // Clear any live pois for this deployment
+            diesel::delete(
+                live_pois::table.filter(live_pois::sg_deployment_id.eq(sg_deployment_id)),
+            )
+            .execute(conn)?;
+
+            for (poi_id, indexer_id) in id_and_indexer {
+                let value = NewLivePoi {
+                    poi_id,
+                    sg_deployment_id,
+                    indexer_id,
+                };
+                diesel::insert_into(live_pois::table)
+                    .values(&value)
+                    .execute(conn)?;
+            }
         }
     }
 
     info!(%len, "Wrote POIs to database");
     Ok(())
+}
+
+fn get_or_insert_block(conn: &mut PgConnection, block: BlockPointer) -> anyhow::Result<i64> {
+    use schema::blocks;
+
+    // First, attempt to find the existing block by hash
+    // TODO: also filter by network to be extra safe
+    let existing_block: Option<models::Block> = blocks::table
+        .filter(blocks::hash.eq(&block.hash.unwrap().0.as_slice()))
+        .get_result(conn)
+        .optional()?;
+
+    if let Some(existing_block) = existing_block {
+        // If the block exists, return its id
+        Ok(existing_block.id)
+    } else {
+        // If the block doesn't exist, insert a new one and return its id
+        let new_block = models::NewBlock {
+            number: block.number as i64,
+            hash: block.hash.unwrap().0.to_vec(),
+            network_id: 1, // Network assumed to be mainnet, see also: hardcoded-mainnet
+        };
+        let block_id = diesel::insert_into(blocks::table)
+            .values(&new_block)
+            .returning(blocks::id)
+            .get_result(conn)?;
+        Ok(block_id)
+    }
 }
 
 fn get_or_insert_indexer(
