@@ -9,6 +9,8 @@ use clap::Parser;
 use graphix_common::graphql_api::{self};
 use graphix_common::store::Store;
 use warp::http::{self, Method};
+use warp::reject::Rejection;
+use warp::reply::Reply;
 use warp::Filter;
 
 #[derive(Parser, Debug)]
@@ -73,6 +75,35 @@ async fn create_server(cli_options: CliOptions) -> anyhow::Result<impl Future<Ou
         .and(warp::path("graphql").and(warp::path::end()))
         .and(graphql_playground);
 
+    let bearer_token_validator = warp::any().and(
+        warp::header::<String>("authorization")
+            .and_then(|token: String| validate_authorization_header(&cli_options, token)),
+    );
+
+    let admin_api_context = graphql_api::admin::ApiSchemaContext {
+        store: store.clone(),
+    };
+    let admin_api_schema = graphql_api::admin::api_schema(admin_api_context);
+    let admin_api = async_graphql_warp::graphql(admin_api_schema).and_then(
+        |(schema, request): (graphql_api::admin::ApiSchema, Request)| async move {
+            Ok::<_, Infallible>(GraphQLResponse::from(schema.execute(request).await))
+        },
+    );
+
+    let routes = warp::get()
+        .and(health_check_route)
+        .or(graphql_playground_route)
+        .or(graphql_route)
+        .or(admin_graphql_route(&cli_options, store).await);
+
+    let socket_addr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, cli_options.port);
+    Ok(warp::serve(routes).run(socket_addr))
+}
+
+async fn admin_graphql_route(
+    cli_options: &CliOptions,
+    store: Store,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let admin_api_context = graphql_api::admin::ApiSchemaContext { store };
     let admin_api_schema = graphql_api::admin::api_schema(admin_api_context);
     let admin_api = async_graphql_warp::graphql(admin_api_schema).and_then(
@@ -80,20 +111,52 @@ async fn create_server(cli_options: CliOptions) -> anyhow::Result<impl Future<Ou
             Ok::<_, Infallible>(GraphQLResponse::from(schema.execute(request).await))
         },
     );
-    let admin_graphql_route = warp::any()
-        .and(warp::path("admin/graphql").and(warp::path::end()))
+
+    let bearer_token_filter = warp::any()
+        .and(warp::header::<String>("authorization"))
+        .untuple_one()
+        //.and_then(|token: String| validate_authorization_header(&cli_options, token))
+        //.recover(handle_bad_authorization_header);
+        ;
+
+    warp::any()
+        .and(warp::path("admin"))
+        .and(bearer_token_filter)
+        .and(warp::path("graphql"))
+        .and(warp::path::end())
         .and(admin_api)
-        .with(cors_filter());
-
-    let routes = warp::get()
-        .and(health_check_route)
-        .or(graphql_playground_route)
-        .or(graphql_route)
-        .or(admin_graphql_route);
-
-    let socket_addr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, cli_options.port);
-    Ok(warp::serve(routes).run(socket_addr))
 }
+
+async fn validate_authorization_header(
+    config: &CliOptions,
+    auth_header: String,
+) -> Result<(), Rejection> {
+    let bearer_token_value = auth_header.trim().strip_prefix("Bearer ").unwrap();
+    if bearer_token_value != config.admin_bearer_token {
+        return Err(warp::reject::custom(InvalidAuthorizationHeader));
+    }
+
+    Ok(())
+}
+
+async fn handle_bad_authorization_header(err: Rejection) -> Result<impl Reply, Infallible> {
+    if let Some(InvalidAuthorizationHeader) = err.find() {
+        return Ok(warp::reply::with_status(
+            "Invalid authorization header",
+            http::StatusCode::UNAUTHORIZED,
+        ));
+    } else {
+        Ok(warp::reply::with_status(
+            "Internal server error",
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        ))
+    }
+}
+
+#[derive(Debug)]
+struct InvalidAuthorizationHeader;
+
+impl warp::reject::Reject for InvalidAuthorizationHeader {}
 
 fn cors_filter() -> warp::cors::Builder {
     warp::cors()

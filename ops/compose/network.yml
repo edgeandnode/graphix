@@ -67,6 +67,7 @@ services:
         condition: service_healthy
     environment:
       RUST_LOG: graphix=debug
+      GRAPHIX_ADMIN_BEARER_TOKEN: jhnfwuFW3S7TRpmLhzKryB8RhqQDMsoe
     volumes:
       - ./graphix/:/config/
     command:
