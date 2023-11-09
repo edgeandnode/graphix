@@ -102,7 +102,7 @@
           "endTimePath": "endTime",
           "groupBy": "",
           "hide": false,
-          "queryText": "{\n liveProofsOfIndexing(request: { deployments: [\"$deployment\"] }) {\n hash\n indexer {\n id\n }\n }\n}",
+          "queryText": "{\n liveProofsOfIndexing(filter: { deployments: [\"$deployment\"] }) {\n hash\n indexer {\n id\n }\n }\n}",
           "refId": "A",
           "timePath": ""
         }
@@ -201,7 +201,7 @@
           },
           "endTimePath": "endTime",
           "groupBy": "",
-          "queryText": "{\n liveProofsOfIndexing(request: { deployments: [\"$deployment\"] }) {\n indexer {\n id\n }\n block {\n number\n }\n hash\n }\n}",
+          "queryText": "{\n liveProofsOfIndexing(filter: { deployments: [\"$deployment\"] }) {\n indexer {\n id\n }\n block {\n number\n }\n hash\n }\n}",
           "refId": "A",
           "timePath": ""
         }
