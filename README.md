@@ -107,6 +107,38 @@ The PostgreSQL instances for each graph-node can be accesses using the `psql` CL
 - **graph-node-2** - ```shpsql -h 127.0.0.1 -p 5437 -d graph-node-2 -U graph-node-2```
   - (password = password)
 
+## Configuration
+
+The Graphix cross-checker service binary accepts a single flag, `--config`, which points to a YAML configuration file. This configuration file will determine where and how Graphix sources its data to compare PoIs and query network statistics.
+
+At the top-level, these are the supported configuration values:
+
+- `databaseUrl: <string>` (mandatory). The URL of the PostgreSQL database to use
+for storing POIs and all other Graphix data.
+- `prometheusPort: <int>` (optional, default value is 9184). The port on which Prometheus metrics are exposed on the endpoint `/metrics`.
+- `pollingPeriodInSeconds: <int>` (optional, default value is 2 minutes). Graphix queries PoIs and indexing statuses in a continuous loop; this value determines how long Graphix waits between each loop. You should set this value based on how fresh you need your data to be, and how many queries you expect the checked indexers to be able to handle.
+- `blockChoicePolicy: 'earliest' | 'maxSyncedBlocks'` (optional, default value is `maxSyncedBlocks`). When comparing PoIs across indexers, this policy value will determine how the block height at which PoIs are compared. `earliest` will choose the most recent block that is shared by all indexers, which maximizes the number of PoIs comparisons, while `maxSyncedBlocks` is a smart comparison policy which balances between freshness and amount of comparisons/indexers.
+- `sources: <list of configuration sources>` (mandatory). This determines the sources of data that Graphix will use to compare PoIs and query network statistics. See the next section for more details.
+
+### Configuration sources
+
+Configuration sources are expressed as a list of objects, the kind of which is specified through `kind: <string>`. The following kinds are supported:
+
+- `kind: 'indexer'`,
+- `kind: 'indexerByAddress'`,
+- `kind: 'interceptor'`,
+- `kind: 'networkSubgraph'`.
+
+Both `indexer` and `indexerByAddress` as configuration sources add a specific indexer to the indexer pool that Graphix uses to compare PoIs. If you run an indexer that you wish to monitor for PoI correctness, for example, any of these two configuration options will make sure that Graphix includes your indexer in its comparisons. As for the difference between the two, `indexer` specifies the indexer by its index node GraphQL URL, while `indexerByAddress` specifies the indexer by its address which is then queried from the network subgraph.
+
+`interceptor` is only used for mocking and testing, and it shouldn't be used in production environments.
+
+`networkSubgraph` is by far the most powerful configuration source. Instead of sourcing a single indexer like `indexer` and `indexerByAddress`, `networkSubgraph` will query the given network subgraph, and list all indexers found through that subgraph. This is the easiest way to aggregate data from a large subset of all active indexers on the network.
+
+Each of these configuration sources has its own set of configuration values. For more information, you can take a look at these files in this repository:
+- `ops/compose/graphix/network.yml`, which is the configuration file used by the local `docker-compose` setup.
+- The configuration parsing code: `backend/crates/common/src/config.rs`.
+
 ## Implementation Status
 
 - [ ] Mode configuration files
