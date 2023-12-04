@@ -57,7 +57,7 @@ pub async fn query_indexing_statuses(
                     .unwrap()
                     .inc();
 
-                warn!(
+                debug!(
                     indexer_id = %indexer.id(),
                     %error,
                     "Failed to query indexing statuses"
