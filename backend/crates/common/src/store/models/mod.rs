@@ -106,10 +106,14 @@ pub struct NewIndexer {
     pub name: Option<String>,
 }
 
+/// A subgraph deployment that is monitored by Graphix.
 #[derive(Debug, Queryable, Serialize, SimpleObject)]
 pub struct QueriedSgDeployment {
+    /// IPFS CID of the subgraph deployment.
     pub id: SgDeploymentCid,
+    /// Human-readable name of the subgraph deployment, if present.
     pub name: Option<String>,
+    /// Network name of the subgraph deployment.
     pub network_name: String,
 }
 
