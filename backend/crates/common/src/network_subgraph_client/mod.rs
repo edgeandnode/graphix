@@ -24,11 +24,11 @@ pub struct NetworkSubgraphClient {
 
 impl NetworkSubgraphClient {
     /// Creates a new [`NetworkSubgraphClient`] with the given endpoint.
-    pub fn new(endpoint: String) -> Self {
+    pub fn new(endpoint: impl ToString) -> Self {
         const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 
         Self {
-            endpoint,
+            endpoint: endpoint.to_string(),
             timeout: DEFAULT_TIMEOUT,
             client: reqwest::Client::new(),
         }
@@ -86,6 +86,8 @@ impl NetworkSubgraphClient {
         Ok(indexers)
     }
 
+    /// Instantiates a [`RealIndexer`] from the indexer with the given address,
+    /// querying the necessary information from the network subgraph.
     pub async fn indexer_by_address(
         &self,
         address: &[u8],
@@ -127,8 +129,10 @@ impl NetworkSubgraphClient {
         Ok(indexer)
     }
 
-    // The `curation_threshold` is denominated in GRT.
-    pub async fn subgraph_deployments(&self) -> anyhow::Result<Vec<SubgraphDeployment>> {
+    /// Returns all subgraph deployments.
+    pub async fn subgraph_deployments(
+        &self,
+    ) -> anyhow::Result<Vec<SubgraphDeploymentWithAllocations>> {
         let response_data: GraphqlResponseSgDeployments = self
             .graphql_query_no_errors(
                 queries::DEPLOYMENTS_QUERY,
@@ -140,6 +144,9 @@ impl NetworkSubgraphClient {
         Ok(response_data.subgraph_deployments)
     }
 
+    /// A wrapper around [`NetworkSubgraphClient::graphql_query`] that requires
+    /// no errors in the response, and deserializes the response data into the
+    /// given type.
     async fn graphql_query_no_errors<T: DeserializeOwned>(
         &self,
         query: impl ToString,
@@ -159,7 +166,8 @@ impl NetworkSubgraphClient {
         Ok(serde_json::from_value(response_data)?)
     }
 
-    async fn graphql_query(
+    /// Sends a generic GraphQL query to the network subgraph.
+    pub async fn graphql_query(
         &self,
         query: impl ToString,
         variables: Vec<(String, serde_json::Value)>,
@@ -206,16 +214,19 @@ struct GraphqlRequest {
     variables: BTreeMap<String, serde_json::Value>,
 }
 
+/// A generic GraphQL response.
 #[derive(Deserialize)]
-struct GraphqlResponse {
-    data: Option<serde_json::Value>,
-    errors: Option<Vec<serde_json::Value>>,
+pub struct GraphqlResponse {
+    /// The response data.
+    pub data: Option<serde_json::Value>,
+    /// The response error data.
+    pub errors: Option<Vec<serde_json::Value>>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GraphqlResponseSgDeployments {
-    subgraph_deployments: Vec<SubgraphDeployment>,
+    subgraph_deployments: Vec<SubgraphDeploymentWithAllocations>,
 }
 
 #[derive(Deserialize)]
@@ -226,7 +237,7 @@ struct GraphqlResponseTopIndexers {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct SubgraphDeployment {
+pub struct SubgraphDeploymentWithAllocations {
     pub ipfs_hash: String,
     pub indexer_allocations: Vec<IndexerAllocation>,
 }
@@ -255,9 +266,19 @@ mod tests {
 
     fn mainnet_network_subgraph() -> NetworkSubgraphClient {
         NetworkSubgraphClient::new(
-            "https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-mainnet"
-                .to_string(),
+            "https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-mainnet",
         )
+    }
+
+    #[tokio::test]
+    async fn short_timeout_always_fails() {
+        // We should never be able to get a response back under 1ms. If we do,
+        // it means the timeout logic is broken.
+        let network_sg = mainnet_network_subgraph().with_timeout(Duration::from_millis(1));
+        assert!(matches!(
+            network_sg.indexers_by_staked_tokens().await,
+            Err(_)
+        ));
     }
 
     #[tokio::test]
