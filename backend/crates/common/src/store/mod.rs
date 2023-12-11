@@ -37,7 +37,7 @@ pub struct Store {
 }
 
 impl Store {
-    /// Connects to the database and runs migrations.
+    /// Connects to the database and runs all pending migrations.
     pub async fn new(db_url: &str) -> anyhow::Result<Self> {
         info!("Initializing database connection pool");
         let manager = r2d2::ConnectionManager::<PgConnection>::new(db_url);
@@ -51,6 +51,8 @@ impl Store {
         let mut conn = self.pool.get()?;
 
         // Get a lock for running migrations. Blocks until we get the lock.
+        // We need this because different Graphix instances may attempt
+        // to run migrations concurrently (that's a big no-no).
         diesel::sql_query("select pg_advisory_lock(1)").execute(&mut conn)?;
         info!("Run database migrations");
         conn.run_pending_migrations(MIGRATIONS)

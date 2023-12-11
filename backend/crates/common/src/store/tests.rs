@@ -1,7 +1,9 @@
 use std::collections::BTreeSet;
-use std::sync::{Mutex, OnceLock};
+use std::ops::Deref;
 
 use diesel::Connection;
+use testcontainers::clients::Cli;
+use testcontainers::Container;
 
 use crate::block_choice::BlockChoicePolicy;
 use crate::graphql_api::types::SgDeploymentsQuery;
@@ -12,20 +14,41 @@ use crate::store::{diesel_queries, PoiLiveness, Store};
 use crate::test_utils::fast_rng;
 use crate::test_utils::gen::{gen_bytes32, gen_indexers};
 
-static TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-
-fn test_lock() -> &'static Mutex<()> {
-    TEST_LOCK.get_or_init(|| Mutex::new(()))
+pub struct EmptyStoreForTesting<'a> {
+    _container: Container<'a, testcontainers_modules::postgres::Postgres>,
+    store: Store,
 }
 
-fn test_db_url() -> String {
-    std::env::var("GRAPHIX_TEST_DB_URL").expect("GRAPHIX_TEST_DB_URL must be set to run tests")
+impl<'a> EmptyStoreForTesting<'a> {
+    pub async fn new(docker_client: &'a Cli) -> anyhow::Result<EmptyStoreForTesting<'a>> {
+        use testcontainers_modules::postgres::Postgres;
+
+        let container = docker_client.run(Postgres::default());
+        let connection_string = &format!(
+            "postgres://postgres:postgres@127.0.0.1:{}/postgres",
+            container.get_host_port_ipv4(5432)
+        );
+        let store = Store::new(connection_string).await?;
+        Ok(Self {
+            _container: container,
+            store,
+        })
+    }
+}
+
+impl<'a> Deref for EmptyStoreForTesting<'a> {
+    type Target = Store;
+
+    fn deref(&self) -> &Self::Target {
+        &self.store
+    }
 }
 
 #[tokio::test]
 #[ignore] // FIXME: Race condition with other tests
 async fn no_deployments_at_first() {
-    let store = Store::new(&test_db_url()).await.unwrap();
+    let docker_cli = Cli::default();
+    let store = EmptyStoreForTesting::new(&docker_cli).await.unwrap();
     let initial_deployments = store.sg_deployments(SgDeploymentsQuery::default()).unwrap();
     assert!(initial_deployments.is_empty());
 }
@@ -33,7 +56,8 @@ async fn no_deployments_at_first() {
 #[tokio::test]
 #[should_panic] // FIXME
 async fn deployments_with_name() {
-    let store = Store::new(&test_db_url()).await.unwrap();
+    let docker_cli = Cli::default();
+    let store = EmptyStoreForTesting::new(&docker_cli).await.unwrap();
 
     let ipfs_cid1 = "QmNY7gDNXHECV8SXoEY7hbfg4BX1aDMxTBDiFuG4huaSGA";
     let ipfs_cid2 = "QmYzsCjrVwwXtdsNm3PZVNziLGmb9o513GUzkq5wwhgXDT";
@@ -54,7 +78,9 @@ async fn deployments_with_name() {
 
 #[tokio::test]
 async fn create_divergence_investigation_request() {
-    let store = Store::new(&test_db_url()).await.unwrap();
+    let docker_cli = Cli::default();
+    let store = EmptyStoreForTesting::new(&docker_cli).await.unwrap();
+
     let uuid = store
         .create_divergence_investigation_request(serde_json::json!({}))
         .unwrap();
@@ -68,7 +94,8 @@ async fn create_divergence_investigation_request() {
 
 #[tokio::test]
 async fn poi_db_roundtrip() {
-    let _lock = test_lock().lock().unwrap();
+    let docker_cli = Cli::default();
+    let store = EmptyStoreForTesting::new(&docker_cli).await.unwrap();
 
     let mut rng = fast_rng(0);
     let indexers = gen_indexers(&mut rng, 100);
@@ -77,7 +104,6 @@ async fn poi_db_roundtrip() {
     let pois =
         queries::query_proofs_of_indexing(indexing_statuses, BlockChoicePolicy::Earliest).await;
 
-    let store = Store::new(&test_db_url()).await.unwrap();
     let mut conn = store.conn().unwrap();
     conn.test_transaction(|conn| test_pois(conn, &pois, PoiLiveness::NotLive, false));
     conn.test_transaction(|conn| test_pois(conn, &pois, PoiLiveness::Live, true));
@@ -85,7 +111,8 @@ async fn poi_db_roundtrip() {
 
 #[tokio::test]
 async fn test_additional_pois() {
-    let _lock = test_lock().lock().unwrap();
+    let docker_cli = Cli::default();
+    let store = EmptyStoreForTesting::new(&docker_cli).await.unwrap();
 
     let mut rng = fast_rng(0);
     let indexers = gen_indexers(&mut rng, 100);
@@ -94,7 +121,6 @@ async fn test_additional_pois() {
     let pois =
         queries::query_proofs_of_indexing(indexing_statuses, BlockChoicePolicy::Earliest).await;
 
-    let store = Store::new(&test_db_url()).await.unwrap();
     let mut conn = store.conn().unwrap();
 
     conn.test_transaction(|conn| -> Result<(), anyhow::Error> {
