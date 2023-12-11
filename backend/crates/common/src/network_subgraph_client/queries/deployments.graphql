@@ -1,11 +1,23 @@
-query subgraphDeployments {
+query subgraphDeployments($first: Int!, $skip: Int!) {
   subgraphDeployments(
     where: { indexerAllocations_: { status_in: [Active] } }
-    orderBy: stakedTokens
+    first: $first
+    skip: $skip
+    orderBy: signalAmount
+    orderDirection: desc
   ) {
     ipfsHash
-    indexerAllocations(orderBy: allocatedTokens) {
+    signalAmount
+    indexerAllocations(
+      # Only the 5 indexers with the largest allocations, otherwise
+      # the query response becomes massive.
+      first: 5
+      orderBy: allocatedTokens
+      orderDirection: desc
+    ) {
       indexer {
+        defaultDisplayName
+        stakedTokens
         id
         url
       }

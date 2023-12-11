@@ -15,6 +15,10 @@ use crate::prelude::{Indexer as IndexerTrait, RealIndexer};
 
 /// A GraphQL client that can query the network subgraph and extract useful
 /// data.
+///
+/// The queries available for this client are oriented towards the needs of
+/// Graphix, namely to find high-quality and important indexers and subgraph
+/// deployments.
 #[derive(Debug, Clone)]
 pub struct NetworkSubgraphClient {
     endpoint: String,
@@ -68,17 +72,49 @@ impl NetworkSubgraphClient {
         Ok(indexers)
     }
 
-    pub async fn indexers_by_allocations(&self) -> anyhow::Result<Vec<Arc<dyn IndexerTrait>>> {
-        let sg_deployments = self.subgraph_deployments().await?;
+    pub async fn indexers_by_allocations(
+        &self,
+        limit: Option<u32>,
+    ) -> anyhow::Result<Vec<Arc<dyn IndexerTrait>>> {
+        let page_size = 100;
 
-        let mut indexers: Vec<Arc<dyn IndexerTrait>> = vec![];
-        for deployment in sg_deployments {
-            for indexer_allocation in deployment.indexer_allocations {
-                let url = indexer_allocation.indexer.url.clone();
-                if let Ok(indexer) = indexer_allocation_data_to_real_indexer(indexer_allocation) {
-                    indexers.push(Arc::new(indexer));
-                } else {
-                    warn!(url, "Failed to create indexer from allocation data");
+        let mut indexers = Vec::<Arc<dyn IndexerTrait>>::new();
+        loop {
+            let response_data: GraphqlResponseTopIndexers = self
+                .graphql_query_no_errors(
+                    queries::INDEXERS_BY_ALLOCATIONS_QUERY,
+                    vec![
+                        ("first".to_string(), page_size.into()),
+                        ("skip".to_string(), indexers.len().into()),
+                    ],
+                    "error(s) querying indexers by allocations from the network subgraph",
+                )
+                .await?;
+
+            // If we got less than the page size, we're done.
+            let no_more_results = response_data.indexers.len() < page_size;
+
+            for indexer in response_data.indexers {
+                if let Some(url) = indexer.url {
+                    let address = hex::decode(indexer.id.trim_start_matches("0x"))?;
+                    let mut real_indexer = RealIndexer::new(IndexerConfig {
+                        name: indexer.id,
+                        urls: IndexerUrls {
+                            status: Url::parse(&format!("{}/status", url))?,
+                        },
+                    });
+                    real_indexer.set_address(address);
+                    indexers.push(Arc::new(real_indexer));
+                }
+            }
+
+            if no_more_results {
+                break;
+            }
+            if let Some(limit) = limit {
+                if indexers.len() > limit as usize {
+                    indexers.truncate(limit as usize);
+                    break;
                 }
             }
         }
@@ -94,7 +130,6 @@ impl NetworkSubgraphClient {
     ) -> anyhow::Result<Arc<dyn IndexerTrait>> {
         let hex_encoded_addr_json = serde_json::to_value(format!("0x{}", hex::encode(address)))
             .expect("Unable to hex encode address");
-        println!("hex_encoded_addr_json: {:?}", hex_encoded_addr_json);
         let response_data: ResponseData = self
             .graphql_query_no_errors(
                 queries::INDEXER_BY_ADDRESS_QUERY,
@@ -120,29 +155,54 @@ impl NetworkSubgraphClient {
             anyhow::anyhow!("No indexer found for address 0x{}", hex::encode(address))
         })?;
 
-        let indexer = Arc::new(RealIndexer::new(IndexerConfig {
+        let mut indexer = RealIndexer::new(IndexerConfig {
             name: indexer_data.default_display_name.clone(),
             urls: IndexerUrls {
                 status: Url::parse(&format!("{}/status", indexer_data.url))?,
             },
-        }));
+        });
+        indexer.set_address(address.to_vec());
 
-        Ok(indexer)
+        Ok(Arc::new(indexer))
     }
 
-    /// Returns all subgraph deployments.
-    pub async fn subgraph_deployments(
+    /// Returns all subgraph deployments, ordered by curation signal amounts.
+    pub async fn subgraph_deployments_by_signal(
         &self,
+        limit: Option<u32>,
     ) -> anyhow::Result<Vec<SubgraphDeploymentWithAllocations>> {
-        let response_data: GraphqlResponseSgDeployments = self
-            .graphql_query_no_errors(
-                queries::DEPLOYMENTS_QUERY,
-                vec![],
-                "error(s) querying deployments from the network subgraph",
-            )
-            .await?;
+        let page_size = 100;
 
-        Ok(response_data.subgraph_deployments)
+        let mut subgraph_deployments = vec![];
+        loop {
+            let response_data: GraphqlResponseSgDeployments = self
+                .graphql_query_no_errors(
+                    queries::DEPLOYMENTS_QUERY,
+                    vec![
+                        ("first".to_string(), page_size.into()),
+                        ("skip".to_string(), subgraph_deployments.len().into()),
+                    ],
+                    "error(s) querying deployments from the network subgraph",
+                )
+                .await?;
+
+            // If we got less than the page size, we're done.
+            let no_more_results = response_data.subgraph_deployments.len() < page_size;
+
+            subgraph_deployments.extend(response_data.subgraph_deployments);
+
+            if no_more_results {
+                break;
+            }
+            if let Some(limit) = limit {
+                if subgraph_deployments.len() > limit as usize {
+                    subgraph_deployments.truncate(limit as usize);
+                    break;
+                }
+            }
+        }
+
+        Ok(subgraph_deployments)
     }
 
     /// A wrapper around [`NetworkSubgraphClient::graphql_query`] that requires
@@ -257,6 +317,8 @@ pub struct Indexer {
 mod queries {
     pub const INDEXERS_BY_STAKED_TOKENS_QUERY: &str =
         include_str!("queries/indexers_by_staked_tokens.graphql");
+    pub const INDEXERS_BY_ALLOCATIONS_QUERY: &str =
+        include_str!("queries/indexers_by_allocations.graphql");
     pub const DEPLOYMENTS_QUERY: &str = include_str!("queries/deployments.graphql");
     pub const INDEXER_BY_ADDRESS_QUERY: &str = include_str!("queries/indexer_by_address.graphql");
 }
@@ -289,16 +351,27 @@ mod tests {
     #[tokio::test]
     async fn mainnet_indexers_by_allocations_no_panic() {
         let client = network_sg_client_on_ethereum();
-        let indexers = client.indexers_by_allocations().await.unwrap();
-        assert!(indexers.len() > 0);
+        let indexers = client.indexers_by_allocations(Some(10)).await.unwrap();
+        assert_eq!(indexers.len(), 10);
     }
 
     #[tokio::test]
-    async fn at_least_100_subgraph_deployments() {
+    async fn subgraph_deployments_limits() {
         let client = network_sg_client_on_ethereum();
-        let deployments = client.subgraph_deployments().await.unwrap();
-        println!("n. of deployments: {:?}", deployments.len());
-        assert!(deployments.len() >= 100);
+
+        // Single page.
+        let deployments = client
+            .subgraph_deployments_by_signal(Some(5))
+            .await
+            .unwrap();
+        assert_eq!(deployments.len(), 5);
+
+        // Muliple pages.
+        let deployments = client
+            .subgraph_deployments_by_signal(Some(150))
+            .await
+            .unwrap();
+        assert_eq!(deployments.len(), 150);
     }
 
     #[tokio::test]

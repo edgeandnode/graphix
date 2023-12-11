@@ -182,7 +182,9 @@ pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn In
         info!(endpoint = %config.endpoint, "Configuring network subgraph");
         let network_subgraph = NetworkSubgraphClient::new(config.endpoint.clone());
         let network_subgraph_indexers_res = match config.query {
-            NetworkSubgraphQuery::ByAllocations => network_subgraph.indexers_by_allocations().await,
+            NetworkSubgraphQuery::ByAllocations => {
+                network_subgraph.indexers_by_allocations(Some(100)).await
+            }
             NetworkSubgraphQuery::ByStakedTokens => {
                 network_subgraph.indexers_by_staked_tokens().await
             }

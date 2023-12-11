@@ -38,6 +38,10 @@ impl RealIndexer {
         }
     }
 
+    pub fn set_address(&mut self, address: Vec<u8>) {
+        self.address = Some(address);
+    }
+
     #[instrument(skip_all)]
     pub fn with_address(address: &[u8], status_url: impl IntoUrl) -> Self {
         Self {
