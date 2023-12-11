@@ -311,7 +311,7 @@ async fn handle_divergence_investigation_request_pair(
     debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Fetching indexers");
     let indexer1 = match indexers
         .iter()
-        .find(|indexer| Some(indexer.id()) == poi1.indexer.name.as_deref())
+        .find(|indexer| indexer.id() == poi1.indexer.indexer_id())
         .cloned()
         .ok_or(DivergenceInvestigationError::IndexerNotFound {
             poi: poi1_s.to_string(),
@@ -324,7 +324,7 @@ async fn handle_divergence_investigation_request_pair(
     };
     let indexer2 = match indexers
         .iter()
-        .find(|indexer| Some(indexer.id()) == poi2.indexer.name.as_deref())
+        .find(|indexer| indexer.id() == poi2.indexer.indexer_id())
         .cloned()
         .ok_or(DivergenceInvestigationError::IndexerNotFound {
             poi: poi2_s.to_string(),

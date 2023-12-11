@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use chrono::Utc;
@@ -117,6 +118,31 @@ pub(super) fn pois(
     }
 }
 
+pub fn write_indexers(
+    conn: &mut PgConnection,
+    indexers: &[impl AsRef<dyn Indexer>],
+) -> anyhow::Result<()> {
+    use schema::indexers;
+
+    let insertable_indexers = indexers
+        .iter()
+        .map(|indexer| {
+            let indexer = indexer.as_ref();
+            NewIndexer {
+                address: indexer.address().map(ToOwned::to_owned),
+                name: indexer.name().map(|s| s.to_string()),
+            }
+        })
+        .collect::<Vec<_>>();
+
+    diesel::insert_into(indexers::table)
+        .values(insertable_indexers)
+        .on_conflict_do_nothing()
+        .execute(conn)?;
+
+    Ok(())
+}
+
 pub fn set_deployment_name(
     conn: &mut PgConnection,
     sg_deployment_id: &str,
@@ -186,8 +212,7 @@ pub(super) fn write_pois(
         let new_pois: Vec<_> = poi_group
             .iter()
             .map(|poi| {
-                let indexer_id =
-                    get_or_insert_indexer(conn, poi.indexer_id(), poi.indexer_address())?;
+                let indexer_id = get_indexer_id(conn, poi.indexer_name(), poi.indexer_address())?;
 
                 Ok(NewPoi {
                     sg_deployment_id,
@@ -264,7 +289,7 @@ pub fn write_graph_node_version(
 ) -> anyhow::Result<()> {
     use schema::indexer_versions;
 
-    let indexer_id = get_or_insert_indexer(conn, indexer.id(), indexer.address())?;
+    let indexer_id = get_indexer_id(conn, indexer.name(), indexer.address())?;
 
     let new_version = match version {
         Ok(v) => models::NewIndexerVersion {
@@ -288,32 +313,28 @@ pub fn write_graph_node_version(
     Ok(())
 }
 
-fn get_or_insert_indexer(
+fn get_indexer_id(
     conn: &mut PgConnection,
-    id: &str,
+    name: Option<Cow<String>>,
     address: Option<&[u8]>,
-) -> Result<i32, anyhow::Error> {
+) -> anyhow::Result<i32> {
     use schema::indexers;
 
     let existing_indexer: Option<IndexerRow> = indexers::table
-        .filter(indexers::name.is_not_distinct_from(id))
+        .filter(indexers::name.is_not_distinct_from(&name))
         .filter(indexers::address.is_not_distinct_from(address))
         .get_result(conn)
         .optional()?;
-    Ok(if let Some(existing_indexer) = existing_indexer {
-        // If the indexer exists, use its id
-        existing_indexer.id
+
+    if let Some(i) = existing_indexer {
+        Ok(i.id)
     } else {
-        // If the indexer doesn't exist, insert a new one and return its id
-        let new_indexer = NewIndexer {
-            address: address.map(ToOwned::to_owned),
-            name: Some(id.to_string()),
-        };
-        diesel::insert_into(indexers::table)
-            .values(&new_indexer)
-            .returning(indexers::id)
-            .get_result(conn)?
-    })
+        Err(anyhow::anyhow!(
+            "Indexer with name {:?} and/or address {:?} not found",
+            &name,
+            address
+        ))
+    }
 }
 
 fn get_or_insert_deployment(

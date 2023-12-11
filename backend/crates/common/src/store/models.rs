@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use async_graphql::SimpleObject;
 use chrono::NaiveDateTime;
 use diesel::deserialize::FromSql;
@@ -58,7 +60,7 @@ pub struct NewPoi {
 
 pub trait WritablePoi {
     fn deployment_cid(&self) -> &str;
-    fn indexer_id(&self) -> &str;
+    fn indexer_name(&self) -> Option<Cow<String>>;
     fn indexer_address(&self) -> Option<&[u8]>;
     fn block(&self) -> BlockPointer;
     fn proof_of_indexing(&self) -> &[u8];
@@ -106,6 +108,18 @@ pub struct IndexerRow {
     pub address: Option<Vec<u8>>,
     #[serde(skip)]
     pub created_at: NaiveDateTime,
+}
+
+impl IndexerRow {
+    pub fn indexer_id(&self) -> String {
+        if let Some(address) = &self.address {
+            hex::encode(address)
+        } else {
+            self.name
+                .clone()
+                .expect("indexer has neither address nor name; this is a bug")
+        }
+    }
 }
 
 #[derive(Debug, Insertable)]

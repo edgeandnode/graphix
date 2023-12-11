@@ -39,7 +39,7 @@ pub async fn query_indexing_statuses(
                 query_successes += 1;
                 metrics
                     .indexing_statuses_requests
-                    .get_metric_with_label_values(&[indexer.id(), "1"])
+                    .get_metric_with_label_values(&[&indexer.id(), "1"])
                     .unwrap()
                     .inc();
 
@@ -55,7 +55,7 @@ pub async fn query_indexing_statuses(
                 query_failures += 1;
                 metrics
                     .indexing_statuses_requests
-                    .get_metric_with_label_values(&[indexer.id(), "0"])
+                    .get_metric_with_label_values(&[&indexer.id(), "0"])
                     .unwrap()
                     .inc();
 

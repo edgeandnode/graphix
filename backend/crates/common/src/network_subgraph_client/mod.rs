@@ -97,13 +97,13 @@ impl NetworkSubgraphClient {
             for indexer in response_data.indexers {
                 if let Some(url) = indexer.url {
                     let address = hex::decode(indexer.id.trim_start_matches("0x"))?;
-                    let mut real_indexer = RealIndexer::new(IndexerConfig {
-                        name: indexer.id,
+                    let real_indexer = RealIndexer::new(IndexerConfig {
+                        name: indexer.default_display_name,
+                        address: Some(address),
                         urls: IndexerUrls {
                             status: Url::parse(&format!("{}/status", url))?,
                         },
                     });
-                    real_indexer.set_address(address);
                     indexers.push(Arc::new(real_indexer));
                 }
             }
@@ -156,7 +156,8 @@ impl NetworkSubgraphClient {
         })?;
 
         let mut indexer = RealIndexer::new(IndexerConfig {
-            name: indexer_data.default_display_name.clone(),
+            name: Some(indexer_data.default_display_name.clone()),
+            address: Some(address.to_vec()),
             urls: IndexerUrls {
                 status: Url::parse(&format!("{}/status", indexer_data.url))?,
             },
@@ -256,14 +257,17 @@ impl NetworkSubgraphClient {
 fn indexer_allocation_data_to_real_indexer(
     indexer_allocation: IndexerAllocation,
 ) -> anyhow::Result<RealIndexer> {
+    let name = indexer_allocation.indexer.default_display_name.clone();
     let indexer = indexer_allocation.indexer;
+    let address = hex::decode(indexer.id.trim_start_matches("0x"))?;
     let mut url: Url = indexer
         .url
         .ok_or_else(|| anyhow!("Indexer without URL"))?
         .parse()?;
     url.set_path("/status");
     let config = IndexerConfig {
-        name: indexer.id,
+        name,
+        address: Some(address),
         urls: IndexerUrls { status: url },
     };
     Ok(RealIndexer::new(config))
@@ -304,13 +308,16 @@ pub struct SubgraphDeploymentWithAllocations {
 }
 
 #[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct IndexerAllocation {
     pub indexer: Indexer,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Indexer {
     pub id: String,
+    pub default_display_name: Option<String>,
     pub url: Option<String>,
 }
 

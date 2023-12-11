@@ -263,17 +263,28 @@ pub struct ProofOfIndexing {
 /// An indexer that is known to Graphix.
 #[derive(SimpleObject, Debug)]
 pub struct Indexer {
-    /// The indexer's ID, which is equal to its hex-encoded address with a '0x'
-    /// prefix.
-    pub id: HexBytesWith0xPrefix,
+    pub id: String,
+    pub name: Option<String>,
+    pub address: Option<HexBytesWith0xPrefix>,
     /// The number of tokens allocated to the indexer, if known.
     pub allocated_tokens: Option<u64>,
 }
 
 impl From<models::Indexer> for Indexer {
     fn from(indexer: models::Indexer) -> Self {
+        let address = indexer
+            .address
+            .map(|addr| format!("0x{}", hex::encode(addr)));
         Self {
-            id: indexer.name.unwrap_or_default(),
+            id: if let Some(name) = &indexer.name {
+                name.clone()
+            } else if let Some(address) = &address {
+                address.clone()
+            } else {
+                panic!("Indexer has neither name nor address");
+            },
+            name: indexer.name,
+            address,
             allocated_tokens: None, // TODO: we don't store this in the db yet
         }
     }

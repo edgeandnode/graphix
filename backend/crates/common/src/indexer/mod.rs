@@ -1,25 +1,41 @@
 mod interceptor;
 mod real_indexer;
 
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
+use std::{borrow::Cow, collections::HashMap};
 
 use anyhow::anyhow;
 use async_trait::async_trait;
 pub use interceptor::IndexerInterceptor;
 pub use real_indexer::RealIndexer;
 
-use crate::types::{self, IndexingStatus, PoiRequest, ProofOfIndexing};
+use crate::types::{self, IndexerId, IndexingStatus, PoiRequest, ProofOfIndexing};
 
+/// An indexer is a `graph-node` instance that may or may not also be a network
+/// participant.
 #[async_trait]
 pub trait Indexer: Send + Sync + Debug {
-    /// Uniquely identifies the indexer. This is relied on for the [`Hash`] and
-    /// [`Eq`] impls.
-    fn id(&self) -> &str;
-
+    /// The indexer's address. This can be [`None`] if the indexer is not a
+    /// network participant but e.g. a local `graph-node` instance.
     fn address(&self) -> Option<&[u8]>;
+
+    /// Human-readable name of the indexer.
+    fn name(&self) -> Option<Cow<'_, String>>;
+
+    /// Within Graphix, an indexer is uniquely identified by its hex-encoded
+    /// address (if it is a network participant), or its name (if it's not).
+    /// This is known as the indexer's "global ID" or "GID".
+    fn id(&self) -> String {
+        if let Some(address) = self.address() {
+            hex::encode(address)
+        } else {
+            self.name()
+                .expect("indexer has neither address nor name; this is a bug")
+                .to_string()
+        }
+    }
 
     async fn ping(self: Arc<Self>) -> anyhow::Result<()>;
 
@@ -71,6 +87,19 @@ pub trait Indexer: Send + Sync + Debug {
     ) -> anyhow::Result<EntityChanges>;
 }
 
+impl<T> IndexerId for T
+where
+    T: Indexer,
+{
+    fn address(&self) -> Option<&[u8]> {
+        Indexer::address(self)
+    }
+
+    fn name(&self) -> Option<Cow<'_, String>> {
+        Indexer::name(self)
+    }
+}
+
 impl PartialEq for dyn Indexer {
     fn eq(&self, other: &Self) -> bool {
         self.id() == other.id()
@@ -87,13 +116,13 @@ impl Hash for dyn Indexer {
 
 impl PartialOrd for dyn Indexer {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.id().partial_cmp(other.id())
+        self.id().partial_cmp(&other.id())
     }
 }
 
 impl Ord for dyn Indexer {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.id().cmp(other.id())
+        self.id().cmp(&other.id())
     }
 }
 

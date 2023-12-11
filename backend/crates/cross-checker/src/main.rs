@@ -61,6 +61,8 @@ async fn main() -> anyhow::Result<()> {
         // duplicate indexers.
         indexers = deduplicate_indexers(&indexers);
 
+        store.write_indexers(&indexers)?;
+
         tx_indexers.send(indexers.clone())?;
 
         let graph_node_versions =
@@ -96,7 +98,7 @@ fn deduplicate_indexers(indexers: &[Arc<dyn Indexer>]) -> Vec<Arc<dyn Indexer>> 
     let mut seen = HashSet::new();
     let mut deduplicated = vec![];
     for indexer in indexers {
-        if !seen.contains(indexer.id()) {
+        if !seen.contains(&indexer.id()) {
             deduplicated.push(indexer.clone());
             seen.insert(indexer.id().to_string());
         }

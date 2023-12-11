@@ -95,7 +95,7 @@ where
             .collect();
 
         Arc::new(MockIndexer {
-            id,
+            name: id,
             deployment_details,
             fail_indexing_statuses: rng.gen_bool(0.1),
         }) as Arc<dyn Indexer>

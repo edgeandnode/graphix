@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -114,8 +115,8 @@ impl WritablePoi for ProofOfIndexing {
         self.deployment.as_str()
     }
 
-    fn indexer_id(&self) -> &str {
-        self.indexer.id()
+    fn indexer_name(&self) -> Option<Cow<String>> {
+        self.indexer.name()
     }
 
     fn indexer_address(&self) -> Option<&[u8]> {
@@ -128,6 +129,21 @@ impl WritablePoi for ProofOfIndexing {
 
     fn proof_of_indexing(&self) -> &[u8] {
         &self.proof_of_indexing.0
+    }
+}
+
+pub trait IndexerId {
+    fn address(&self) -> Option<&[u8]>;
+    fn name(&self) -> Option<Cow<String>>;
+
+    fn id(&self) -> String {
+        if let Some(address) = self.address() {
+            format!("0x{}", hex::encode(address))
+        } else if let Some(name) = self.name() {
+            name.to_string()
+        } else {
+            panic!("Indexer has neither name nor address")
+        }
     }
 }
 

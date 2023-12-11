@@ -1,5 +1,6 @@
 //! A indexer interceptor, for test configs only.
 
+use std::borrow::Cow;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -16,25 +17,22 @@ use crate::types::{self, IndexingStatus, PoiRequest, ProofOfIndexing};
 #[derive(Debug)]
 pub struct IndexerInterceptor {
     target: Arc<dyn Indexer>,
-    id: String,
     poi_byte: u8,
 }
 
 impl IndexerInterceptor {
-    pub fn new(id: String, target: Arc<dyn Indexer>, poi_byte: u8) -> Self {
-        Self {
-            id,
-            target,
-            poi_byte,
-        }
+    pub fn new(target: Arc<dyn Indexer>, poi_byte: u8) -> Self {
+        Self { target, poi_byte }
     }
 }
 
 #[async_trait]
 
 impl Indexer for IndexerInterceptor {
-    fn id(&self) -> &str {
-        &self.id
+    fn name(&self) -> Option<Cow<'_, String>> {
+        self.target
+            .name()
+            .map(|name| Cow::Owned(format!("interceptor-{}", name)))
     }
 
     fn address(&self) -> Option<&[u8]> {

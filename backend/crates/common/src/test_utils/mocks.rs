@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -19,15 +19,15 @@ pub struct DeploymentDetails {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MockIndexer {
-    pub id: String,
+    pub name: String,
     pub deployment_details: Vec<DeploymentDetails>,
     pub fail_indexing_statuses: bool,
 }
 
 #[async_trait]
 impl Indexer for MockIndexer {
-    fn id(&self) -> &str {
-        &self.id
+    fn name(&self) -> Option<Cow<String>> {
+        Some(Cow::Borrowed(&self.name))
     }
 
     fn address(&self) -> Option<&[u8]> {

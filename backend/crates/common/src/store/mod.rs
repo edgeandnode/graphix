@@ -159,6 +159,7 @@ impl Store {
 
         let mut query = indexers::table.into_boxed();
 
+        // FIXME
         if let Some(address) = filter.address {
             query = query.filter(indexers::name.eq(address));
         }
@@ -212,6 +213,12 @@ impl Store {
     pub fn write_pois(&self, pois: &[impl WritablePoi], live: PoiLiveness) -> anyhow::Result<()> {
         self.conn()?
             .transaction::<_, Error, _>(|conn| diesel_queries::write_pois(conn, pois, live))
+    }
+
+    pub fn write_indexers(&self, indexers: &[impl AsRef<dyn Indexer>]) -> anyhow::Result<()> {
+        let mut conn = self.conn()?;
+        diesel_queries::write_indexers(&mut conn, indexers)?;
+        Ok(())
     }
 
     pub fn write_graph_node_versions(

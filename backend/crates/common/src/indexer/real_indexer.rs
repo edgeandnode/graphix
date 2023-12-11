@@ -1,10 +1,10 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context};
 use async_trait::async_trait;
 use graphql_client::{GraphQLQuery, Response};
-use reqwest::IntoUrl;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tracing::*;
@@ -21,18 +21,19 @@ const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
 #[derive(Debug)]
 pub struct RealIndexer {
-    id: String, // Assumed to be unique accross all indexers
     address: Option<Vec<u8>>,
+    name: Option<String>,
     urls: IndexerUrls,
     client: reqwest::Client,
 }
 
 impl RealIndexer {
+    // FIXME: this logic is bug-prone and should be replaced with proper sum types.
     #[instrument(skip_all)]
     pub fn new(config: IndexerConfig) -> Self {
         Self {
-            id: config.name,
-            address: None,
+            name: config.name,
+            address: config.address,
             urls: config.urls,
             client: reqwest::Client::new(),
         }
@@ -40,18 +41,6 @@ impl RealIndexer {
 
     pub fn set_address(&mut self, address: Vec<u8>) {
         self.address = Some(address);
-    }
-
-    #[instrument(skip_all)]
-    pub fn with_address(address: &[u8], status_url: impl IntoUrl) -> Self {
-        Self {
-            id: hex::encode(address),
-            address: Some(address.to_vec()),
-            urls: IndexerUrls {
-                status: status_url.into_url().unwrap(),
-            },
-            client: reqwest::Client::new(),
-        }
     }
 
     /// Internal utility method to make a GraphQL query to the indexer. `error`
@@ -115,12 +104,12 @@ impl RealIndexer {
 
 #[async_trait]
 impl Indexer for RealIndexer {
-    fn id(&self) -> &str {
-        &self.id
-    }
-
     fn address(&self) -> Option<&[u8]> {
         self.address.as_deref()
+    }
+
+    fn name(&self) -> Option<Cow<String>> {
+        self.name.as_ref().map(Cow::Borrowed)
     }
 
     async fn ping(self: Arc<Self>) -> anyhow::Result<()> {
@@ -181,7 +170,7 @@ impl Indexer for RealIndexer {
                 Ok(batch_pois) => {
                     metrics()
                         .public_proofs_of_indexing_requests
-                        .get_metric_with_label_values(&[self.id(), "1"])
+                        .get_metric_with_label_values(&[&self.id(), "1"])
                         .unwrap()
                         .inc();
 
@@ -190,7 +179,7 @@ impl Indexer for RealIndexer {
                 Err(error) => {
                     metrics()
                         .public_proofs_of_indexing_requests
-                        .get_metric_with_label_values(&[self.id(), "0"])
+                        .get_metric_with_label_values(&[&self.id(), "0"])
                         .unwrap()
                         .inc();
 

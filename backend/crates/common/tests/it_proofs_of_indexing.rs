@@ -11,7 +11,8 @@ use reqwest::Url;
 fn test_indexer_from_url(url: impl Into<String>) -> Arc<impl Indexer> {
     let url: Url = url.into().parse().expect("Invalid status url");
     let conf = IndexerConfig {
-        name: url.host().unwrap().to_string(),
+        name: Some(url.host().unwrap().to_string()),
+        address: None,
         urls: IndexerUrls {
             status: url.join("status").unwrap(),
         },

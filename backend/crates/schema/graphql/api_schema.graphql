@@ -186,11 +186,9 @@ enum DivergenceInvestigationStatus {
 An indexer that is known to Graphix.
 """
 type Indexer {
-	"""
-	The indexer's ID, which is equal to its hex-encoded address with a '0x'
-	prefix.
-	"""
 	id: String!
+	name: String
+	address: String
 	"""
 	The number of tokens allocated to the indexer, if known.
 	"""
