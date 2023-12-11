@@ -14,6 +14,8 @@ use crate::store::{diesel_queries, PoiLiveness, Store};
 use crate::test_utils::fast_rng;
 use crate::test_utils::gen::{gen_bytes32, gen_indexers};
 
+/// A wrapper around a [`Store`] that is backed by a containerized Postgres
+/// database.
 pub struct EmptyStoreForTesting<'a> {
     _container: Container<'a, testcontainers_modules::postgres::Postgres>,
     store: Store,
@@ -45,7 +47,6 @@ impl<'a> Deref for EmptyStoreForTesting<'a> {
 }
 
 #[tokio::test]
-#[ignore] // FIXME: Race condition with other tests
 async fn no_deployments_at_first() {
     let docker_cli = Cli::default();
     let store = EmptyStoreForTesting::new(&docker_cli).await.unwrap();
