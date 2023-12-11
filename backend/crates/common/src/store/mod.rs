@@ -22,7 +22,7 @@ use self::models::{QueriedSgDeployment, WritablePoi};
 use crate::graphql_api::types::{BlockRangeInput, IndexersQuery, Network, SgDeploymentsQuery};
 use crate::indexer::Indexer;
 use crate::prelude::IndexerVersion;
-use crate::store::models::{IndexerRow, Poi};
+use crate::store::models::{Indexer as IndexerModel, Poi};
 
 #[cfg(test)]
 mod tests;
@@ -167,7 +167,7 @@ impl Store {
             query = query.limit(limit.into());
         }
 
-        let rows = query.load::<IndexerRow>(&mut self.conn()?)?;
+        let rows = query.load::<IndexerModel>(&mut self.conn()?)?;
 
         Ok(rows.into_iter().map(Into::into).collect())
     }

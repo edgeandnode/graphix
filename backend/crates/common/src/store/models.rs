@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use types::BlockPointer;
 
 use super::schema::*;
-use crate::types;
+use crate::types::{self, IndexerId};
 
 pub type IntId = i32;
 pub type BigIntId = i64;
@@ -23,7 +23,7 @@ pub struct Poi {
     #[serde(skip)]
     pub created_at: NaiveDateTime,
     pub sg_deployment: SgDeployment,
-    pub indexer: IndexerRow,
+    pub indexer: Indexer,
     pub block: Block,
 }
 
@@ -82,27 +82,8 @@ pub struct NewBlock {
     pub hash: Vec<u8>,
 }
 
-#[derive(Debug, Queryable)]
-pub struct Indexer {
-    pub id: IntId,
-    pub name: Option<String>,
-    pub address: Option<Vec<u8>>,
-    pub created_at: NaiveDateTime,
-}
-
-impl From<IndexerRow> for Indexer {
-    fn from(row: IndexerRow) -> Self {
-        Self {
-            id: row.id,
-            name: row.name,
-            address: row.address,
-            created_at: row.created_at,
-        }
-    }
-}
-
 #[derive(Debug, Queryable, Serialize)]
-pub struct IndexerRow {
+pub struct Indexer {
     pub id: IntId,
     pub name: Option<String>,
     pub address: Option<Vec<u8>>,
@@ -110,15 +91,13 @@ pub struct IndexerRow {
     pub created_at: NaiveDateTime,
 }
 
-impl IndexerRow {
-    pub fn indexer_id(&self) -> String {
-        if let Some(address) = &self.address {
-            hex::encode(address)
-        } else {
-            self.name
-                .clone()
-                .expect("indexer has neither address nor name; this is a bug")
-        }
+impl IndexerId for Indexer {
+    fn address(&self) -> Option<&[u8]> {
+        self.address.as_deref()
+    }
+
+    fn name(&self) -> Option<Cow<String>> {
+        self.name.as_ref().map(Cow::Borrowed)
     }
 }
 

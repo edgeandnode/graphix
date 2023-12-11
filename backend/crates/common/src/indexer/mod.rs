@@ -1,10 +1,11 @@
 mod interceptor;
 mod real_indexer;
 
+use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
-use std::{borrow::Cow, collections::HashMap};
 
 use anyhow::anyhow;
 use async_trait::async_trait;

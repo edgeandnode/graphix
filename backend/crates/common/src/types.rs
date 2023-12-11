@@ -3,12 +3,13 @@ use std::fmt;
 use std::ops::Deref;
 use std::sync::Arc;
 
+use async_graphql::SimpleObject;
 use serde::Serialize;
 
 use crate::indexer::Indexer;
 use crate::store::models::WritablePoi;
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd, SimpleObject)]
 pub struct IndexerVersion {
     pub version: String,
     pub commit: String,

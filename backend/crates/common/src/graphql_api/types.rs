@@ -7,6 +7,7 @@ use async_graphql::*;
 use diesel::deserialize::FromSqlRow;
 use serde::{Deserialize, Serialize};
 
+use crate::prelude::IndexerVersion;
 use crate::store::models::{self};
 
 type HexBytesWith0xPrefix = String;
@@ -266,6 +267,7 @@ pub struct Indexer {
     pub id: String,
     pub name: Option<String>,
     pub address: Option<HexBytesWith0xPrefix>,
+    pub version: Option<IndexerVersion>,
     /// The number of tokens allocated to the indexer, if known.
     pub allocated_tokens: Option<u64>,
 }
@@ -284,6 +286,7 @@ impl From<models::Indexer> for Indexer {
                 panic!("Indexer has neither name nor address");
             },
             name: indexer.name,
+            version: None, // TODO
             address,
             allocated_tokens: None, // TODO: we don't store this in the db yet
         }

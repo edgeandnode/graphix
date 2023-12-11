@@ -6,8 +6,8 @@ use graphix_common::graphql_api::types::{
     DivergenceInvestigationRequest, DivergenceInvestigationStatus, PartialBlock,
 };
 use graphix_common::prelude::{
-    BlockPointer, DivergingBlock as DivergentBlock, Indexer, PoiRequest, ProofOfIndexing,
-    SubgraphDeployment,
+    BlockPointer, DivergingBlock as DivergentBlock, Indexer, IndexerId, PoiRequest,
+    ProofOfIndexing, SubgraphDeployment,
 };
 use graphix_common::store::Store;
 use thiserror::Error;
@@ -311,7 +311,7 @@ async fn handle_divergence_investigation_request_pair(
     debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Fetching indexers");
     let indexer1 = match indexers
         .iter()
-        .find(|indexer| indexer.id() == poi1.indexer.indexer_id())
+        .find(|indexer| indexer.id() == poi1.indexer.id())
         .cloned()
         .ok_or(DivergenceInvestigationError::IndexerNotFound {
             poi: poi1_s.to_string(),
@@ -324,7 +324,7 @@ async fn handle_divergence_investigation_request_pair(
     };
     let indexer2 = match indexers
         .iter()
-        .find(|indexer| indexer.id() == poi2.indexer.indexer_id())
+        .find(|indexer| indexer.id() == poi2.indexer.id())
         .cloned()
         .ok_or(DivergenceInvestigationError::IndexerNotFound {
             poi: poi2_s.to_string(),

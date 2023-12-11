@@ -12,7 +12,7 @@ use crate::graphql_api::types::BlockRangeInput;
 use crate::indexer::Indexer;
 use crate::prelude::{BlockPointer, IndexerVersion};
 use crate::store::models::{
-    self, IndexerRow, NewIndexer, NewLivePoi, NewPoi, NewSgDeployment, SgDeployment,
+    self, Indexer as IndexerModel, NewIndexer, NewLivePoi, NewPoi, NewSgDeployment, SgDeployment,
 };
 use crate::store::schema::{self, live_pois};
 
@@ -320,7 +320,7 @@ fn get_indexer_id(
 ) -> anyhow::Result<i32> {
     use schema::indexers;
 
-    let existing_indexer: Option<IndexerRow> = indexers::table
+    let existing_indexer: Option<IndexerModel> = indexers::table
         .filter(indexers::name.is_not_distinct_from(&name))
         .filter(indexers::address.is_not_distinct_from(address))
         .get_result(conn)

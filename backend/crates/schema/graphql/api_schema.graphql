@@ -189,10 +189,16 @@ type Indexer {
 	id: String!
 	name: String
 	address: String
+	version: IndexerVersion
 	"""
 	The number of tokens allocated to the indexer, if known.
 	"""
 	allocatedTokens: Int
+}
+
+type IndexerVersion {
+	version: String!
+	commit: String!
 }
 
 """
