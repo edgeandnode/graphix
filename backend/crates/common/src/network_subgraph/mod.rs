@@ -14,13 +14,13 @@ use crate::config::{IndexerConfig, IndexerUrls};
 use crate::prelude::{Indexer as IndexerTrait, RealIndexer};
 
 #[derive(Debug, Clone)]
-pub struct NetworkSubgraph {
+pub struct NetworkSubgraphClient {
     endpoint: String,
     timeout: Duration,
     client: reqwest::Client,
 }
 
-impl NetworkSubgraph {
+impl NetworkSubgraphClient {
     /// Creates a new [`NetworkSubgraph`] with the given endpoint.
     pub fn new(endpoint: String) -> Self {
         const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
@@ -240,7 +240,7 @@ pub struct Indexer {
     pub url: Option<String>,
 }
 
-impl NetworkSubgraph {}
+impl NetworkSubgraphClient {}
 
 mod util {
     use tiny_cid::Cid;
@@ -309,8 +309,8 @@ mod queries {
 mod tests {
     use super::*;
 
-    fn mainnet_network_subgraph() -> NetworkSubgraph {
-        NetworkSubgraph::new(
+    fn mainnet_network_subgraph() -> NetworkSubgraphClient {
+        NetworkSubgraphClient::new(
             "https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-mainnet"
                 .to_string(),
         )

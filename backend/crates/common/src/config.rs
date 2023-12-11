@@ -8,7 +8,7 @@ use tracing::{info, warn};
 
 use crate::block_choice::BlockChoicePolicy;
 use crate::indexer::{Indexer, IndexerInterceptor, RealIndexer};
-use crate::network_subgraph::NetworkSubgraph;
+use crate::network_subgraph::NetworkSubgraphClient;
 
 /// A [`serde`]-compatible representation of Graphix's YAML configuration file.
 #[derive(Debug, Clone, Deserialize)]
@@ -180,7 +180,7 @@ pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn In
     // indexers.
     for config in config.network_subgraphs() {
         info!(endpoint = %config.endpoint, "Configuring network subgraph");
-        let network_subgraph = NetworkSubgraph::new(config.endpoint.clone());
+        let network_subgraph = NetworkSubgraphClient::new(config.endpoint.clone());
         let network_subgraph_indexers_res = match config.query {
             NetworkSubgraphQuery::ByAllocations => network_subgraph.indexers_by_allocations().await,
             NetworkSubgraphQuery::ByStakedTokens => {
@@ -213,7 +213,7 @@ pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn In
         // which network subgraph to use for the lookup. Should this be
         // indicated inside the data source's configuration? Should we try all
         // network subgraphs until one succeeds?
-        let network_subgraph = NetworkSubgraph::new(
+        let network_subgraph = NetworkSubgraphClient::new(
             config
                 .network_subgraphs()
                 .get(0)
