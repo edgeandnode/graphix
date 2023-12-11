@@ -2,7 +2,7 @@ pub mod block_choice;
 pub mod config;
 pub mod graphql_api;
 mod indexer;
-pub mod network_subgraph;
+pub mod network_subgraph_client;
 mod prometheus_metrics;
 pub mod queries;
 pub mod store;
