@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use anyhow::Context as _;
-use async_graphql::{Context, EmptySubscription, Object, Result, Schema};
+use async_graphql::{Context, Object, Result};
 
 use super::types::*;
 use crate::store::models::QueriedSgDeployment;
@@ -243,14 +243,6 @@ impl MutationRoot {
     }
 }
 
-pub type ApiSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
-
 pub struct ApiSchemaContext {
     pub store: Store,
-}
-
-pub fn api_schema(ctx: ApiSchemaContext) -> ApiSchema {
-    Schema::build(QueryRoot, MutationRoot, EmptySubscription)
-        .data(ctx)
-        .finish()
 }
