@@ -7,7 +7,9 @@ use tracing::*;
 
 use crate::block_choice::BlockChoicePolicy;
 use crate::indexer::Indexer;
-use crate::prelude::{IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment};
+use crate::prelude::{
+    IndexerVersion, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
+};
 use crate::PrometheusMetrics;
 
 /// Queries all `indexingStatuses` for all the given indexers.
@@ -77,6 +79,51 @@ pub async fn query_indexing_statuses(
     );
 
     indexing_statuses
+}
+
+/// Queries all `indexers` for their `graph-node` versions.
+pub async fn query_graph_node_versions(
+    indexers: &[Arc<dyn Indexer>],
+    _metrics: &PrometheusMetrics,
+) -> HashMap<Arc<dyn Indexer>, anyhow::Result<IndexerVersion>> {
+    let span = span!(Level::TRACE, "query_graph_node_versions");
+    let _enter_span = span.enter();
+
+    info!("Querying graph-node versions...");
+
+    let mut futures = FuturesUnordered::new();
+    for indexer in indexers {
+        futures.push(async move { (indexer.clone(), indexer.clone().version().await) });
+    }
+
+    let mut versions = HashMap::new();
+    while let Some((indexer, version_result)) = futures.next().await {
+        match &version_result {
+            Ok(version) => {
+                trace!(
+                    indexer_id = %indexer.id(),
+                    version = %version.version,
+                    commit = %version.commit,
+                    "Successfully queried graph-node version"
+                );
+            }
+            Err(error) => {
+                trace!(
+                    indexer_id = %indexer.id(),
+                    %error,
+                    "Failed to query graph-node version"
+                );
+            }
+        }
+        versions.insert(indexer, version_result);
+    }
+
+    info!(
+        indexers = versions.len(),
+        "Finished querying graph-node versions for all indexers"
+    );
+
+    versions
 }
 
 pub async fn query_proofs_of_indexing(

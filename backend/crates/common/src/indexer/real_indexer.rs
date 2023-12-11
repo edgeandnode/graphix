@@ -13,7 +13,9 @@ use super::{CachedEthereumCall, EntityChanges, Indexer};
 use crate::config::IndexerUrls;
 use crate::prelude::{IndexerConfig, WithIndexer};
 use crate::prometheus_metrics::metrics;
-use crate::types::{BlockPointer, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment};
+use crate::types::{
+    BlockPointer, IndexerVersion, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
+};
 
 const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
@@ -211,6 +213,38 @@ impl Indexer for RealIndexer {
         pois
     }
 
+    async fn subgraph_api_versions(
+        self: Arc<Self>,
+        subgraph_id: &str,
+    ) -> anyhow::Result<Vec<String>> {
+        let request = gql_types::SubgraphApiVersions::build_query(
+            gql_types::subgraph_api_versions::Variables {
+                subgraph_id: subgraph_id.to_string(),
+            },
+        );
+
+        let response: gql_types::subgraph_api_versions::ResponseData =
+            self.graphql_query(request).await?;
+
+        Ok(response
+            .api_versions
+            .into_iter()
+            .map(|v| v.version)
+            .collect())
+    }
+
+    async fn version(self: Arc<Self>) -> anyhow::Result<IndexerVersion> {
+        let request = gql_types::IndexerVersion::build_query(gql_types::indexer_version::Variables);
+
+        let response: gql_types::indexer_version::ResponseData =
+            self.graphql_query(request).await?;
+
+        Ok(IndexerVersion {
+            version: response.version.version,
+            commit: response.version.commit,
+        })
+    }
+
     async fn cached_eth_calls(
         self: Arc<Self>,
         network: &str,
@@ -396,6 +430,24 @@ mod gql_types {
             })
         }
     }
+
+    #[derive(GraphQLQuery)]
+    #[graphql(
+        schema_path = "graphql/indexer/schema.gql",
+        query_path = "graphql/indexer/queries/indexer-version.gql",
+        response_derives = "Debug",
+        variables_derives = "Debug"
+    )]
+    pub struct IndexerVersion;
+
+    #[derive(GraphQLQuery)]
+    #[graphql(
+        schema_path = "graphql/indexer/schema.gql",
+        query_path = "graphql/indexer/queries/subgraph-api-versions.gql",
+        response_derives = "Debug",
+        variables_derives = "Debug"
+    )]
+    pub struct SubgraphApiVersions;
 
     #[derive(GraphQLQuery)]
     #[graphql(

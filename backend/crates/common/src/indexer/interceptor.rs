@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use super::{CachedEthereumCall, EntityChanges};
 use crate::indexer::Indexer;
 use crate::prelude::Bytes32;
-use crate::types::{IndexingStatus, PoiRequest, ProofOfIndexing};
+use crate::types::{self, IndexingStatus, PoiRequest, ProofOfIndexing};
 
 /// Pretends to be an indexer by routing requests a
 /// [`RealIndexer`](crate::indexer::RealIndexer) and then intercepting the
@@ -60,6 +60,10 @@ impl Indexer for IndexerInterceptor {
         Ok(hijacked_statuses)
     }
 
+    async fn version(self: Arc<Self>) -> anyhow::Result<types::IndexerVersion> {
+        self.target.clone().version().await
+    }
+
     async fn proofs_of_indexing(
         self: Arc<Self>,
         requests: Vec<PoiRequest>,
@@ -77,6 +81,13 @@ impl Indexer for IndexerInterceptor {
                 }
             })
             .collect()
+    }
+
+    async fn subgraph_api_versions(
+        self: Arc<Self>,
+        subgraph_id: &str,
+    ) -> anyhow::Result<Vec<String>> {
+        self.target.clone().subgraph_api_versions(subgraph_id).await
     }
 
     async fn cached_eth_calls(

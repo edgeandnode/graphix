@@ -1,0 +1,5 @@
+query SubgraphApiVersions($subgraphId: String!) {
+  apiVersions(subgraphId: $subgraphId) {
+    version
+  }
+}

@@ -8,7 +8,8 @@ use tracing::info;
 use super::models::WritablePoi;
 use super::PoiLiveness;
 use crate::graphql_api::types::BlockRangeInput;
-use crate::prelude::BlockPointer;
+use crate::indexer::Indexer;
+use crate::prelude::{BlockPointer, IndexerVersion};
 use crate::store::models::{
     self, IndexerRow, NewIndexer, NewLivePoi, NewPoi, NewSgDeployment, SgDeployment,
 };
@@ -254,6 +255,37 @@ fn get_or_insert_block(conn: &mut PgConnection, block: BlockPointer) -> anyhow::
             .get_result(conn)?;
         Ok(block_id)
     }
+}
+
+pub fn write_graph_node_version(
+    conn: &mut PgConnection,
+    indexer: &dyn Indexer,
+    version: anyhow::Result<IndexerVersion>,
+) -> anyhow::Result<()> {
+    use schema::indexer_versions;
+
+    let indexer_id = get_or_insert_indexer(conn, indexer.id(), indexer.address())?;
+
+    let new_version = match version {
+        Ok(v) => models::NewIndexerVersion {
+            indexer_id,
+            error: None,
+            version_string: Some(v.version),
+            version_commit: Some(v.commit),
+        },
+        Err(err) => models::NewIndexerVersion {
+            indexer_id,
+            error: Some(err.to_string()),
+            version_string: None,
+            version_commit: None,
+        },
+    };
+
+    diesel::insert_into(indexer_versions::table)
+        .values(&new_version)
+        .execute(conn)?;
+
+    Ok(())
 }
 
 fn get_or_insert_indexer(

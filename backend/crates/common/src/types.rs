@@ -7,6 +7,12 @@ use serde::Serialize;
 use crate::indexer::Indexer;
 use crate::store::models::WritablePoi;
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
+pub struct IndexerVersion {
+    pub version: String,
+    pub commit: String,
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
 pub struct BlockPointer {
     pub number: u64,

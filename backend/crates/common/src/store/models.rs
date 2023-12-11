@@ -38,6 +38,15 @@ pub enum IndexerRef<'a> {
 }
 
 #[derive(Insertable, Debug)]
+#[diesel(table_name = indexer_versions)]
+pub struct NewIndexerVersion {
+    pub indexer_id: IntId,
+    pub error: Option<String>,
+    pub version_string: Option<String>,
+    pub version_commit: Option<String>,
+}
+
+#[derive(Insertable, Debug)]
 #[diesel(table_name = pois)]
 pub struct NewPoi {
     pub poi: Vec<u8>,

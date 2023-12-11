@@ -1,12 +1,11 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use reqwest::Url;
-
 use graphix_common::config::IndexerUrls;
 use graphix_common::prelude::{
     Indexer, IndexerConfig, PoiRequest, RealIndexer, SubgraphDeployment,
 };
+use reqwest::Url;
 
 /// Test utility function to create a valid `Indexer` from an arbitrary base url.
 fn test_indexer_from_url(url: impl Into<String>) -> Arc<impl Indexer> {

@@ -1,15 +1,16 @@
+use std::collections::BTreeSet;
+use std::sync::{Mutex, OnceLock};
+
+use diesel::Connection;
+
 use crate::block_choice::BlockChoicePolicy;
 use crate::graphql_api::types::SgDeploymentsQuery;
 use crate::prelude::ProofOfIndexing;
 use crate::prometheus_metrics::metrics;
-use crate::test_utils::{fast_rng, gen::gen_bytes32, gen::gen_indexers};
-use crate::{
-    queries,
-    store::{diesel_queries, PoiLiveness, Store},
-};
-use diesel::Connection;
-use std::collections::BTreeSet;
-use std::sync::{Mutex, OnceLock};
+use crate::queries;
+use crate::store::{diesel_queries, PoiLiveness, Store};
+use crate::test_utils::fast_rng;
+use crate::test_utils::gen::{gen_bytes32, gen_indexers};
 
 static TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 

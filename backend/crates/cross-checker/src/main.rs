@@ -63,6 +63,10 @@ async fn main() -> anyhow::Result<()> {
 
         tx_indexers.send(indexers.clone())?;
 
+        let graph_node_versions =
+            graphix_common::queries::query_graph_node_versions(&indexers, metrics()).await;
+        store.write_graph_node_versions(graph_node_versions)?;
+
         let indexing_statuses = query_indexing_statuses(indexers, metrics()).await;
 
         info!("Monitor proofs of indexing");

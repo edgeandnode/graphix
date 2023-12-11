@@ -1,6 +1,16 @@
 //! Database access (read and write) abstractions for all Graphix backend
 //! services.
 
+// Provides the diesel queries, callers should handle connection pooling and transactions.
+mod diesel_queries;
+#[cfg(tests)]
+pub use diesel_queries;
+pub mod models;
+mod schema;
+
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use anyhow::Error;
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager, Pool, PooledConnection};
@@ -8,18 +18,11 @@ use diesel::{Connection, PgConnection};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use tracing::info;
 
-use crate::graphql_api::types::{BlockRangeInput, IndexersQuery, SgDeploymentsQuery};
-use crate::store::models::{IndexerRow, Poi};
-
-// Provides the diesel queries, callers should handle connection pooling and transactions.
-mod diesel_queries;
-#[cfg(tests)]
-pub use diesel_queries;
-
 use self::models::{QueriedSgDeployment, WritablePoi};
-
-pub mod models;
-mod schema;
+use crate::graphql_api::types::{BlockRangeInput, IndexersQuery, SgDeploymentsQuery};
+use crate::indexer::Indexer;
+use crate::prelude::IndexerVersion;
+use crate::store::models::{IndexerRow, Poi};
 
 #[cfg(test)]
 mod tests;
@@ -191,6 +194,18 @@ impl Store {
     pub fn write_pois(&self, pois: &[impl WritablePoi], live: PoiLiveness) -> anyhow::Result<()> {
         self.conn()?
             .transaction::<_, Error, _>(|conn| diesel_queries::write_pois(conn, pois, live))
+    }
+
+    pub fn write_graph_node_versions(
+        &self,
+        versions: HashMap<Arc<dyn Indexer>, anyhow::Result<IndexerVersion>>,
+    ) -> anyhow::Result<()> {
+        for (indexer, version) in versions {
+            let mut conn = self.conn()?;
+            diesel_queries::write_graph_node_version(&mut conn, &*indexer, version)?;
+        }
+
+        Ok(())
     }
 
     pub fn get_first_pending_divergence_investigation_request(

@@ -4,8 +4,8 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 
 use crate::prelude::{
-    BlockPointer, Bytes32, CachedEthereumCall, EntityChanges, Indexer, IndexingStatus, PoiRequest,
-    ProofOfIndexing, SubgraphDeployment,
+    BlockPointer, Bytes32, CachedEthereumCall, EntityChanges, Indexer, IndexerVersion,
+    IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -84,6 +84,20 @@ impl Indexer for MockIndexer {
                 proof_of_indexing: poi.proof_of_indexing.clone(),
             })
             .collect::<Vec<_>>()
+    }
+
+    async fn version(self: Arc<Self>) -> anyhow::Result<IndexerVersion> {
+        Ok(IndexerVersion {
+            version: "0.0.0".to_string(),
+            commit: "no-commit-hash".to_string(),
+        })
+    }
+
+    async fn subgraph_api_versions(
+        self: Arc<Self>,
+        _subgraph_id: &str,
+    ) -> anyhow::Result<Vec<String>> {
+        Ok(vec![])
     }
 
     async fn cached_eth_calls(

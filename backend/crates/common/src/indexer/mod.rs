@@ -11,7 +11,7 @@ use async_trait::async_trait;
 pub use interceptor::IndexerInterceptor;
 pub use real_indexer::RealIndexer;
 
-use crate::types::{IndexingStatus, PoiRequest, ProofOfIndexing};
+use crate::types::{self, IndexingStatus, PoiRequest, ProofOfIndexing};
 
 #[async_trait]
 pub trait Indexer: Send + Sync + Debug {
@@ -27,6 +27,13 @@ pub trait Indexer: Send + Sync + Debug {
 
     async fn proofs_of_indexing(self: Arc<Self>, requests: Vec<PoiRequest>)
         -> Vec<ProofOfIndexing>;
+
+    async fn version(self: Arc<Self>) -> anyhow::Result<types::IndexerVersion>;
+
+    async fn subgraph_api_versions(
+        self: Arc<Self>,
+        subgraph_id: &str,
+    ) -> anyhow::Result<Vec<String>>;
 
     /// Convenience wrapper around calling [`Indexer::proofs_of_indexing`] for a
     /// single POI.
