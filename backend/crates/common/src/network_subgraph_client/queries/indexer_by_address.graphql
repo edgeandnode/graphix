@@ -1,4 +1,4 @@
-{
+query IndexerByAddress($id: String) {
   indexers(where: { id: $id }) {
     url
     defaultDisplayName

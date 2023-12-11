@@ -94,6 +94,7 @@ impl NetworkSubgraphClient {
     ) -> anyhow::Result<Arc<dyn IndexerTrait>> {
         let hex_encoded_addr_json = serde_json::to_value(format!("0x{}", hex::encode(address)))
             .expect("Unable to hex encode address");
+        println!("hex_encoded_addr_json: {:?}", hex_encoded_addr_json);
         let response_data: ResponseData = self
             .graphql_query_no_errors(
                 queries::INDEXER_BY_ADDRESS_QUERY,
@@ -264,7 +265,7 @@ mod queries {
 mod tests {
     use super::*;
 
-    fn mainnet_network_subgraph() -> NetworkSubgraphClient {
+    fn network_sg_client_on_ethereum() -> NetworkSubgraphClient {
         NetworkSubgraphClient::new(
             "https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-mainnet",
         )
@@ -274,42 +275,39 @@ mod tests {
     async fn short_timeout_always_fails() {
         // We should never be able to get a response back under 1ms. If we do,
         // it means the timeout logic is broken.
-        let network_sg = mainnet_network_subgraph().with_timeout(Duration::from_millis(1));
-        assert!(matches!(
-            network_sg.indexers_by_staked_tokens().await,
-            Err(_)
-        ));
+        let client = network_sg_client_on_ethereum().with_timeout(Duration::from_millis(1));
+        assert!(matches!(client.indexers_by_staked_tokens().await, Err(_)));
     }
 
     #[tokio::test]
     async fn mainnet_indexers_by_staked_tokens_no_panic() {
-        let network_sg = mainnet_network_subgraph();
-        let indexers = network_sg.indexers_by_staked_tokens().await.unwrap();
+        let client = network_sg_client_on_ethereum();
+        let indexers = client.indexers_by_staked_tokens().await.unwrap();
         assert!(indexers.len() > 0);
     }
 
     #[tokio::test]
     async fn mainnet_indexers_by_allocations_no_panic() {
-        let network_sg = mainnet_network_subgraph();
-        let indexers = network_sg.indexers_by_allocations().await.unwrap();
+        let client = network_sg_client_on_ethereum();
+        let indexers = client.indexers_by_allocations().await.unwrap();
         assert!(indexers.len() > 0);
     }
 
     #[tokio::test]
-    async fn mainnet_deployments_no_panic() {
-        let network_sg = mainnet_network_subgraph();
-        let deployments = network_sg.subgraph_deployments().await.unwrap();
-        assert!(deployments.len() > 0);
+    async fn at_least_100_subgraph_deployments() {
+        let client = network_sg_client_on_ethereum();
+        let deployments = client.subgraph_deployments().await.unwrap();
+        println!("n. of deployments: {:?}", deployments.len());
+        assert!(deployments.len() >= 100);
     }
 
     #[tokio::test]
-    #[should_panic] // FIXME
-    async fn mainnet_fetch_indexer() {
-        let network_sg = mainnet_network_subgraph();
+    async fn mainnet_fetch_ellipfra() {
+        let client = network_sg_client_on_ethereum();
         // ellipfra.eth:
-        // https://thegraph.com/explorer/profile/0x62a0bd1d110ff4e5b793119e95fc07c9d1fc8c4a?view=Indexing&chain=mainnet
-        let addr = hex::decode("62a0bd1d110ff4e5b793119e95fc07c9d1fc8c4a").unwrap();
-        let indexer = network_sg.indexer_by_address(&addr).await.unwrap();
-        assert_eq!(indexer.address(), Some(&addr[..]));
+        // htps://thegraph.com/explorer/profile/0x62a0bd1d110ff4e5b793119e95fc07c9d1fc8c4a?view=Indexing&chain=mainnet
+        let address = hex::decode("62a0bd1d110ff4e5b793119e95fc07c9d1fc8c4a").unwrap();
+        let indexer = client.indexer_by_address(&address).await.unwrap();
+        assert_eq!(indexer.address(), Some(&address[..]));
     }
 }
