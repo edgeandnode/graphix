@@ -183,6 +183,13 @@ impl QueryRoot {
             Ok(None)
         }
     }
+
+    async fn networks(&self, ctx: &Context<'_>) -> Result<Vec<Network>> {
+        let api_ctx = ctx.data::<ApiSchemaContext>()?;
+
+        let networks = api_ctx.store.networks()?;
+        Ok(networks)
+    }
 }
 
 pub struct MutationRoot;

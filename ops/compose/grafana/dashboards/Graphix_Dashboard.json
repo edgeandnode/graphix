@@ -82,7 +82,7 @@
         },
         "showHeader": true
       },
-      "pluginVersion": "9.5.1",
+      "pluginVersion": "9.4.7",
       "targets": [
         {
           "aliasBy": "",
@@ -295,91 +295,6 @@
     },
     {
       "datasource": {
-        "type": "fifemon-graphql-datasource",
-        "uid": "gYhzyBE4k"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 9,
-        "x": 0,
-        "y": 16
-      },
-      "id": 3,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "9.5.1",
-      "targets": [
-        {
-          "aliasBy": "",
-          "annotationTags": "",
-          "annotationText": "",
-          "annotationTitle": "",
-          "constant": 6.5,
-          "dataPath": "indexers",
-          "datasource": {
-            "type": "fifemon-graphql-datasource",
-            "uid": "gYhzyBE4k"
-          },
-          "endTimePath": "endTime",
-          "groupBy": "",
-          "hide": false,
-          "queryText": "query {\n indexers(filter: {}) {\n id\n }\n}",
-          "refId": "A",
-          "timePath": ""
-        }
-      ],
-      "title": "Number of monitored indexers",
-      "transformations": [
-        {
-          "id": "reduce",
-          "options": {
-            "includeTimeField": false,
-            "labelsToFields": false,
-            "mode": "seriesToRows",
-            "reducers": [
-              "count"
-            ]
-          }
-        }
-      ],
-      "type": "stat"
-    },
-    {
-      "datasource": {
         "type": "prometheus",
         "uid": "c19gyBP4z"
       },
@@ -472,6 +387,339 @@
       "title": "RPS: \"publicProofsOfIndexing\"",
       "transformations": [],
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "fifemon-graphql-datasource",
+        "uid": "gYhzyBE4k"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 9,
+        "y": 25
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "9.4.7",
+      "targets": [
+        {
+          "aliasBy": "",
+          "annotationTags": "",
+          "annotationText": "",
+          "annotationTitle": "",
+          "constant": 6.5,
+          "dataPath": "indexers",
+          "datasource": {
+            "type": "fifemon-graphql-datasource",
+            "uid": "gYhzyBE4k"
+          },
+          "endTimePath": "endTime",
+          "groupBy": "",
+          "hide": false,
+          "queryText": "query {\n indexers(filter: {}) {\n id\n }\n}",
+          "refId": "A",
+          "timePath": ""
+        }
+      ],
+      "title": "Number of monitored indexers",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "includeTimeField": false,
+            "labelsToFields": false,
+            "mode": "seriesToRows",
+            "reducers": [
+              "count"
+            ]
+          }
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "fifemon-graphql-datasource",
+        "uid": "gYhzyBE4k"
+      },
+      "description": "List of indexers monitored by Graphix",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "id"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Indexer ID"
+              },
+              {
+                "id": "custom.filterable",
+                "value": true
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "Indexer page on the Network Explorer",
+                    "url": "https://thegraph.com/explorer/profile/${__value.text}?view=Overview&chain=mainnet"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "allocatedTokens"
+            },
+            "properties": [
+              {
+                "id": "noValue",
+                "value": "-"
+              },
+              {
+                "id": "displayName",
+                "value": "Total allocated tokens"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Indexer ID"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 473
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 10,
+        "x": 14,
+        "y": 25
+      },
+      "id": 9,
+      "options": {
+        "footer": {
+          "countRows": false,
+          "enablePagination": true,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "9.4.7",
+      "targets": [
+        {
+          "aliasBy": "",
+          "annotationTags": "",
+          "annotationText": "",
+          "annotationTitle": "",
+          "constant": 6.5,
+          "dataPath": "indexers",
+          "datasource": {
+            "type": "fifemon-graphql-datasource",
+            "uid": "gYhzyBE4k"
+          },
+          "endTimePath": "endTime",
+          "groupBy": "",
+          "queryText": "query {\n      indexers(filter: {}) {\n        id\n        allocatedTokens\n      }\n}",
+          "refId": "A",
+          "timePath": ""
+        }
+      ],
+      "title": "Monitored indexers",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "fifemon-graphql-datasource",
+        "uid": "gYhzyBE4k"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "name"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Name"
+              },
+              {
+                "id": "custom.filterable",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "caip2"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "CAIP-2 ID"
+              },
+              {
+                "id": "noValue",
+                "value": "-"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 5,
+        "x": 9,
+        "y": 29
+      },
+      "id": 11,
+      "options": {
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "CAIP2 network ID (if known)"
+          }
+        ]
+      },
+      "pluginVersion": "9.4.7",
+      "targets": [
+        {
+          "aliasBy": "",
+          "annotationTags": "",
+          "annotationText": "",
+          "annotationTitle": "",
+          "constant": 6.5,
+          "dataPath": "networks",
+          "datasource": {
+            "type": "fifemon-graphql-datasource",
+            "uid": "gYhzyBE4k"
+          },
+          "endTimePath": "endTime",
+          "groupBy": "",
+          "queryText": "query {\n      networks {\n        name\n        caip2\n       }\n}",
+          "refId": "A",
+          "timePath": ""
+        }
+      ],
+      "title": "Networks with known subgraphs",
+      "type": "table"
     }
   ],
   "refresh": "",
@@ -490,6 +738,6 @@
   "timezone": "",
   "title": "Graphix Dashboard",
   "uid": "dee4d09d-0dbc-4af2-b4a2-2fcb9ecf35cc",
-  "version": 5,
+  "version": 6,
   "weekStart": ""
 }

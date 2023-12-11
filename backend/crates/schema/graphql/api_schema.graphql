@@ -373,6 +373,7 @@ type QueryRoot {
 	liveProofsOfIndexing(filter: PoisQuery!): [ProofOfIndexing!]!
 	poiAgreementRatios(indexerName: String!): [PoiAgreementRatio!]!
 	divergenceInvestigationReport(uuid: String!): DivergenceInvestigationReport
+	networks: [Network!]!
 }
 
 """

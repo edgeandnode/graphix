@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use async_trait::async_trait;
 use graphql_client::{GraphQLQuery, Response};
 use reqwest::IntoUrl;
@@ -82,8 +82,7 @@ impl RealIndexer {
             return Err(anyhow::anyhow!("Indexer returned errors: {}", errors));
         }
 
-        // Unwrap: `data` is always present if there are no errors.
-        Ok(response.data.unwrap())
+        Ok(response.data.context("Indexer returned no data")?)
     }
 
     async fn proofs_of_indexing_batch(

@@ -19,7 +19,7 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use tracing::info;
 
 use self::models::{QueriedSgDeployment, WritablePoi};
-use crate::graphql_api::types::{BlockRangeInput, IndexersQuery, SgDeploymentsQuery};
+use crate::graphql_api::types::{BlockRangeInput, IndexersQuery, Network, SgDeploymentsQuery};
 use crate::indexer::Indexer;
 use crate::prelude::IndexerVersion;
 use crate::store::models::{IndexerRow, Poi};
@@ -135,6 +135,22 @@ impl Store {
     pub fn delete_network(&self, network_name: &str) -> anyhow::Result<()> {
         let mut conn = self.conn()?;
         diesel_queries::delete_network(&mut conn, network_name)
+    }
+
+    pub fn networks(&self) -> anyhow::Result<Vec<Network>> {
+        use schema::networks;
+
+        let mut conn = self.conn()?;
+        let rows = networks::table
+            .select((networks::name, networks::caip2))
+            .load::<(String, Option<String>)>(&mut conn)?;
+
+        let networks = rows
+            .into_iter()
+            .map(|(name, caip2)| Network { name, caip2 })
+            .collect();
+
+        Ok(networks)
     }
 
     /// Returns all indexers stored in the database.
