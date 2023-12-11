@@ -10,7 +10,8 @@ use serde::{Deserialize, Serialize};
 use types::BlockPointer;
 
 use super::schema::*;
-use crate::types::{self, IndexerId};
+use crate::indexer::IndexerId;
+use crate::types::{self};
 
 pub type IntId = i32;
 pub type BigIntId = i64;
@@ -33,12 +34,6 @@ impl Poi {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum IndexerRef<'a> {
-    Id(IntId),
-    Address(&'a [u8]),
-}
-
 #[derive(Insertable, Debug)]
 #[diesel(table_name = indexer_versions)]
 pub struct NewIndexerVersion {
@@ -59,9 +54,10 @@ pub struct NewPoi {
 }
 
 pub trait WritablePoi {
+    type IndexerId: IndexerId;
+
     fn deployment_cid(&self) -> &str;
-    fn indexer_name(&self) -> Option<Cow<String>>;
-    fn indexer_address(&self) -> Option<&[u8]>;
+    fn indexer_id(&self) -> Self::IndexerId;
     fn block(&self) -> BlockPointer;
     fn proof_of_indexing(&self) -> &[u8];
 }

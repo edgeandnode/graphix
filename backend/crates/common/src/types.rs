@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::fmt;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -112,16 +111,14 @@ impl PartialEq for ProofOfIndexing {
 }
 
 impl WritablePoi for ProofOfIndexing {
+    type IndexerId = Arc<dyn Indexer>;
+
     fn deployment_cid(&self) -> &str {
         self.deployment.as_str()
     }
 
-    fn indexer_name(&self) -> Option<Cow<String>> {
-        self.indexer.name()
-    }
-
-    fn indexer_address(&self) -> Option<&[u8]> {
-        self.indexer.address().map(AsRef::as_ref)
+    fn indexer_id(&self) -> Self::IndexerId {
+        self.indexer.clone()
     }
 
     fn block(&self) -> BlockPointer {
@@ -130,21 +127,6 @@ impl WritablePoi for ProofOfIndexing {
 
     fn proof_of_indexing(&self) -> &[u8] {
         &self.proof_of_indexing.0
-    }
-}
-
-pub trait IndexerId {
-    fn address(&self) -> Option<&[u8]>;
-    fn name(&self) -> Option<Cow<String>>;
-
-    fn id(&self) -> String {
-        if let Some(address) = self.address() {
-            format!("0x{}", hex::encode(address))
-        } else if let Some(name) = self.name() {
-            name.to_string()
-        } else {
-            panic!("Indexer has neither name nor address")
-        }
     }
 }
 

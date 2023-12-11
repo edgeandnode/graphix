@@ -9,7 +9,7 @@ use tracing::info;
 use super::models::WritablePoi;
 use super::PoiLiveness;
 use crate::graphql_api::types::BlockRangeInput;
-use crate::indexer::Indexer;
+use crate::indexer::{Indexer, IndexerId};
 use crate::prelude::{BlockPointer, IndexerVersion};
 use crate::store::models::{
     self, Indexer as IndexerModel, NewIndexer, NewLivePoi, NewPoi, NewSgDeployment, SgDeployment,
@@ -212,7 +212,8 @@ pub(super) fn write_pois(
         let new_pois: Vec<_> = poi_group
             .iter()
             .map(|poi| {
-                let indexer_id = get_indexer_id(conn, poi.indexer_name(), poi.indexer_address())?;
+                let indexer_id =
+                    get_indexer_id(conn, poi.indexer_id().name(), poi.indexer_id().address())?;
 
                 Ok(NewPoi {
                     sg_deployment_id,

@@ -8,9 +8,8 @@ use serde::{Deserialize, Deserializer};
 use tracing::{info, warn};
 
 use crate::block_choice::BlockChoicePolicy;
-use crate::indexer::{Indexer, IndexerInterceptor, RealIndexer};
+use crate::indexer::{Indexer, IndexerId, IndexerInterceptor, RealIndexer};
 use crate::network_subgraph_client::NetworkSubgraphClient;
-use crate::prelude::IndexerId;
 
 /// A [`serde`]-compatible representation of Graphix's YAML configuration file.
 #[derive(Debug, Clone, Deserialize)]

@@ -1,7 +1,7 @@
 version: "3"
 services:
   grafana:
-    image: grafana/grafana-enterprise
+    image: grafana/grafana-oss
     restart: always
     # https://community.grafana.com/t/new-docker-install-with-persistent-storage-permission-problem/10896/16
     user: ":"

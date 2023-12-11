@@ -12,7 +12,7 @@ use async_trait::async_trait;
 pub use interceptor::IndexerInterceptor;
 pub use real_indexer::RealIndexer;
 
-use crate::types::{self, IndexerId, IndexingStatus, PoiRequest, ProofOfIndexing};
+use crate::types::{self, IndexingStatus, PoiRequest, ProofOfIndexing};
 
 /// An indexer is a `graph-node` instance that may or may not also be a network
 /// participant.
@@ -88,6 +88,24 @@ pub trait Indexer: Send + Sync + Debug {
     ) -> anyhow::Result<EntityChanges>;
 }
 
+/// Graphix defines an indexer's ID as either its Ethereum address (if it has
+/// one) or its name (if it doesn't have an address i.e. it's not a network
+/// participant), strictly in this order.
+pub trait IndexerId {
+    fn address(&self) -> Option<&[u8]>;
+    fn name(&self) -> Option<Cow<String>>;
+
+    fn id(&self) -> String {
+        if let Some(address) = self.address() {
+            format!("0x{}", hex::encode(address))
+        } else if let Some(name) = self.name() {
+            name.to_string()
+        } else {
+            panic!("Indexer has neither name nor address")
+        }
+    }
+}
+
 impl<T> IndexerId for T
 where
     T: Indexer,
@@ -98,6 +116,16 @@ where
 
     fn name(&self) -> Option<Cow<'_, String>> {
         Indexer::name(self)
+    }
+}
+
+impl IndexerId for Arc<dyn Indexer> {
+    fn address(&self) -> Option<&[u8]> {
+        Indexer::address(&**self)
+    }
+
+    fn name(&self) -> Option<Cow<'_, String>> {
+        Indexer::name(&**self)
     }
 }
 
