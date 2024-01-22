@@ -2,19 +2,14 @@ use serde::Deserialize;
 
 use crate::prelude::IndexingStatus;
 
-#[derive(Copy, Clone, Debug, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum BlockChoicePolicy {
     // Use the earliest block that all indexers have in common
     Earliest,
     // Use the block that maximizes the total number of blocks synced across all indexers
+    #[default]
     MaxSyncedBlocks,
-}
-
-impl Default for BlockChoicePolicy {
-    fn default() -> Self {
-        BlockChoicePolicy::MaxSyncedBlocks
-    }
 }
 
 impl BlockChoicePolicy {

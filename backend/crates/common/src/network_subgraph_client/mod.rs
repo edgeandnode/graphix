@@ -345,14 +345,14 @@ mod tests {
         // We should never be able to get a response back under 1ms. If we do,
         // it means the timeout logic is broken.
         let client = network_sg_client_on_ethereum().with_timeout(Duration::from_millis(1));
-        assert!(matches!(client.indexers_by_staked_tokens().await, Err(_)));
+        assert!(client.indexers_by_staked_tokens().await.is_err())
     }
 
     #[tokio::test]
     async fn mainnet_indexers_by_staked_tokens_no_panic() {
         let client = network_sg_client_on_ethereum();
         let indexers = client.indexers_by_staked_tokens().await.unwrap();
-        assert!(indexers.len() > 0);
+        assert!(!indexers.is_empty());
     }
 
     #[tokio::test]

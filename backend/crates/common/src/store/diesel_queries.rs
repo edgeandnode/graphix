@@ -84,7 +84,7 @@ pub(super) fn pois(
     };
 
     let order_by = (blocks::number.desc(), schema::pois::created_at.desc());
-    let limit = limit.map(|l| l as i64).unwrap_or(i64::MAX) as i64;
+    let limit = limit.map(|l| l as i64).unwrap_or(i64::MAX);
 
     match live_only {
         false => {
@@ -98,7 +98,7 @@ pub(super) fn pois(
                 .filter(blocks_filter)
                 .filter(indexer_filter)
                 .limit(limit);
-            return Ok(query.load::<models::Poi>(conn)?);
+            Ok(query.load::<models::Poi>(conn)?)
         }
         // This will additionally join with `live_pois` to filter out any Pois that are not live.
         true => {
@@ -113,7 +113,7 @@ pub(super) fn pois(
                 .filter(blocks_filter)
                 .filter(indexer_filter)
                 .limit(limit);
-            return Ok(query.load::<models::Poi>(conn)?);
+            Ok(query.load::<models::Poi>(conn)?)
         }
     }
 }

@@ -108,7 +108,7 @@ async fn send_single_query_of_unknown_block_number_and_handle_error() {
 
 #[tokio::test]
 async fn send_multiple_queries_and_process_results() {
-    //// Given
+    // Given
 
     // FIXME: This is temporarily set to 1 until we fix the error: 'Null value resolved for
     //  non-null field `proofOfIndexing`' Which is probably a Graph Node bug. Setting it to 1
@@ -126,13 +126,13 @@ async fn send_multiple_queries_and_process_results() {
         })
         .collect::<Vec<_>>();
 
-    //// When
+    // When
     let request_fut = Indexer::proofs_of_indexing(indexer, poi_requests);
     let response = tokio::time::timeout(Duration::from_secs(10), request_fut)
         .await
         .expect("Timeout");
 
-    //// Then
+    // Then
     assert_eq!(response.len(), MAX_REQUESTS_PER_QUERY + 2);
 
     assert_eq!(response[0].deployment, deployment);

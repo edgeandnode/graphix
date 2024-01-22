@@ -81,8 +81,8 @@ impl Indexer for MockIndexer {
             .map(|(deployment_detail, poi)| ProofOfIndexing {
                 indexer: self.clone(),
                 deployment: deployment_detail.deployment.clone(),
-                block: poi.block.clone(),
-                proof_of_indexing: poi.proof_of_indexing.clone(),
+                block: poi.block,
+                proof_of_indexing: poi.proof_of_indexing,
             })
             .collect::<Vec<_>>()
     }

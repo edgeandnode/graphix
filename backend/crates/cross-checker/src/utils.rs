@@ -30,7 +30,7 @@ pub fn find_any_indexer_for_poi(
     poi_s: &str,
     indexers: &[Arc<dyn Indexer>],
 ) -> anyhow::Result<Option<Arc<dyn Indexer>>> {
-    let poi = if let Some(poi) = store.poi(&poi_s)? {
+    let poi = if let Some(poi) = store.poi(poi_s)? {
         poi
     } else {
         return Ok(None);

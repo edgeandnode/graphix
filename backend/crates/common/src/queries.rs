@@ -166,13 +166,13 @@ pub async fn query_proofs_of_indexing(
             (
                 deployment.clone(),
                 statuses_by_deployment.get(deployment).and_then(|statuses| {
-                    block_choice_policy.choose_block(statuses.iter().map(|&s| s))
+                    block_choice_policy.choose_block(statuses.iter().copied())
                 }),
             )
         }));
 
     // Fetch POIs for the most recent common blocks
-    let pois = indexers
+    indexers
         .iter()
         .map(|indexer| async {
             let poi_requests = latest_blocks
@@ -190,7 +190,7 @@ pub async fn query_proofs_of_indexing(
                 .filter_map(|(deployment, block_number)| {
                     block_number.map(|block_number| PoiRequest {
                         deployment: deployment.clone(),
-                        block_number: block_number,
+                        block_number,
                     })
                 })
                 .collect::<Vec<_>>();
@@ -209,7 +209,5 @@ pub async fn query_proofs_of_indexing(
         .await
         .into_iter()
         .flatten()
-        .collect::<Vec<_>>();
-
-    pois
+        .collect::<Vec<_>>()
 }

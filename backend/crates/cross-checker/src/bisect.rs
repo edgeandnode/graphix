@@ -240,7 +240,7 @@ async fn handle_divergence_investigation_request_pair(
 
     debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Fetching Pois");
     let poi1 = match store
-        .poi(&poi1_s)
+        .poi(poi1_s)
         .map_err(DivergenceInvestigationError::Database)
         .and_then(|poi_opt| {
             if let Some(poi) = poi_opt {
@@ -258,7 +258,7 @@ async fn handle_divergence_investigation_request_pair(
         }
     };
     let poi2 = match store
-        .poi(&poi2_s)
+        .poi(poi2_s)
         .map_err(DivergenceInvestigationError::Database)
         .and_then(|poi_opt| {
             if let Some(poi) = poi_opt {

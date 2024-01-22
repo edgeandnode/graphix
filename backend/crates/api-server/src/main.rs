@@ -31,14 +31,15 @@ async fn main() -> anyhow::Result<()> {
     let server_fut = create_server(cli_options);
 
     // Listen to requests forever.
-    Ok(server_fut.await?.await)
+    server_fut.await?.await;
+    Ok(())
 }
 
 async fn create_server(cli_options: CliOptions) -> anyhow::Result<impl Future<Output = ()>> {
     let store = Store::new(cli_options.database_url.as_str()).await?;
 
     // GET / -> 200 OK
-    let health_check_route = warp::path::end().map(|| format!("Ready to roll!"));
+    let health_check_route = warp::path::end().map(|| "Ready to roll!".to_string());
 
     // GraphQL API
     let api_context = graphql_api::ApiSchemaContext { store };

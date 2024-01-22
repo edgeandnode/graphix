@@ -68,8 +68,10 @@ async fn deployments_with_name() {
     store.set_deployment_name(ipfs_cid2, "foo").unwrap();
 
     let deployments = {
-        let mut filter = SgDeploymentsQuery::default();
-        filter.name = Some("foo".to_string());
+        let filter = SgDeploymentsQuery {
+            name: Some("foo".to_string()),
+            ..Default::default()
+        };
         store.sg_deployments(filter).unwrap()
     };
     assert!(deployments.len() == 1);
@@ -170,7 +172,7 @@ fn test_pois(
 
     // Common logic to create poi_triples
     let poi_triples: BTreeSet<(String, String, Vec<u8>)> = pois
-        .into_iter()
+        .iter()
         .map(|poi| {
             (
                 poi.deployment.0.clone(),

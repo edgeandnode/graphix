@@ -143,7 +143,7 @@ impl QueryRoot {
             let ratio = PoiAgreementRatio {
                 poi: poi.hash.clone(),
                 deployment,
-                block: block,
+                block,
                 total_indexers,
                 n_agreeing_indexers,
                 n_disagreeing_indexers,

@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 mod bisect;
 mod utils;
 
@@ -13,7 +15,6 @@ use graphix_common::{config, metrics, store, PrometheusExporter};
 use prometheus_exporter::prometheus;
 use tokio::sync::watch;
 use tracing::*;
-use tracing_subscriber;
 
 use crate::bisect::handle_divergence_investigation_requests;
 

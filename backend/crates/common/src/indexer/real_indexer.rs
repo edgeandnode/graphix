@@ -71,7 +71,7 @@ impl RealIndexer {
             return Err(anyhow::anyhow!("Indexer returned errors: {}", errors));
         }
 
-        Ok(response.data.context("Indexer returned no data")?)
+        response.data.context("Indexer returned no data")
     }
 
     async fn proofs_of_indexing_batch(
@@ -83,7 +83,7 @@ impl RealIndexer {
         };
         let request = gql_types::ProofsOfIndexing::build_query(Variables {
             requests: requests
-                .into_iter()
+                .iter()
                 .map(|query| PublicProofOfIndexingRequest {
                     deployment: query.deployment.to_string(),
                     block_number: query.block_number.to_string(),
@@ -254,7 +254,7 @@ impl Indexer for RealIndexer {
 
         let eth_calls = response
             .cached_ethereum_calls
-            .unwrap_or(vec![])
+            .unwrap_or_default()
             .into_iter()
             .map(|eth_call| {
                 Ok(CachedEthereumCall {
@@ -359,7 +359,7 @@ mod gql_types {
             let chain = self
                 .inner
                 .chains
-                .get(0)
+                .first()
                 .ok_or_else(|| anyhow!("chain status missing"))?;
 
             let (latest_block, earliest_block_num) = match &chain.on {

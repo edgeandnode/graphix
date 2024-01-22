@@ -55,7 +55,7 @@ pub struct IndexingStatus {
 
 impl PartialEq for IndexingStatus {
     fn eq(&self, other: &Self) -> bool {
-        &*self.indexer == &*other.indexer
+        self.indexer.as_ref() == other.indexer.as_ref()
             && self.deployment == other.deployment
             && self.network == other.network
             && self.latest_block == other.latest_block
@@ -89,7 +89,7 @@ impl TryFrom<Vec<u8>> for Bytes32 {
 
 impl fmt::Display for Bytes32 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(&self.0))
+        write!(f, "{}", hex::encode(self.0))
     }
 }
 
@@ -103,7 +103,7 @@ pub struct ProofOfIndexing {
 
 impl PartialEq for ProofOfIndexing {
     fn eq(&self, other: &Self) -> bool {
-        &*self.indexer == &*other.indexer
+        self.indexer.as_ref() == other.indexer.as_ref()
             && self.deployment == other.deployment
             && self.block == other.block
             && self.proof_of_indexing == other.proof_of_indexing
@@ -122,7 +122,7 @@ impl WritablePoi for ProofOfIndexing {
     }
 
     fn block(&self) -> BlockPointer {
-        self.block.clone()
+        self.block
     }
 
     fn proof_of_indexing(&self) -> &[u8] {

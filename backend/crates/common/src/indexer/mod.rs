@@ -145,7 +145,7 @@ impl Hash for dyn Indexer {
 
 impl PartialOrd for dyn Indexer {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.id().partial_cmp(&other.id())
+        Some(self.cmp(other))
     }
 }
 

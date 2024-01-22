@@ -24,7 +24,7 @@ pub fn gen_blocks() -> Vec<BlockPointer> {
     let block_hash = |n: u64| -> Bytes32 {
         let mut buf = [0u8; 32];
         buf[24..32].clone_from_slice(&n.to_be_bytes());
-        Bytes32(buf.into())
+        Bytes32(buf)
     };
     (0..10)
         .map(|number| BlockPointer {
@@ -88,7 +88,7 @@ where
             .map(|deployment| DeploymentDetails {
                 deployment,
                 network: "mainnet".into(),
-                latest_block: blocks.iter().choose(&mut rng).unwrap().clone(),
+                latest_block: *blocks.iter().choose(&mut rng).unwrap(),
                 canonical_pois: gen_pois(blocks.clone(), &mut rng),
                 earliest_block_num: blocks[0].number,
             })

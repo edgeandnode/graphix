@@ -309,7 +309,7 @@ impl From<models::Poi> for ProofOfIndexing {
                 number: poi.block.number as u64,
                 hash: hex::encode(poi.block.hash),
             },
-            indexer: Indexer::from(models::Indexer::from(poi.indexer)),
+            indexer: Indexer::from(poi.indexer),
         }
     }
 }

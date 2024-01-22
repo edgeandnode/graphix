@@ -3,6 +3,7 @@ use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
 
+use anyhow::Context;
 use reqwest::Url;
 use serde::{Deserialize, Deserializer};
 use tracing::{info, warn};
@@ -29,8 +30,7 @@ pub struct Config {
 impl Config {
     pub fn read(path: &Path) -> anyhow::Result<Self> {
         let file = File::open(path)?;
-        Ok(serde_yaml::from_reader(file)
-            .map_err(|e| anyhow::Error::new(e).context("invalid config file"))?)
+        serde_yaml::from_reader(file).context("invalid config file")
     }
 
     pub fn indexers(&self) -> Vec<IndexerConfig> {
@@ -130,17 +130,12 @@ pub struct NetworkSubgraphConfig {
     pub limit: Option<u32>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum NetworkSubgraphQuery {
+    #[default]
     ByAllocations,
     ByStakedTokens,
-}
-
-impl Default for NetworkSubgraphQuery {
-    fn default() -> Self {
-        NetworkSubgraphQuery::ByAllocations
-    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -230,7 +225,7 @@ pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn In
         let network_subgraph = NetworkSubgraphClient::new(
             config
                 .network_subgraphs()
-                .get(0)
+                .first()
                 .ok_or_else(|| anyhow::anyhow!("indexer by address requires a network subgraph"))?
                 .endpoint
                 .clone(),
