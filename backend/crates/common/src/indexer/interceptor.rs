@@ -7,8 +7,7 @@ use async_trait::async_trait;
 
 use super::{CachedEthereumCall, EntityChanges};
 use crate::indexer::Indexer;
-use crate::types::Bytes32;
-use crate::types::{self, IndexingStatus, PoiRequest, ProofOfIndexing};
+use crate::types::{self, Bytes32, IndexingStatus, PoiRequest, ProofOfIndexing};
 
 /// Pretends to be an indexer by routing requests a
 /// [`RealIndexer`](crate::indexer::RealIndexer) and then intercepting the

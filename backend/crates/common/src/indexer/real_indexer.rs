@@ -10,8 +10,7 @@ use serde::Serialize;
 use tracing::*;
 
 use super::{CachedEthereumCall, EntityChanges, Indexer};
-use crate::config::IndexerConfig;
-use crate::config::IndexerUrls;
+use crate::config::{IndexerConfig, IndexerUrls};
 use crate::indexer::WithIndexer;
 use crate::prometheus_metrics::metrics;
 use crate::types::{

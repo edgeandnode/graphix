@@ -1,8 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use graphix_common::config::IndexerConfig;
-use graphix_common::config::IndexerUrls;
+use graphix_common::config::{IndexerConfig, IndexerUrls};
 use graphix_common::indexer::{Indexer, RealIndexer};
 use graphix_common::types::{PoiRequest, SubgraphDeployment};
 use reqwest::Url;
