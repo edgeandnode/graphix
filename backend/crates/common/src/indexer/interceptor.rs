@@ -34,8 +34,8 @@ impl Indexer for IndexerInterceptor {
             .map(|name| Cow::Owned(format!("interceptor-{}", name)))
     }
 
-    fn address(&self) -> Option<&[u8]> {
-        None
+    fn address(&self) -> &[u8] {
+        self.target.address()
     }
 
     async fn ping(self: Arc<Self>) -> anyhow::Result<()> {

@@ -7,6 +7,7 @@ use testcontainers::Container;
 
 use crate::block_choice::BlockChoicePolicy;
 use crate::graphql_api::types::SgDeploymentsQuery;
+use crate::indexer::IndexerId;
 use crate::prometheus_metrics::metrics;
 use crate::queries;
 use crate::store::{diesel_queries, PoiLiveness, Store};
@@ -176,7 +177,7 @@ fn test_pois(
         .map(|poi| {
             (
                 poi.deployment.0.clone(),
-                poi.indexer.id().to_owned(),
+                poi.indexer.address_string(),
                 poi.proof_of_indexing.0.to_vec(),
             )
         })

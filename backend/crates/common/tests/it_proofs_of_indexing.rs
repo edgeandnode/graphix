@@ -11,7 +11,7 @@ fn test_indexer_from_url(url: impl Into<String>) -> Arc<impl Indexer> {
     let url: Url = url.into().parse().expect("Invalid status url");
     let conf = IndexerConfig {
         name: Some(url.host().unwrap().to_string()),
-        address: None,
+        address: url.as_str().as_bytes().to_owned(),
         urls: IndexerUrls {
             status: url.join("status").unwrap(),
         },

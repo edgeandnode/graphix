@@ -99,7 +99,7 @@ impl NetworkSubgraphClient {
                     let address = hex::decode(indexer.id.trim_start_matches("0x"))?;
                     let real_indexer = RealIndexer::new(IndexerConfig {
                         name: indexer.default_display_name,
-                        address: Some(address),
+                        address,
                         urls: IndexerUrls {
                             status: Url::parse(&format!("{}/status", url))?,
                         },
@@ -155,14 +155,13 @@ impl NetworkSubgraphClient {
             anyhow::anyhow!("No indexer found for address 0x{}", hex::encode(address))
         })?;
 
-        let mut indexer = RealIndexer::new(IndexerConfig {
+        let indexer = RealIndexer::new(IndexerConfig {
             name: Some(indexer_data.default_display_name.clone()),
-            address: Some(address.to_vec()),
+            address: address.to_vec(),
             urls: IndexerUrls {
                 status: Url::parse(&format!("{}/status", indexer_data.url))?,
             },
         });
-        indexer.set_address(address.to_vec());
 
         Ok(Arc::new(indexer))
     }
@@ -267,7 +266,7 @@ fn indexer_allocation_data_to_real_indexer(
     url.set_path("/status");
     let config = IndexerConfig {
         name,
-        address: Some(address),
+        address,
         urls: IndexerUrls { status: url },
     };
     Ok(RealIndexer::new(config))
@@ -388,6 +387,6 @@ mod tests {
         // htps://thegraph.com/explorer/profile/0x62a0bd1d110ff4e5b793119e95fc07c9d1fc8c4a?view=Indexing&chain=mainnet
         let address = hex::decode("62a0bd1d110ff4e5b793119e95fc07c9d1fc8c4a").unwrap();
         let indexer = client.indexer_by_address(&address).await.unwrap();
-        assert_eq!(indexer.address(), Some(&address[..]));
+        assert_eq!(indexer.address(), address);
     }
 }

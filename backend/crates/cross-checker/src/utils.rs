@@ -38,7 +38,7 @@ pub fn find_any_indexer_for_poi(
 
     let indexer_opt = indexers
         .iter()
-        .find(|indexer| indexer.address() == poi.indexer.address.as_deref())
+        .find(|indexer| indexer.address() == poi.indexer.address)
         .cloned();
 
     Ok(indexer_opt)

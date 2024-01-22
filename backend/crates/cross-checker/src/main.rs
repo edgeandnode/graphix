@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use clap::Parser;
 use graphix_common::config::Config;
-use graphix_common::indexer::Indexer;
+use graphix_common::indexer::{Indexer, IndexerId};
 use graphix_common::queries::{query_indexing_statuses, query_proofs_of_indexing};
 use graphix_common::{config, metrics, store, PrometheusExporter};
 use prometheus_exporter::prometheus;
@@ -100,9 +100,9 @@ fn deduplicate_indexers(indexers: &[Arc<dyn Indexer>]) -> Vec<Arc<dyn Indexer>> 
     let mut seen = HashSet::new();
     let mut deduplicated = vec![];
     for indexer in indexers {
-        if !seen.contains(&indexer.id()) {
+        if !seen.contains(indexer.address()) {
             deduplicated.push(indexer.clone());
-            seen.insert(indexer.id().to_string());
+            seen.insert(indexer.address());
         }
     }
     info!(

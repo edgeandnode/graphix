@@ -129,7 +129,7 @@ pub fn write_indexers(
         .map(|indexer| {
             let indexer = indexer.as_ref();
             NewIndexer {
-                address: indexer.address().map(ToOwned::to_owned),
+                address: indexer.address().to_owned(),
                 name: indexer.name().map(|s| s.to_string()),
             }
         })
@@ -317,7 +317,7 @@ pub fn write_graph_node_version(
 fn get_indexer_id(
     conn: &mut PgConnection,
     name: Option<Cow<String>>,
-    address: Option<&[u8]>,
+    address: &[u8],
 ) -> anyhow::Result<i32> {
     use schema::indexers;
 

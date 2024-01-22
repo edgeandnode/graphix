@@ -11,6 +11,7 @@ use tracing::{info, warn};
 use crate::block_choice::BlockChoicePolicy;
 use crate::indexer::{Indexer, IndexerId, IndexerInterceptor, RealIndexer};
 use crate::network_subgraph_client::NetworkSubgraphClient;
+use crate::types::HexString;
 
 /// A [`serde`]-compatible representation of Graphix's YAML configuration file.
 #[derive(Debug, Clone, Deserialize)]
@@ -97,13 +98,13 @@ pub struct IndexerUrls {
 #[serde(rename_all = "camelCase")]
 pub struct IndexerConfig {
     pub name: Option<String>,
-    pub address: Option<Vec<u8>>,
+    pub address: Vec<u8>,
     pub urls: IndexerUrls,
 }
 
 impl IndexerId for IndexerConfig {
-    fn address(&self) -> Option<&[u8]> {
-        self.address.as_deref()
+    fn address(&self) -> &[u8] {
+        self.address.as_slice()
     }
 
     fn name(&self) -> Option<Cow<String>> {
@@ -142,7 +143,7 @@ pub enum NetworkSubgraphQuery {
 #[serde(rename_all = "camelCase")]
 pub struct InterceptorConfig {
     pub name: String,
-    pub target: String,
+    pub target: HexString<Vec<u8>>,
     pub poi_byte: u8,
 }
 
@@ -179,7 +180,7 @@ pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn In
 
     // First, configure all the real, static indexers.
     for config in config.indexers() {
-        info!(indexer_id = %config.id(), "Configuring indexer");
+        info!(indexer_address = %config.address_string(), "Configuring indexer");
         indexers.push(Arc::new(RealIndexer::new(config.clone())));
     }
 
@@ -242,7 +243,7 @@ pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn In
         info!(interceptor_id = %config.name, "Configuring interceptor");
         let target = indexers
             .iter()
-            .find(|indexer| indexer.id() == config.target)
+            .find(|indexer| indexer.address() == config.target.0)
             .expect("interceptor target indexer not found");
         indexers.push(Arc::new(IndexerInterceptor::new(
             target.clone(),

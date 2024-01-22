@@ -311,7 +311,7 @@ async fn handle_divergence_investigation_request_pair(
     debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Fetching indexers");
     let indexer1 = match indexers
         .iter()
-        .find(|indexer| indexer.id() == poi1.indexer.id())
+        .find(|indexer| indexer.address() == poi1.indexer.address())
         .cloned()
         .ok_or(DivergenceInvestigationError::IndexerNotFound {
             poi: poi1_s.to_string(),
@@ -324,7 +324,7 @@ async fn handle_divergence_investigation_request_pair(
     };
     let indexer2 = match indexers
         .iter()
-        .find(|indexer| indexer.id() == poi2.indexer.id())
+        .find(|indexer| indexer.address() == poi2.indexer.address())
         .cloned()
         .ok_or(DivergenceInvestigationError::IndexerNotFound {
             poi: poi2_s.to_string(),
@@ -337,10 +337,10 @@ async fn handle_divergence_investigation_request_pair(
     };
 
     debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Fetched indexers");
-    if indexer1.id() == indexer2.id() {
+    if indexer1.address() == indexer2.address() {
         report.error = Some(
             DivergenceInvestigationError::SameIndexer {
-                indexer_id: indexer1.id().to_string(),
+                indexer_id: indexer1.address_string(),
             }
             .to_string(),
         );

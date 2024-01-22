@@ -32,8 +32,8 @@ impl Indexer for MockIndexer {
         Some(Cow::Borrowed(&self.name))
     }
 
-    fn address(&self) -> Option<&[u8]> {
-        None
+    fn address(&self) -> &[u8] {
+        self.name.as_bytes()
     }
 
     async fn indexing_statuses(self: Arc<Self>) -> Result<Vec<IndexingStatus>, anyhow::Error> {

@@ -32,7 +32,7 @@ diesel::table! {
     indexers (id) {
         id -> Int4,
         name -> Nullable<Text>,
-        address -> Nullable<Bytea>,
+        address -> Bytea,
         created_at -> Timestamp,
     }
 }

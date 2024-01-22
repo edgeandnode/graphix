@@ -12,31 +12,16 @@ use async_trait::async_trait;
 pub use interceptor::IndexerInterceptor;
 pub use real_indexer::RealIndexer;
 
-use crate::types::{self, IndexingStatus, PoiRequest, ProofOfIndexing};
+use crate::types::{self, HexString, IndexingStatus, PoiRequest, ProofOfIndexing};
 
-/// An indexer is a `graph-node` instance that may or may not also be a network
-/// participant.
+/// An indexer is a `graph-node` instance that can be queried for information.
 #[async_trait]
 pub trait Indexer: Send + Sync + Debug {
-    /// The indexer's address. This can be [`None`] if the indexer is not a
-    /// network participant but e.g. a local `graph-node` instance.
-    fn address(&self) -> Option<&[u8]>;
+    /// The indexer's address.
+    fn address(&self) -> &[u8];
 
     /// Human-readable name of the indexer.
     fn name(&self) -> Option<Cow<'_, String>>;
-
-    /// Within Graphix, an indexer is uniquely identified by its hex-encoded
-    /// address (if it is a network participant), or its name (if it's not).
-    /// This is known as the indexer's "global ID" or "GID".
-    fn id(&self) -> String {
-        if let Some(address) = self.address() {
-            hex::encode(address)
-        } else {
-            self.name()
-                .expect("indexer has neither address nor name; this is a bug")
-                .to_string()
-        }
-    }
 
     async fn ping(self: Arc<Self>) -> anyhow::Result<()>;
 
@@ -92,17 +77,13 @@ pub trait Indexer: Send + Sync + Debug {
 /// one) or its name (if it doesn't have an address i.e. it's not a network
 /// participant), strictly in this order.
 pub trait IndexerId {
-    fn address(&self) -> Option<&[u8]>;
+    fn address(&self) -> &[u8];
     fn name(&self) -> Option<Cow<String>>;
 
-    fn id(&self) -> String {
-        if let Some(address) = self.address() {
-            format!("0x{}", hex::encode(address))
-        } else if let Some(name) = self.name() {
-            name.to_string()
-        } else {
-            panic!("Indexer has neither name nor address")
-        }
+    /// Returns the string representation of the indexer's address using
+    /// [`HexString`].
+    fn address_string(&self) -> String {
+        HexString(self.address()).to_string()
     }
 }
 
@@ -110,7 +91,7 @@ impl<T> IndexerId for T
 where
     T: Indexer,
 {
-    fn address(&self) -> Option<&[u8]> {
+    fn address(&self) -> &[u8] {
         Indexer::address(self)
     }
 
@@ -120,7 +101,7 @@ where
 }
 
 impl IndexerId for Arc<dyn Indexer> {
-    fn address(&self) -> Option<&[u8]> {
+    fn address(&self) -> &[u8] {
         Indexer::address(&**self)
     }
 
@@ -131,7 +112,7 @@ impl IndexerId for Arc<dyn Indexer> {
 
 impl PartialEq for dyn Indexer {
     fn eq(&self, other: &Self) -> bool {
-        self.id() == other.id()
+        self.address() == other.address()
     }
 }
 
@@ -139,7 +120,10 @@ impl Eq for dyn Indexer {}
 
 impl Hash for dyn Indexer {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id().hash(state)
+        // It's best to hash addresses even though entropy is typically already
+        // high, because some Graphix configurations may use human-readable
+        // strings as fake addresses.
+        self.address().hash(state)
     }
 }
 
@@ -151,7 +135,7 @@ impl PartialOrd for dyn Indexer {
 
 impl Ord for dyn Indexer {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.id().cmp(&other.id())
+        self.address().cmp(other.address())
     }
 }
 

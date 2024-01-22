@@ -82,14 +82,14 @@ pub struct NewBlock {
 pub struct Indexer {
     pub id: IntId,
     pub name: Option<String>,
-    pub address: Option<Vec<u8>>,
+    pub address: Vec<u8>,
     #[serde(skip)]
     pub created_at: NaiveDateTime,
 }
 
 impl IndexerId for Indexer {
-    fn address(&self) -> Option<&[u8]> {
-        self.address.as_deref()
+    fn address(&self) -> &[u8] {
+        self.address.as_slice()
     }
 
     fn name(&self) -> Option<Cow<String>> {
@@ -100,7 +100,7 @@ impl IndexerId for Indexer {
 #[derive(Debug, Insertable)]
 #[diesel(table_name = indexers)]
 pub struct NewIndexer {
-    pub address: Option<Vec<u8>>,
+    pub address: Vec<u8>,
     pub name: Option<String>,
 }
 

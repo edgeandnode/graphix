@@ -1,12 +1,45 @@
-use std::fmt;
+use std::fmt::{self, Display};
 use std::ops::Deref;
 use std::sync::Arc;
 
 use async_graphql::SimpleObject;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::indexer::Indexer;
 use crate::store::models::WritablePoi;
+
+#[derive(Copy, Clone, Debug)]
+pub struct HexString<T>(pub T);
+
+impl<T: AsRef<[u8]>> Display for HexString<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "0x{}", hex::encode(self.0.as_ref()))
+    }
+}
+
+impl<T: AsRef<[u8]>> Serialize for HexString<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(&self)
+    }
+}
+
+impl<'a> Deserialize<'a> for HexString<Vec<u8>> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'a>,
+    {
+        let s = String::deserialize(deserializer)?;
+        if !s.starts_with("0x") {
+            return Err(serde::de::Error::custom("hexstring must start with 0x"));
+        }
+        hex::decode(&s[2..])
+            .map(Self)
+            .map_err(serde::de::Error::custom)
+    }
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd, SimpleObject)]
 pub struct IndexerVersion {

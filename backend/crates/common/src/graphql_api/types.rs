@@ -7,6 +7,7 @@ use async_graphql::*;
 use diesel::deserialize::FromSqlRow;
 use serde::{Deserialize, Serialize};
 
+use crate::indexer::IndexerId;
 use crate::store::models::{self};
 use crate::types::IndexerVersion;
 
@@ -274,20 +275,12 @@ pub struct Indexer {
 
 impl From<models::Indexer> for Indexer {
     fn from(indexer: models::Indexer) -> Self {
-        let address = indexer
-            .address
-            .map(|addr| format!("0x{}", hex::encode(addr)));
+        let address_string = indexer.address_string();
         Self {
-            id: if let Some(name) = &indexer.name {
-                name.clone()
-            } else if let Some(address) = &address {
-                address.clone()
-            } else {
-                panic!("Indexer has neither name nor address");
-            },
+            id: address_string.clone(),
             name: indexer.name,
             version: None, // TODO
-            address,
+            address: Some(address_string),
             allocated_tokens: None, // TODO: we don't store this in the db yet
         }
     }

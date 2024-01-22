@@ -11,7 +11,7 @@ use tracing::*;
 
 use super::{CachedEthereumCall, EntityChanges, Indexer};
 use crate::config::{IndexerConfig, IndexerUrls};
-use crate::indexer::WithIndexer;
+use crate::indexer::{IndexerId, WithIndexer};
 use crate::prometheus_metrics::metrics;
 use crate::types::{
     BlockPointer, IndexerVersion, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
@@ -21,7 +21,7 @@ const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
 #[derive(Debug)]
 pub struct RealIndexer {
-    address: Option<Vec<u8>>,
+    address: Vec<u8>,
     name: Option<String>,
     urls: IndexerUrls,
     client: reqwest::Client,
@@ -37,10 +37,6 @@ impl RealIndexer {
             urls: config.urls,
             client: reqwest::Client::new(),
         }
-    }
-
-    pub fn set_address(&mut self, address: Vec<u8>) {
-        self.address = Some(address);
     }
 
     /// Internal utility method to make a GraphQL query to the indexer. `error`
@@ -104,8 +100,8 @@ impl RealIndexer {
 
 #[async_trait]
 impl Indexer for RealIndexer {
-    fn address(&self) -> Option<&[u8]> {
-        self.address.as_deref()
+    fn address(&self) -> &[u8] {
+        self.address.as_slice()
     }
 
     fn name(&self) -> Option<Cow<String>> {
@@ -133,7 +129,7 @@ impl Indexer for RealIndexer {
                 Ok(status) => statuses.push(status),
                 Err(e) => {
                     warn!(
-                        id = %self.id(),
+                        address = %self.address_string(),
                         %e,
                         %deployment,
                         "Failed to parse indexing status, skipping deployment"
@@ -159,7 +155,7 @@ impl Indexer for RealIndexer {
         // reduces the impact of this issue.
         for requests in requests.chunks(1) {
             trace!(
-                indexer = %self.id(),
+                indexer = %self.address_string(),
                 batch_size = requests.len(),
                 "Requesting public Pois batch"
             );
@@ -170,7 +166,7 @@ impl Indexer for RealIndexer {
                 Ok(batch_pois) => {
                     metrics()
                         .public_proofs_of_indexing_requests
-                        .get_metric_with_label_values(&[&self.id(), "1"])
+                        .get_metric_with_label_values(&[&self.address_string(), "1"])
                         .unwrap()
                         .inc();
 
@@ -179,12 +175,12 @@ impl Indexer for RealIndexer {
                 Err(error) => {
                     metrics()
                         .public_proofs_of_indexing_requests
-                        .get_metric_with_label_values(&[&self.id(), "0"])
+                        .get_metric_with_label_values(&[&self.address_string(), "0"])
                         .unwrap()
                         .inc();
 
                     debug!(
-                        id = %self.id(), %error,
+                        id = %self.address_string(), %error,
                         "Failed to query POIs batch from indexer"
                     );
 
@@ -193,7 +189,7 @@ impl Indexer for RealIndexer {
                         .contains(r#"Cannot query field "publicProofsOfIndexing" on type "Query""#)
                     {
                         debug!(
-                            id = %self.id(),
+                            id = %self.address_string(),
                             "Indexer doesn't seem to support 'publicProofsOfIndexing', skipping it"
                         );
                         break;

@@ -6,7 +6,7 @@ use futures::StreamExt;
 use tracing::*;
 
 use crate::block_choice::BlockChoicePolicy;
-use crate::indexer::Indexer;
+use crate::indexer::{Indexer, IndexerId};
 use crate::types::{
     IndexerVersion, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
 };
@@ -39,12 +39,12 @@ pub async fn query_indexing_statuses(
                 query_successes += 1;
                 metrics
                     .indexing_statuses_requests
-                    .get_metric_with_label_values(&[&indexer.id(), "1"])
+                    .get_metric_with_label_values(&[&indexer.address_string(), "1"])
                     .unwrap()
                     .inc();
 
                 debug!(
-                    indexer_id = %indexer.id(),
+                    indexer_id = %indexer.address_string(),
                     statuses = %statuses.len(),
                     "Successfully queried indexing statuses"
                 );
@@ -55,12 +55,12 @@ pub async fn query_indexing_statuses(
                 query_failures += 1;
                 metrics
                     .indexing_statuses_requests
-                    .get_metric_with_label_values(&[&indexer.id(), "0"])
+                    .get_metric_with_label_values(&[&indexer.address_string(), "0"])
                     .unwrap()
                     .inc();
 
                 debug!(
-                    indexer_id = %indexer.id(),
+                    indexer_id = %indexer.address_string(),
                     %error,
                     "Failed to query indexing statuses"
                 );
@@ -101,7 +101,7 @@ pub async fn query_graph_node_versions(
         match &version_result {
             Ok(version) => {
                 trace!(
-                    indexer_id = %indexer.id(),
+                    indexer_id = %indexer.address_string(),
                     version = %version.version,
                     commit = %version.commit,
                     "Successfully queried graph-node version"
@@ -109,7 +109,7 @@ pub async fn query_graph_node_versions(
             }
             Err(error) => {
                 trace!(
-                    indexer_id = %indexer.id(),
+                    indexer_id = %indexer.address_string(),
                     %error,
                     "Failed to query graph-node version"
                 );
@@ -198,7 +198,7 @@ pub async fn query_proofs_of_indexing(
             let pois = indexer.clone().proofs_of_indexing(poi_requests).await;
 
             debug!(
-                id = %indexer.id(), pois = %pois.len(),
+                id = %indexer.address_string(), pois = %pois.len(),
                 "Successfully queried POIs from indexer"
             );
 
