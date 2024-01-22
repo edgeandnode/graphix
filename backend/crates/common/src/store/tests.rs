@@ -170,7 +170,6 @@ fn test_pois(
 
     // Common logic to create poi_triples
     let poi_triples: BTreeSet<(String, String, Vec<u8>)> = pois
-        .clone()
         .into_iter()
         .map(|poi| {
             (
