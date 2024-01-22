@@ -3,8 +3,6 @@ name = "graphix-schema"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-
 [build-dependencies]
 async-graphql = "7"
 graphix-common = { path = "../common" }
