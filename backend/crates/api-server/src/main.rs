@@ -1,15 +1,13 @@
-use std::convert::Infallible;
-use std::future::Future;
 use std::net::Ipv4Addr;
 
-use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
-use async_graphql::Request;
-use async_graphql_warp::{self, GraphQLResponse};
+use async_graphql::http::GraphiQLSource;
+use async_graphql_axum::GraphQL;
+use axum::response::IntoResponse;
+use axum::Router;
 use clap::Parser;
 use graphix_common::graphql_api::{self};
 use graphix_common::store::Store;
-use warp::http::{self, Method};
-use warp::Filter;
+use tokio::net::TcpListener;
 
 #[derive(Parser, Debug)]
 pub struct CliOptions {
@@ -29,54 +27,35 @@ async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let cli_options = CliOptions::parse();
-    let server_fut = create_server(cli_options);
 
     // Listen to requests forever.
-    server_fut.await?.await;
+    axum::serve(
+        TcpListener::bind((Ipv4Addr::UNSPECIFIED, cli_options.port)).await?,
+        axum_server(cli_options).await?,
+    )
+    .await?;
+
     Ok(())
 }
 
-async fn create_server(cli_options: CliOptions) -> anyhow::Result<impl Future<Output = ()>> {
+async fn axum_server(cli_options: CliOptions) -> anyhow::Result<Router<()>> {
+    use axum::routing::get;
+
     let store = Store::new(cli_options.database_url.as_str()).await?;
+    let api_schema = graphql_api::api_schema(graphql_api::ApiSchemaContext { store });
 
-    // GET / -> 200 OK
-    let health_check_route = warp::path::end().map(|| "Ready to roll!".to_string());
-
-    // GraphQL API
-    let api_context = graphql_api::ApiSchemaContext { store };
-    let api_schema = graphql_api::api_schema(api_context);
-    let api = async_graphql_warp::graphql(api_schema).and_then(
-        |(schema, request): (graphql_api::ApiSchema, Request)| async move {
-            Ok::<_, Infallible>(GraphQLResponse::from(schema.execute(request).await))
-        },
-    );
-    let cors = warp::cors()
-        .allow_methods(&[Method::GET, Method::POST, Method::OPTIONS])
-        .allow_header("content-type")
-        .allow_any_origin();
-    let graphql_route = warp::any()
-        .and(warp::path("graphql").and(warp::path::end()))
-        .and(api)
-        .with(cors.clone());
-
-    // GraphQL playground
-    let graphql_playground = warp::get().map(|| {
-        http::Response::builder()
-            .header("content-type", "text/html")
-            .body(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
-    });
-    let graphql_playground_route = warp::get()
-        .and(warp::path("graphql").and(warp::path::end()))
-        .and(graphql_playground);
-
-    let routes = warp::get()
-        .and(health_check_route)
-        .or(graphql_playground_route)
-        .or(graphql_route);
-
-    Ok(warp::serve(routes).run((Ipv4Addr::UNSPECIFIED, cli_options.port)))
+    Ok(axum::Router::new()
+        .route("/", get(|| async { "Ready to roll!" }))
+        .route(
+            "/graphql",
+            get(graphiql_route).post_service(GraphQL::new(api_schema)),
+        ))
 }
 
 fn init_tracing() {
     tracing_subscriber::fmt::init();
+}
+
+async fn graphiql_route() -> impl IntoResponse {
+    axum::response::Html(GraphiQLSource::build().endpoint("/graphql").finish())
 }
