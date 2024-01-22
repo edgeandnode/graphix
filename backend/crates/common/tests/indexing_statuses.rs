@@ -1,10 +1,10 @@
 use futures::stream::FuturesUnordered;
 use futures::{future, StreamExt};
 use graphix_common::metrics;
-use graphix_common::prelude::IndexingStatus;
 use graphix_common::queries::query_indexing_statuses;
 use graphix_common::test_utils::fast_rng;
 use graphix_common::test_utils::gen::*;
+use graphix_common::types::IndexingStatus;
 
 #[tokio::test]
 async fn indexing_statuses() {

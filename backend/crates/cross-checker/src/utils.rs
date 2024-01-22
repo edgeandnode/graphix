@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::hash::Hash;
 use std::sync::Arc;
 
-use graphix_common::prelude::Indexer;
+use graphix_common::indexer::Indexer;
 use graphix_common::store;
 
 use crate::bisect::DivergenceInvestigationError;

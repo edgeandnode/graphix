@@ -5,11 +5,11 @@ use graphix_common::graphql_api::types::{
     BisectionReport, BisectionRunReport, DivergenceBlockBounds, DivergenceInvestigationReport,
     DivergenceInvestigationRequest, DivergenceInvestigationStatus, PartialBlock,
 };
-use graphix_common::prelude::{
-    BlockPointer, DivergingBlock as DivergentBlock, Indexer, IndexerId, PoiRequest,
-    ProofOfIndexing, SubgraphDeployment,
-};
+use graphix_common::indexer::{Indexer, IndexerId};
 use graphix_common::store::Store;
+use graphix_common::types::{
+    BlockPointer, DivergingBlock as DivergentBlock, PoiRequest, ProofOfIndexing, SubgraphDeployment,
+};
 use thiserror::Error;
 use tokio::sync::watch;
 use tracing::{debug, error, info};

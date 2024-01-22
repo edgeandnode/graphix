@@ -2,7 +2,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use graphix_common::config::{IndexerConfig, IndexerUrls};
-use graphix_common::prelude::{Indexer, RealIndexer, SubgraphDeployment};
+use graphix_common::indexer::{Indexer, RealIndexer};
+use graphix_common::types::SubgraphDeployment;
 use reqwest::Url;
 
 /// Test utility function to create a valid `Indexer` from an arbitrary base url.

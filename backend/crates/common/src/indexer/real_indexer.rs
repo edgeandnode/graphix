@@ -10,8 +10,9 @@ use serde::Serialize;
 use tracing::*;
 
 use super::{CachedEthereumCall, EntityChanges, Indexer};
+use crate::config::IndexerConfig;
 use crate::config::IndexerUrls;
-use crate::prelude::{IndexerConfig, WithIndexer};
+use crate::indexer::WithIndexer;
 use crate::prometheus_metrics::metrics;
 use crate::types::{
     BlockPointer, IndexerVersion, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
@@ -318,7 +319,6 @@ impl Indexer for RealIndexer {
 
 mod gql_types {
     use super::*;
-    use crate::prelude::WithIndexer;
 
     pub type JSONObject = serde_json::Value;
     pub type BigInt = String;

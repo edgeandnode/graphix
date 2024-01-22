@@ -9,7 +9,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use clap::Parser;
-use graphix_common::prelude::{Config, Indexer};
+use graphix_common::config::Config;
+use graphix_common::indexer::Indexer;
 use graphix_common::queries::{query_indexing_statuses, query_proofs_of_indexing};
 use graphix_common::{config, metrics, store, PrometheusExporter};
 use prometheus_exporter::prometheus;

@@ -4,9 +4,10 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use async_trait::async_trait;
 
-use crate::prelude::{
-    BlockPointer, Bytes32, CachedEthereumCall, EntityChanges, Indexer, IndexerVersion,
-    IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
+use crate::indexer::{CachedEthereumCall, EntityChanges, Indexer};
+use crate::types::{
+    BlockPointer, Bytes32, IndexerVersion, IndexingStatus, PoiRequest, ProofOfIndexing,
+    SubgraphDeployment,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

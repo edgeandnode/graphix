@@ -7,7 +7,7 @@ use tracing::*;
 
 use crate::block_choice::BlockChoicePolicy;
 use crate::indexer::Indexer;
-use crate::prelude::{
+use crate::types::{
     IndexerVersion, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
 };
 use crate::PrometheusMetrics;

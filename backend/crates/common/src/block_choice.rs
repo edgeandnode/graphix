@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::prelude::IndexingStatus;
+use crate::types::IndexingStatus;
 
 #[derive(Copy, Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -21,8 +21,8 @@ use tracing::info;
 use self::models::{QueriedSgDeployment, WritablePoi};
 use crate::graphql_api::types::{BlockRangeInput, IndexersQuery, Network, SgDeploymentsQuery};
 use crate::indexer::Indexer;
-use crate::prelude::IndexerVersion;
 use crate::store::models::{Indexer as IndexerModel, Poi};
+use crate::types::IndexerVersion;
 
 #[cfg(test)]
 mod tests;

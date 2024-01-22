@@ -11,7 +11,7 @@ use serde_derive::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::config::{IndexerConfig, IndexerUrls};
-use crate::prelude::{Indexer as IndexerTrait, RealIndexer};
+use crate::indexer::{Indexer as IndexerTrait, RealIndexer};
 
 /// A GraphQL client that can query the network subgraph and extract useful
 /// data.

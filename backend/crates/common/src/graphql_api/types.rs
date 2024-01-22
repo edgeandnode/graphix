@@ -7,8 +7,8 @@ use async_graphql::*;
 use diesel::deserialize::FromSqlRow;
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::IndexerVersion;
 use crate::store::models::{self};
+use crate::types::IndexerVersion;
 
 type HexBytesWith0xPrefix = String;
 type UuidString = String;

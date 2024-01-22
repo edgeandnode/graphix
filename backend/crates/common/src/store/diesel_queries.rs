@@ -10,11 +10,11 @@ use super::models::WritablePoi;
 use super::PoiLiveness;
 use crate::graphql_api::types::BlockRangeInput;
 use crate::indexer::{Indexer, IndexerId};
-use crate::prelude::{BlockPointer, IndexerVersion};
 use crate::store::models::{
     self, Indexer as IndexerModel, NewIndexer, NewLivePoi, NewPoi, NewSgDeployment, SgDeployment,
 };
 use crate::store::schema::{self, live_pois};
+use crate::types::{BlockPointer, IndexerVersion};
 
 pub(super) fn poi(conn: &mut PgConnection, poi: &str) -> anyhow::Result<Option<models::Poi>> {
     use schema::{blocks, indexers, pois, sg_deployments};
