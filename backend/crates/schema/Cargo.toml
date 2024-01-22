@@ -6,5 +6,5 @@ edition = "2021"
 [dependencies]
 
 [build-dependencies]
-async-graphql = "5"
+async-graphql = "7"
 graphix-common = { path = "../common" }

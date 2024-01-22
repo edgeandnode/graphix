@@ -1,5 +1,6 @@
 use std::convert::Infallible;
 use std::future::Future;
+use std::net::Ipv4Addr;
 
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql::Request;
@@ -73,7 +74,7 @@ async fn create_server(cli_options: CliOptions) -> anyhow::Result<impl Future<Ou
         .or(graphql_playground_route)
         .or(graphql_route);
 
-    Ok(warp::serve(routes).run(([0, 0, 0, 0], cli_options.port)))
+    Ok(warp::serve(routes).run((Ipv4Addr::UNSPECIFIED, cli_options.port)))
 }
 
 fn init_tracing() {
