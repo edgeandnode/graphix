@@ -10,7 +10,8 @@ use serde::{Deserialize, Deserializer};
 use tracing::{info, warn};
 use url::Url;
 
-use crate::{block_choice::BlockChoicePolicy, PrometheusMetrics};
+use crate::block_choice::BlockChoicePolicy;
+use crate::PrometheusMetrics;
 
 /// A [`serde`]-compatible representation of Graphix's YAML configuration file.
 #[derive(Debug, Clone, Deserialize)]

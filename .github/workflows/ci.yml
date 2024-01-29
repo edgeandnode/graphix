@@ -53,20 +53,11 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push API server Docker image
+      - name: Build and push Graphix backend Docker image
         uses: docker/build-push-action@v4
         with:
-          context: .
-          file: ops/api-server.dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/graphix-api-server:latest
-      - name: Build and push cross-checker service Docker image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ops/cross-checker.dockerfile
-          push: true
-          tags: ghcr.io/${{ github.repository_owner }}/graphix-cross-checker:latest
+          tags: ghcr.io/${{ github.repository_owner }}/graphix:latest
 
   build:
     name: Build

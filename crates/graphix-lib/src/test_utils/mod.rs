@@ -2,17 +2,16 @@ pub mod gen;
 pub mod mocks;
 
 use std::env;
+use std::sync::Arc;
 
+use graphix_indexer_client::{Indexer, RealIndexer, SubgraphDeployment};
 use once_cell::sync::Lazy;
 use prometheus_exporter::prometheus::IntCounterVec;
 use rand::rngs::{OsRng, SmallRng};
 use rand::{RngCore, SeedableRng};
-
-use std::sync::Arc;
+use url::Url;
 
 use crate::config::IndexerConfig;
-use graphix_indexer_client::{Indexer, RealIndexer, SubgraphDeployment};
-use url::Url;
 
 pub static TEST_SEED: Lazy<u64> = Lazy::new(|| {
     let seed = env::var("TEST_SEED")
