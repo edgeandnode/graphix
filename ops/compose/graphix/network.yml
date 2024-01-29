@@ -1,3 +1,5 @@
+apiPort: 3030
+
 # A good mix of data sources for local development, both mainnet and testnet.
 
 databaseUrl: postgres://graphix:password@postgres-graphix:5432/graphix

@@ -1,3 +1,5 @@
+apiPort: 3030
+
 databaseUrl: postgres://graphix:password@postgres-graphix:5432/graphix
 environments:
   - id: graph-node-1
