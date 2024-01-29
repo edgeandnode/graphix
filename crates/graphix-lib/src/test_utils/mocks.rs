@@ -27,7 +27,7 @@ pub struct MockIndexer {
 
 #[async_trait]
 impl Indexer for MockIndexer {
-    fn name(&self) -> Option<Cow<String>> {
+    fn name(&self) -> Option<Cow<str>> {
         Some(Cow::Borrowed(&self.name))
     }
 

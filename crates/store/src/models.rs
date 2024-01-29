@@ -8,7 +8,7 @@ use diesel::pg::Pg;
 use diesel::sql_types::Jsonb;
 use diesel::{AsChangeset, AsExpression, FromSqlRow, Insertable, Queryable};
 use graphix_common_types as types;
-use graphix_indexer_client::{BlockPointer, IndexerId};
+use graphix_indexer_client::IndexerId;
 use serde::{Deserialize, Serialize};
 use types::{Deployment, Network};
 
@@ -84,8 +84,11 @@ impl IndexerId for Indexer {
         self.address.as_slice()
     }
 
-    fn name(&self) -> Option<Cow<String>> {
-        self.name.as_ref().map(Cow::Borrowed)
+    fn name(&self) -> Option<Cow<str>> {
+        match &self.name {
+            Some(name) => Some(Cow::Borrowed(name)),
+            None => None,
+        }
     }
 }
 
