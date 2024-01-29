@@ -59,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
         info!("New main loop iteration");
         info!("Initialize inputs (indexers, indexing statuses etc.)");
 
-        let mut indexers = config::config_to_indexers(config.clone()).await?;
+        let mut indexers = config::config_to_indexers(config.clone(), metrics()).await?;
         // Different data sources, especially network subgraphs, result in
         // duplicate indexers.
         indexers = deduplicate_indexers(&indexers);

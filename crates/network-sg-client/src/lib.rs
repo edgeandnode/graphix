@@ -7,10 +7,10 @@ use std::time::Duration;
 use anyhow::anyhow;
 use graphix_indexer_client::{Indexer as IndexerTrait, RealIndexer};
 use prometheus::IntCounterVec;
-use reqwest::Url;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
+use url::Url;
 
 /// A GraphQL client that can query the network subgraph and extract useful
 /// data.
@@ -20,7 +20,7 @@ use tracing::warn;
 /// deployments.
 #[derive(Debug, Clone)]
 pub struct NetworkSubgraphClient {
-    endpoint: String,
+    endpoint: Url,
     timeout: Duration,
     client: reqwest::Client,
     // Metrics
@@ -29,15 +29,15 @@ pub struct NetworkSubgraphClient {
 }
 
 impl NetworkSubgraphClient {
-    /// Creates a new [`NetworkSubgraphClient`] with the given endpoint.
-    pub fn new(endpoint: impl ToString) -> Self {
-        const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
+    const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 
+    /// Creates a new [`NetworkSubgraphClient`] with the given endpoint.
+    pub fn new(endpoint: Url, public_poi_requests: IntCounterVec) -> Self {
         Self {
-            endpoint: endpoint.to_string(),
-            timeout: DEFAULT_TIMEOUT,
+            endpoint,
+            timeout: Self::DEFAULT_TIMEOUT,
             client: reqwest::Client::new(),
-            public_poi_requests: todo!(),
+            public_poi_requests,
         }
     }
 
@@ -59,8 +59,10 @@ impl NetworkSubgraphClient {
         let mut indexers: Vec<Arc<dyn IndexerTrait>> = vec![];
         for indexer in response_data.indexers {
             let indexer_id = indexer.id.clone();
-            let real_indexer =
-                indexer_allocation_data_to_real_indexer(IndexerAllocation { indexer });
+            let real_indexer = indexer_allocation_data_to_real_indexer(
+                IndexerAllocation { indexer },
+                self.public_poi_requests.clone(),
+            );
 
             match real_indexer {
                 Ok(indexer) => indexers.push(Arc::new(indexer)),
@@ -239,11 +241,11 @@ impl NetworkSubgraphClient {
             variables: BTreeMap::from_iter(variables),
         };
 
-        tracing::trace!(timeout = ?self.timeout, endpoint = self.endpoint, "Sending GraphQL request");
+        tracing::trace!(timeout = ?self.timeout, endpoint = %self.endpoint, "Sending GraphQL request");
 
         Ok(self
             .client
-            .post(&self.endpoint)
+            .post(self.endpoint.as_str())
             .json(&request)
             .timeout(self.timeout)
             .send()
@@ -256,6 +258,7 @@ impl NetworkSubgraphClient {
 
 fn indexer_allocation_data_to_real_indexer(
     indexer_allocation: IndexerAllocation,
+    public_poi_requests: IntCounterVec,
 ) -> anyhow::Result<RealIndexer> {
     let name = indexer_allocation.indexer.default_display_name.clone();
     let indexer = indexer_allocation.indexer;
@@ -265,7 +268,12 @@ fn indexer_allocation_data_to_real_indexer(
         .ok_or_else(|| anyhow!("Indexer without URL"))?
         .parse()?;
     url.set_path("/status");
-    Ok(RealIndexer::new(name, address, url.to_string(), todo!()))
+    Ok(RealIndexer::new(
+        name,
+        address,
+        url.to_string(),
+        public_poi_requests,
+    ))
 }
 
 #[derive(Serialize)]
@@ -331,7 +339,10 @@ mod tests {
 
     fn network_sg_client_on_ethereum() -> NetworkSubgraphClient {
         NetworkSubgraphClient::new(
-            "https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-mainnet",
+            "https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-mainnet"
+                .parse()
+                .unwrap(),
+            IntCounterVec::new(prometheus::Opts::new("foo", "bar"), &["a", "b"]).unwrap(),
         )
     }
 

@@ -15,6 +15,7 @@ graphix_network_sg_client = { path = "../network-sg-client" }
 graphix_store = { path = "../store" }
 hex = "0.4"
 once_cell = { version = "1", optional = true }
+prometheus = { version = "0.13", optional = true }
 prometheus_exporter = "0.8"
 rand = { version = "0.8", optional = true }
 serde = { version = "1", features = ["derive"] }
@@ -27,13 +28,14 @@ url = "2.5"
 reqwest = { version = "0.11", features = ["blocking"] }
 
 [features]
-tests = ["async-trait", "once_cell", "rand"]
+tests = ["async-trait", "once_cell", "prometheus", "rand"]
 
 [dev-dependencies]
 graphix_common_types = { path = "../common-types" }
 graphix_lib = { path = ".", features = ["tests"] }
 itertools = "0.12"
 once_cell = { version = "1.9.0" }
+prometheus = "0.13"
 quickcheck = "1"
 quickcheck_macros = "1"
 rand = { version = "0.8.4", features = ["small_rng"] }

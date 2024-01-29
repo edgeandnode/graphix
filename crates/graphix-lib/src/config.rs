@@ -10,19 +10,29 @@ use serde::{Deserialize, Deserializer};
 use tracing::{info, warn};
 use url::Url;
 
-use crate::block_choice::BlockChoicePolicy;
+use crate::{block_choice::BlockChoicePolicy, PrometheusMetrics};
 
 /// A [`serde`]-compatible representation of Graphix's YAML configuration file.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    pub database_url: String,
+    #[serde(default = "Config::default_true")]
+    pub enable_indexing: bool,
+    #[serde(default = "Config::default_true")]
+    pub enable_api: bool,
+
     #[serde(default = "Config::default_prometheus_port")]
     pub prometheus_port: u16,
+    #[serde(default = "Config::default_api_port")]
+    pub api_port: u16,
+
+    pub database_url: String,
+
+    // Indexing options
+    // ----------------
     pub sources: Vec<ConfigSource>,
     #[serde(default)]
     pub block_choice_policy: BlockChoicePolicy,
-
     #[serde(default = "Config::default_polling_period_in_seconds")]
     pub polling_period_in_seconds: u64,
 }
@@ -84,13 +94,23 @@ impl Config {
     fn default_prometheus_port() -> u16 {
         9184
     }
+
+    fn default_api_port() -> u16 {
+        3030
+    }
+
+    fn default_true() -> bool {
+        true
+    }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct IndexerUrls {
+pub struct IndexerConfig {
+    pub name: Option<String>,
+    pub address: Vec<u8>,
     #[serde(deserialize_with = "deserialize_url")]
-    pub status: Url,
+    pub index_node_endpoint: Url,
 }
 
 fn deserialize_url<'de, D>(deserializer: D) -> Result<Url, D::Error>
@@ -99,14 +119,6 @@ where
 {
     let s = String::deserialize(deserializer)?;
     Url::parse(&s).map_err(serde::de::Error::custom)
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IndexerConfig {
-    pub name: Option<String>,
-    pub address: Vec<u8>,
-    pub urls: IndexerUrls,
 }
 
 impl IndexerId for IndexerConfig {
@@ -171,13 +183,17 @@ where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
-    if !s.starts_with("0x") {
-        return Err(serde::de::Error::custom("hexstring must start with 0x"));
+    if let Some(s) = s.strip_prefix("0x") {
+        hex::decode(s).map_err(serde::de::Error::custom)
+    } else {
+        Err(serde::de::Error::custom("missing 0x prefix"))
     }
-    hex::decode(&s[2..]).map_err(serde::de::Error::custom)
 }
 
-pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn Indexer>>> {
+pub async fn config_to_indexers(
+    config: Config,
+    metrics: &PrometheusMetrics,
+) -> anyhow::Result<Vec<Arc<dyn Indexer>>> {
     let mut indexers: Vec<Arc<dyn Indexer>> = vec![];
 
     // First, configure all the real, static indexers.
@@ -186,8 +202,8 @@ pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn In
         indexers.push(Arc::new(RealIndexer::new(
             config.name().map(|s| s.into_owned()),
             config.address().to_vec(),
-            config.urls.status.to_string(),
-            todo!(),
+            config.index_node_endpoint.to_string(),
+            metrics.public_proofs_of_indexing_requests.clone(),
         )));
     }
 
@@ -195,7 +211,10 @@ pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn In
     // indexers.
     for config in config.network_subgraphs() {
         info!(endpoint = %config.endpoint, "Configuring network subgraph");
-        let network_subgraph = NetworkSubgraphClient::new(config.endpoint.clone());
+        let network_subgraph = NetworkSubgraphClient::new(
+            config.endpoint.as_str().parse()?,
+            metrics.public_proofs_of_indexing_requests.clone(),
+        );
         let network_subgraph_indexers_res = match config.query {
             NetworkSubgraphQuery::ByAllocations => {
                 network_subgraph.indexers_by_allocations(config.limit).await
@@ -236,7 +255,8 @@ pub async fn config_to_indexers(config: Config) -> anyhow::Result<Vec<Arc<dyn In
                 .first()
                 .ok_or_else(|| anyhow::anyhow!("indexer by address requires a network subgraph"))?
                 .endpoint
-                .clone(),
+                .parse()?,
+            metrics.public_proofs_of_indexing_requests.clone(),
         );
         let indexer = network_subgraph
             .indexer_by_address(&indexer_config.address)

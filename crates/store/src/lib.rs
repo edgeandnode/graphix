@@ -1,7 +1,5 @@
-//! Database access (read and write) abstractions for all Graphix backend
-//! services.
+//! Database access (read and write) abstractions for the Graphix backend.
 
-// Provides the diesel queries, callers should handle connection pooling and transactions.
 mod diesel_queries;
 #[cfg(tests)]
 pub use diesel_queries;

@@ -2,18 +2,17 @@ use std::collections::BTreeSet;
 use std::ops::Deref;
 
 use diesel::Connection;
+use graphix_common_types::SgDeploymentsQuery;
 use testcontainers::clients::Cli;
 use testcontainers::Container;
 
 use crate::block_choice::BlockChoicePolicy;
-use crate::graphql_api::types::SgDeploymentsQuery;
-use crate::indexer::IndexerId;
 use crate::prometheus_metrics::metrics;
 use crate::queries;
-use crate::store::{diesel_queries, PoiLiveness, Store};
 use crate::test_utils::fast_rng;
 use crate::test_utils::gen::{gen_bytes32, gen_indexers};
-use crate::types::ProofOfIndexing;
+use crate::{diesel_queries, PoiLiveness, Store};
+use graphix_indexer_client::{IndexerId, ProofOfIndexing};
 
 /// A wrapper around a [`Store`] that is backed by a containerized Postgres
 /// database.

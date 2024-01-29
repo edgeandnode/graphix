@@ -1,3 +1,6 @@
+//! Provides the diesel queries, callers should handle connection pooling and
+//! transactions.
+
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 

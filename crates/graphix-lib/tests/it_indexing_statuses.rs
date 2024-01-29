@@ -1,33 +1,7 @@
-use std::sync::Arc;
 use std::time::Duration;
 
-use graphix_indexer_client::{Indexer, RealIndexer, SubgraphDeployment};
-use graphix_lib::config::{IndexerConfig, IndexerUrls};
-use reqwest::Url;
-
-/// Test utility function to create a valid `Indexer` from an arbitrary base url.
-fn test_indexer_from_url(url: impl Into<String>) -> Arc<impl Indexer> {
-    let url: Url = url.into().parse().expect("Invalid status url");
-    let conf = IndexerConfig {
-        name: Some(url.host().unwrap().to_string()),
-        address: url.as_str().as_bytes().to_owned(),
-        urls: IndexerUrls {
-            status: url.join("status").unwrap(),
-        },
-    };
-    Arc::new(RealIndexer::new(
-        conf.name,
-        conf.address,
-        conf.urls.status.to_string(),
-        todo!(),
-    ))
-}
-
-/// Test utility function to create a valid `SubgraphDeployment` with an arbitrary deployment
-/// id/ipfs hash.
-fn test_deployment_id(deployment: impl Into<String>) -> SubgraphDeployment {
-    SubgraphDeployment(deployment.into())
-}
+use graphix_indexer_client::Indexer;
+use graphix_lib::test_utils::{test_deployment_id, test_indexer_from_url};
 
 #[tokio::test]
 async fn send_indexer_statuses_query() {
