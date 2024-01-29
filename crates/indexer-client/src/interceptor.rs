@@ -28,7 +28,7 @@ impl IndexerInterceptor {
 #[async_trait]
 
 impl Indexer for IndexerInterceptor {
-    fn name(&self) -> Option<Cow<'_, String>> {
+    fn name(&self) -> Option<Cow<str>> {
         self.target
             .name()
             .map(|name| Cow::Owned(format!("interceptor-{}", name)))

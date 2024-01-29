@@ -22,7 +22,7 @@ pub trait Indexer: Send + Sync + Debug {
     fn address(&self) -> &[u8];
 
     /// Human-readable name of the indexer.
-    fn name(&self) -> Option<Cow<'_, String>>;
+    fn name(&self) -> Option<Cow<str>>;
 
     async fn ping(self: Arc<Self>) -> anyhow::Result<()>;
 
@@ -79,7 +79,7 @@ pub trait Indexer: Send + Sync + Debug {
 /// participant), strictly in this order.
 pub trait IndexerId {
     fn address(&self) -> &[u8];
-    fn name(&self) -> Option<Cow<String>>;
+    fn name(&self) -> Option<Cow<str>>;
 
     /// Returns the string representation of the indexer's address using
     /// [`HexString`].
@@ -96,7 +96,7 @@ where
         Indexer::address(self)
     }
 
-    fn name(&self) -> Option<Cow<'_, String>> {
+    fn name(&self) -> Option<Cow<str>> {
         Indexer::name(self)
     }
 }
@@ -106,7 +106,7 @@ impl IndexerId for Arc<dyn Indexer> {
         Indexer::address(&**self)
     }
 
-    fn name(&self) -> Option<Cow<'_, String>> {
+    fn name(&self) -> Option<Cow<str>> {
         Indexer::name(&**self)
     }
 }

@@ -314,7 +314,7 @@ pub fn write_graph_node_version(
 
 fn get_indexer_id(
     conn: &mut PgConnection,
-    name: Option<Cow<String>>,
+    name: Option<Cow<str>>,
     address: &[u8],
 ) -> anyhow::Result<i32> {
     use schema::indexers;

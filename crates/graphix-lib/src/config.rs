@@ -93,6 +93,14 @@ pub struct IndexerUrls {
     pub status: Url,
 }
 
+fn deserialize_url<'de, D>(deserializer: D) -> Result<Url, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    Url::parse(&s).map_err(serde::de::Error::custom)
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IndexerConfig {
@@ -153,14 +161,6 @@ pub enum ConfigSource {
     IndexerByAddress(IndexerByAddressConfig),
     Interceptor(InterceptorConfig),
     NetworkSubgraph(NetworkSubgraphConfig),
-}
-
-fn deserialize_url<'de, D>(deserializer: D) -> Result<Url, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    Url::parse(&s).map_err(serde::de::Error::custom)
 }
 
 fn deserialize_hexstring<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>

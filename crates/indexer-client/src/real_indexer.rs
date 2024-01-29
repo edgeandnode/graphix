@@ -108,8 +108,11 @@ impl Indexer for RealIndexer {
         self.address.as_slice()
     }
 
-    fn name(&self) -> Option<Cow<String>> {
-        self.name.as_ref().map(Cow::Borrowed)
+    fn name(&self) -> Option<Cow<str>> {
+        match &self.name {
+            Some(name) => Some(Cow::Borrowed(name.as_str())),
+            None => None,
+        }
     }
 
     async fn ping(self: Arc<Self>) -> anyhow::Result<()> {
