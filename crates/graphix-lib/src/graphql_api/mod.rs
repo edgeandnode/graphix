@@ -1,9 +1,9 @@
 mod server;
 
 use async_graphql::{EmptySubscription, Schema, SchemaBuilder};
+use graphix_store::Store;
 
 use self::server::{MutationRoot, QueryRoot};
-use graphix_store::Store;
 
 pub type ApiSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 

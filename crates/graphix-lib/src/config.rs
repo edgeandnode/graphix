@@ -4,13 +4,13 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::Context;
+use graphix_indexer_client::{HexString, Indexer, IndexerId, IndexerInterceptor, RealIndexer};
+use graphix_network_sg_client::NetworkSubgraphClient;
 use serde::{Deserialize, Deserializer};
 use tracing::{info, warn};
 use url::Url;
 
 use crate::block_choice::BlockChoicePolicy;
-use graphix_indexer_client::{HexString, Indexer, IndexerId, IndexerInterceptor, RealIndexer};
-use graphix_network_sg_client::NetworkSubgraphClient;
 
 /// A [`serde`]-compatible representation of Graphix's YAML configuration file.
 #[derive(Debug, Clone, Deserialize)]

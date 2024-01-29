@@ -3,12 +3,10 @@ mod real_indexer;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{self, Debug, Display};
 use std::hash::Hash;
-use std::sync::Arc;
-
-use std::fmt::{self, Display};
 use std::ops::Deref;
+use std::sync::Arc;
 
 use anyhow::anyhow;
 use async_trait::async_trait;

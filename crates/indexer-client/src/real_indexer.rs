@@ -315,9 +315,8 @@ impl Indexer for RealIndexer {
 }
 
 mod gql_types {
-    use crate::{BlockPointer, SubgraphDeployment};
-
     use super::*;
+    use crate::{BlockPointer, SubgraphDeployment};
 
     pub type JSONObject = serde_json::Value;
     pub type BigInt = String;

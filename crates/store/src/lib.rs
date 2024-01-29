@@ -19,11 +19,11 @@ use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager, Pool, PooledConnection};
 use diesel::{Connection, PgConnection};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use graphix_indexer_client::{Indexer, WritablePoi};
 use tracing::info;
 
 use self::models::QueriedSgDeployment;
 use crate::models::{Indexer as IndexerModel, Poi};
-use graphix_indexer_client::{Indexer, WritablePoi};
 
 // TODO
 //#[cfg(test)]

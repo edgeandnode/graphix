@@ -1,10 +1,10 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use graphix_common_types::DivergingBlock as DivergentBlock;
 use graphix_common_types::{
     BisectionReport, BisectionRunReport, DivergenceBlockBounds, DivergenceInvestigationReport,
-    DivergenceInvestigationRequest, DivergenceInvestigationStatus, PartialBlock,
+    DivergenceInvestigationRequest, DivergenceInvestigationStatus,
+    DivergingBlock as DivergentBlock, PartialBlock,
 };
 use graphix_indexer_client::{
     BlockPointer, Indexer, IndexerId, PoiRequest, ProofOfIndexing, SubgraphDeployment,

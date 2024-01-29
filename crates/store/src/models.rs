@@ -7,12 +7,12 @@ use diesel::deserialize::FromSql;
 use diesel::pg::Pg;
 use diesel::sql_types::Jsonb;
 use diesel::{AsChangeset, AsExpression, FromSqlRow, Insertable, Queryable};
+use graphix_common_types as types;
+use graphix_indexer_client::{BlockPointer, IndexerId};
 use serde::{Deserialize, Serialize};
 use types::{Deployment, Network};
 
 use super::schema::*;
-use graphix_common_types as types;
-use graphix_indexer_client::{BlockPointer, IndexerId};
 
 pub type IntId = i32;
 pub type BigIntId = i64;

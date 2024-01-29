@@ -3,12 +3,11 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use async_trait::async_trait;
-
 use graphix_common_types::IndexerVersion;
 use graphix_indexer_client::{
-    BlockPointer, Bytes32, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
+    BlockPointer, Bytes32, CachedEthereumCall, EntityChanges, Indexer, IndexingStatus, PoiRequest,
+    ProofOfIndexing, SubgraphDeployment,
 };
-use graphix_indexer_client::{CachedEthereumCall, EntityChanges, Indexer};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DeploymentDetails {

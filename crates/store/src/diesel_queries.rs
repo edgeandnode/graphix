@@ -4,9 +4,8 @@ use std::collections::BTreeMap;
 use chrono::Utc;
 use diesel::prelude::*;
 use diesel::sql_types;
-use graphix_common_types::BlockRangeInput;
-use graphix_common_types::IndexerVersion;
-use graphix_indexer_client::WritablePoi;
+use graphix_common_types::{BlockRangeInput, IndexerVersion};
+use graphix_indexer_client::{BlockPointer, Indexer, IndexerId, WritablePoi};
 use tracing::info;
 
 use super::PoiLiveness;
@@ -14,8 +13,6 @@ use crate::models::{
     self, Indexer as IndexerModel, NewIndexer, NewLivePoi, NewPoi, NewSgDeployment, SgDeployment,
 };
 use crate::schema::{self, live_pois};
-use graphix_indexer_client::BlockPointer;
-use graphix_indexer_client::{Indexer, IndexerId};
 
 pub(super) fn poi(conn: &mut PgConnection, poi: &str) -> anyhow::Result<Option<models::Poi>> {
     use schema::{blocks, indexers, pois, sg_deployments};

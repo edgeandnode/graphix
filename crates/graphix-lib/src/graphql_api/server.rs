@@ -2,13 +2,10 @@ use std::collections::BTreeMap;
 
 use anyhow::Context as _;
 use async_graphql::{Context, Object, Result};
-
 use graphix_common_types as types;
 use graphix_common_types::*;
-use graphix_store::{
-    models::{Indexer, QueriedSgDeployment},
-    Store,
-};
+use graphix_store::models::{Indexer, QueriedSgDeployment};
+use graphix_store::Store;
 
 pub struct QueryRoot;
 

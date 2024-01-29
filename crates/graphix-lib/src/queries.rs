@@ -3,13 +3,14 @@ use std::sync::Arc;
 
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
+use graphix_common_types::IndexerVersion;
+use graphix_indexer_client::{
+    Indexer, IndexerId, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
+};
 use tracing::*;
 
 use crate::block_choice::BlockChoicePolicy;
 use crate::PrometheusMetrics;
-use graphix_common_types::IndexerVersion;
-use graphix_indexer_client::{Indexer, IndexerId};
-use graphix_indexer_client::{IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment};
 
 /// Queries all `indexingStatuses` for all the given indexers.
 #[instrument(skip_all)]

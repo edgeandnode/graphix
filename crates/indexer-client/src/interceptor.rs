@@ -7,8 +7,7 @@ use async_trait::async_trait;
 use graphix_common_types::IndexerVersion;
 
 use super::{CachedEthereumCall, EntityChanges};
-use crate::{Bytes32, Indexer};
-use crate::{IndexingStatus, PoiRequest, ProofOfIndexing};
+use crate::{Bytes32, Indexer, IndexingStatus, PoiRequest, ProofOfIndexing};
 
 /// Pretends to be an indexer by routing requests a
 /// [`RealIndexer`](crate::indexer::RealIndexer) and then intercepting the

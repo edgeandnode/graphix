@@ -5,13 +5,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::anyhow;
+use graphix_indexer_client::{Indexer as IndexerTrait, RealIndexer};
 use prometheus::IntCounterVec;
 use reqwest::Url;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
-
-use graphix_indexer_client::{Indexer as IndexerTrait, RealIndexer};
 
 /// A GraphQL client that can query the network subgraph and extract useful
 /// data.

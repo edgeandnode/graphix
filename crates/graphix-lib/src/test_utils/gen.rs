@@ -1,12 +1,12 @@
 use std::iter::repeat_with;
 use std::sync::Arc;
 
+use graphix_indexer_client::{BlockPointer, Bytes32, Indexer, SubgraphDeployment};
 use rand::distributions::Alphanumeric;
 use rand::seq::IteratorRandom;
 use rand::Rng;
 
 use super::mocks::{DeploymentDetails, MockIndexer, PartialProofOfIndexing};
-use graphix_indexer_client::{BlockPointer, Bytes32, Indexer, SubgraphDeployment};
 
 pub fn gen_deployments() -> Vec<SubgraphDeployment> {
     vec![
