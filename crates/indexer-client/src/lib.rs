@@ -7,10 +7,15 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
 
+use std::fmt::{self, Display};
+use std::ops::Deref;
+
 use anyhow::anyhow;
 use async_trait::async_trait;
+use graphix_common_types::IndexerVersion;
 pub use interceptor::IndexerInterceptor;
 pub use real_indexer::RealIndexer;
+use serde::{Deserialize, Serialize};
 
 /// An indexer is a `graph-node` instance that can be queried for information.
 #[async_trait]
@@ -164,12 +169,6 @@ pub struct EntityChanges {
     pub deletions: HashMap<EntityType, Vec<EntityId>>,
 }
 
-use std::fmt::{self, Display};
-use std::ops::Deref;
-
-use async_graphql::SimpleObject;
-use serde::{Deserialize, Serialize};
-
 #[derive(Copy, Clone, Debug)]
 pub struct HexString<T>(pub T);
 
@@ -201,12 +200,6 @@ impl<'a> Deserialize<'a> for HexString<Vec<u8>> {
             .map(Self)
             .map_err(serde::de::Error::custom)
     }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd, SimpleObject)]
-pub struct IndexerVersion {
-    pub version: String,
-    pub commit: String,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
@@ -305,25 +298,40 @@ impl PartialEq for ProofOfIndexing {
     }
 }
 
-//impl WritablePoi for ProofOfIndexing {
-//    type IndexerId = Arc<dyn Indexer>;
-//
-//    fn deployment_cid(&self) -> &str {
-//        self.deployment.as_str()
-//    }
-//
-//    fn indexer_id(&self) -> Self::IndexerId {
-//        self.indexer.clone()
-//    }
-//
-//    fn block(&self) -> BlockPointer {
-//        self.block
-//    }
-//
-//    fn proof_of_indexing(&self) -> &[u8] {
-//        &self.proof_of_indexing.0
-//    }
-//}
+impl From<ProofOfIndexing> for graphix_common_types::ProofOfIndexing {
+    fn from(value: ProofOfIndexing) -> Self {
+        todo!()
+    }
+}
+
+pub trait WritablePoi {
+    type IndexerId: IndexerId;
+
+    fn deployment_cid(&self) -> &str;
+    fn indexer_id(&self) -> Self::IndexerId;
+    fn block(&self) -> BlockPointer;
+    fn proof_of_indexing(&self) -> &[u8];
+}
+
+impl WritablePoi for ProofOfIndexing {
+    type IndexerId = Arc<dyn Indexer>;
+
+    fn deployment_cid(&self) -> &str {
+        self.deployment.as_str()
+    }
+
+    fn indexer_id(&self) -> Self::IndexerId {
+        self.indexer.clone()
+    }
+
+    fn block(&self) -> BlockPointer {
+        self.block
+    }
+
+    fn proof_of_indexing(&self) -> &[u8] {
+        &self.proof_of_indexing.0
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 pub struct DivergingBlock {

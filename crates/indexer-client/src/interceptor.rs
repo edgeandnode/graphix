@@ -4,9 +4,10 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use graphix_common_types::IndexerVersion;
 
 use super::{CachedEthereumCall, EntityChanges};
-use crate::{Bytes32, Indexer, IndexerVersion};
+use crate::{Bytes32, Indexer};
 use crate::{IndexingStatus, PoiRequest, ProofOfIndexing};
 
 /// Pretends to be an indexer by routing requests a
