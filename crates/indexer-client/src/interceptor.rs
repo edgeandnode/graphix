@@ -6,8 +6,8 @@ use std::sync::Arc;
 use async_trait::async_trait;
 
 use super::{CachedEthereumCall, EntityChanges};
-use crate::indexer::Indexer;
-use crate::types::{self, Bytes32, IndexingStatus, PoiRequest, ProofOfIndexing};
+use crate::{Bytes32, Indexer, IndexerVersion};
+use crate::{IndexingStatus, PoiRequest, ProofOfIndexing};
 
 /// Pretends to be an indexer by routing requests a
 /// [`RealIndexer`](crate::indexer::RealIndexer) and then intercepting the
@@ -57,7 +57,7 @@ impl Indexer for IndexerInterceptor {
         Ok(hijacked_statuses)
     }
 
-    async fn version(self: Arc<Self>) -> anyhow::Result<types::IndexerVersion> {
+    async fn version(self: Arc<Self>) -> anyhow::Result<IndexerVersion> {
         self.target.clone().version().await
     }
 

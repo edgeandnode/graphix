@@ -5,13 +5,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::anyhow;
+use prometheus::IntCounterVec;
 use reqwest::Url;
 use serde::de::DeserializeOwned;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use tracing::warn;
 
-use crate::config::{IndexerConfig, IndexerUrls};
-use crate::indexer::{Indexer as IndexerTrait, RealIndexer};
+use graphix_indexer_client::{Indexer as IndexerTrait, RealIndexer};
 
 /// A GraphQL client that can query the network subgraph and extract useful
 /// data.
@@ -24,6 +24,9 @@ pub struct NetworkSubgraphClient {
     endpoint: String,
     timeout: Duration,
     client: reqwest::Client,
+    // Metrics
+    // -------
+    public_poi_requests: IntCounterVec,
 }
 
 impl NetworkSubgraphClient {
@@ -35,6 +38,7 @@ impl NetworkSubgraphClient {
             endpoint: endpoint.to_string(),
             timeout: DEFAULT_TIMEOUT,
             client: reqwest::Client::new(),
+            public_poi_requests: todo!(),
         }
     }
 
@@ -97,13 +101,12 @@ impl NetworkSubgraphClient {
             for indexer in response_data.indexers {
                 if let Some(url) = indexer.url {
                     let address = hex::decode(indexer.id.trim_start_matches("0x"))?;
-                    let real_indexer = RealIndexer::new(IndexerConfig {
-                        name: indexer.default_display_name,
+                    let real_indexer = RealIndexer::new(
+                        indexer.default_display_name,
                         address,
-                        urls: IndexerUrls {
-                            status: Url::parse(&format!("{}/status", url))?,
-                        },
-                    });
+                        Url::parse(&format!("{}/status", url))?.to_string(),
+                        self.public_poi_requests.clone(),
+                    );
                     indexers.push(Arc::new(real_indexer));
                 }
             }
@@ -155,13 +158,12 @@ impl NetworkSubgraphClient {
             anyhow::anyhow!("No indexer found for address 0x{}", hex::encode(address))
         })?;
 
-        let indexer = RealIndexer::new(IndexerConfig {
-            name: Some(indexer_data.default_display_name.clone()),
-            address: address.to_vec(),
-            urls: IndexerUrls {
-                status: Url::parse(&format!("{}/status", indexer_data.url))?,
-            },
-        });
+        let indexer = RealIndexer::new(
+            Some(indexer_data.default_display_name.clone()),
+            address.to_vec(),
+            Url::parse(&format!("{}/status", indexer_data.url))?.to_string(),
+            self.public_poi_requests.clone(),
+        );
 
         Ok(Arc::new(indexer))
     }
@@ -264,12 +266,7 @@ fn indexer_allocation_data_to_real_indexer(
         .ok_or_else(|| anyhow!("Indexer without URL"))?
         .parse()?;
     url.set_path("/status");
-    let config = IndexerConfig {
-        name,
-        address,
-        urls: IndexerUrls { status: url },
-    };
-    Ok(RealIndexer::new(config))
+    Ok(RealIndexer::new(name, address, url.to_string(), todo!()))
 }
 
 #[derive(Serialize)]

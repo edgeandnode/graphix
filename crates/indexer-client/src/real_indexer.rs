@@ -10,12 +10,7 @@ use serde::Serialize;
 use tracing::*;
 
 use super::{CachedEthereumCall, EntityChanges, Indexer};
-use crate::config::{IndexerConfig, IndexerUrls};
-use crate::indexer::{IndexerId, WithIndexer};
-use crate::prometheus_metrics::metrics;
-use crate::types::{
-    BlockPointer, IndexerVersion, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
-};
+use crate::{IndexerId, IndexerVersion, IndexingStatus, PoiRequest, ProofOfIndexing, WithIndexer};
 
 const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
@@ -23,19 +18,28 @@ const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 pub struct RealIndexer {
     address: Vec<u8>,
     name: Option<String>,
-    urls: IndexerUrls,
+    endpoint: String,
     client: reqwest::Client,
+    // Metrics
+    // -------
+    public_poi_requests: prometheus::IntCounterVec,
 }
 
 impl RealIndexer {
     // FIXME: this logic is bug-prone and should be replaced with proper sum types.
     #[instrument(skip_all)]
-    pub fn new(config: IndexerConfig) -> Self {
+    pub fn new(
+        name: Option<String>,
+        address: Vec<u8>,
+        endpoint: String,
+        public_poi_requests: prometheus::IntCounterVec,
+    ) -> Self {
         Self {
-            name: config.name,
-            address: config.address,
-            urls: config.urls,
+            name,
+            address,
+            endpoint,
             client: reqwest::Client::new(),
+            public_poi_requests,
         }
     }
 
@@ -49,7 +53,7 @@ impl RealIndexer {
     ) -> anyhow::Result<O> {
         let response_raw = self
             .client
-            .post(self.urls.status.clone())
+            .post(self.endpoint.clone())
             .timeout(REQUEST_TIMEOUT)
             .json(&request)
             .send()
@@ -164,8 +168,7 @@ impl Indexer for RealIndexer {
 
             match result {
                 Ok(batch_pois) => {
-                    metrics()
-                        .public_proofs_of_indexing_requests
+                    self.public_poi_requests
                         .get_metric_with_label_values(&[&self.address_string(), "1"])
                         .unwrap()
                         .inc();
@@ -173,8 +176,7 @@ impl Indexer for RealIndexer {
                     pois.extend(batch_pois);
                 }
                 Err(error) => {
-                    metrics()
-                        .public_proofs_of_indexing_requests
+                    self.public_poi_requests
                         .get_metric_with_label_values(&[&self.address_string(), "0"])
                         .unwrap()
                         .inc();
@@ -313,6 +315,8 @@ impl Indexer for RealIndexer {
 }
 
 mod gql_types {
+    use crate::{BlockPointer, SubgraphDeployment};
+
     use super::*;
 
     pub type JSONObject = serde_json::Value;

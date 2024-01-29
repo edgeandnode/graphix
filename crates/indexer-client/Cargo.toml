@@ -1,0 +1,19 @@
+[package]
+name = "graphix_indexer_client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+async-graphql = "7"
+graphql_client = "0.13"
+hex = "0.4"
+prometheus = { version = "0.13", default-features = false }
+reqwest = { version = "0.11", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+
+[build-dependencies]
+reqwest = { version = "0.11", features = ["blocking"] }
