@@ -1,0 +1,13 @@
+query IndexersByAllocations($first: Int, $skip: Int) {
+  indexers(
+    orderBy: allocatedTokens
+    orderDirection: desc
+    first: $first
+    skip: $skip
+  ) {
+    id
+    defaultDisplayName
+    url
+    allocatedTokens
+  }
+}

@@ -1,3 +1,5 @@
+apiPort: 3030
+
 # A good mix of data sources for local development, both mainnet and testnet.
 
 databaseUrl: postgres://graphix:password@postgres-graphix:5432/graphix
@@ -17,8 +19,8 @@ sources:
   #   query: byAllocations
   #   stakeThreshold: 0.0
   #   limit: 1000
-  - type: networkSubgraph
-    endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-arbitrum
-    query: byStakedTokens
-    stakeThreshold: 0.0
-    limit: 1000
+  #- type: networkSubgraph
+  #  endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-arbitrum
+  #  query: byStakedTokens
+  #  stakeThreshold: 0.0
+  #  limit: 1000

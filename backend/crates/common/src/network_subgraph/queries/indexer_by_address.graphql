@@ -1,6 +1,0 @@
-{
-  indexers(where: { id: $id }) {
-    url
-    defaultDisplayName
-  }
-}

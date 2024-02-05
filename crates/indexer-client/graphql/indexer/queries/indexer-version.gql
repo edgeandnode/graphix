@@ -1,0 +1,6 @@
+query IndexerVersion {
+  version {
+    version
+    commit
+  }
+}

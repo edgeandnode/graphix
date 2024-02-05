@@ -1,0 +1,23 @@
+[package]
+name = "graphix_store"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+async-graphql = "7"
+chrono = "0.4"
+diesel = { version = "2", features = ["postgres", "r2d2", "chrono", "uuid", "extras"] }
+diesel_migrations = { version = "2", features = ["postgres"] }
+graphix_common_types = { path = "../common-types" }
+graphix_indexer_client = { path = "../indexer-client" }
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+testcontainers = "0.15"
+testcontainers-modules = { version = "0.3", features = ["postgres"] }
+tokio = { version = "1", features = ["macros"] }

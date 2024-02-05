@@ -1,7 +1,7 @@
 version: "3"
 services:
   grafana:
-    image: grafana/grafana-enterprise
+    image: grafana/grafana-oss
     restart: always
     # https://community.grafana.com/t/new-docker-install-with-persistent-storage-permission-problem/10896/16
     user: ":"
@@ -30,15 +30,16 @@ services:
       - --web.console.templates=/usr/share/prometheus/consoles
     ports:
       - "9090:9090"
+    logging:
+      driver: none
     volumes:
       - ./prometheus/:/etc/prometheus/
 
-  graphix-cross-checker:
-    image: edgeandnode/graphix-cross-checker
+  graphix:
+    image: edgeandnode/graphix
     restart: on-failure
     build:
       context: ../..
-      dockerfile: ops/cross-checker.dockerfile
       args:
         CARGO_PROFILE: dev
     depends_on:
@@ -48,34 +49,10 @@ services:
       RUST_LOG: graphix=debug
     ports:
       - "9184:9184"
-    volumes:
-      - ./graphix/:/config/
-    command: ["--config", "/config/network.yml"]
-
-  graphix-api-server:
-    image: edgeandnode/graphix-api-server
-    restart: on-failure
-    build:
-      context: ../..
-      dockerfile: ops/api-server.dockerfile
-      args:
-        CARGO_PROFILE: dev
-    ports:
       - "3030:3030"
-    depends_on:
-      postgres-graphix:
-        condition: service_healthy
-    environment:
-      RUST_LOG: graphix=debug
     volumes:
       - ./graphix/:/config/
-    command:
-      [
-        "--database-url",
-        "postgres://graphix:password@postgres-graphix:5432/graphix",
-        "--port",
-        "3030",
-      ]
+    command: ["--config", "/config/two-empty-graph-nodes.yml"]
 
   postgres-graphix:
     image: postgres

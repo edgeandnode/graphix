@@ -1,0 +1,6 @@
+query IndexersByStakedTokens {
+  indexers(orderBy: stakedTokens) {
+    id
+    url
+  }
+}
