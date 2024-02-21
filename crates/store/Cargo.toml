@@ -8,7 +8,8 @@ anyhow = "1"
 async-graphql = "7"
 chrono = "0.4"
 diesel = { version = "2", features = ["postgres", "r2d2", "chrono", "uuid", "extras"] }
-diesel_migrations = { version = "2", features = ["postgres"] }
+diesel-async = { version = "0.4", features = ["deadpool", "postgres"] }
+diesel_async_migrations = "0.12"
 graphix_common_types = { path = "../common-types" }
 graphix_indexer_client = { path = "../indexer-client" }
 hex = "0.4"

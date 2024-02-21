@@ -87,13 +87,13 @@ async fn main() -> anyhow::Result<()> {
             // duplicate indexers.
             indexers = deduplicate_indexers(&indexers);
 
-            store.write_indexers(&indexers)?;
+            store.write_indexers(&indexers).await?;
 
             tx_indexers.send(indexers.clone())?;
 
             let graph_node_versions =
                 graphix_lib::queries::query_graph_node_versions(&indexers, metrics()).await;
-            store.write_graph_node_versions(graph_node_versions)?;
+            store.write_graph_node_versions(graph_node_versions).await?;
 
             let indexing_statuses = query_indexing_statuses(indexers, metrics()).await;
 
@@ -103,7 +103,7 @@ async fn main() -> anyhow::Result<()> {
 
             info!(pois = pois.len(), "Finished tracking Pois");
 
-            let write_err = store.write_pois(&pois, PoiLiveness::Live).err();
+            let write_err = store.write_pois(pois, PoiLiveness::Live).await.err();
             if let Some(err) = write_err {
                 error!(error = %err, "Failed to write POIs to database");
             }

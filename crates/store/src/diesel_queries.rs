@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use chrono::Utc;
 use diesel::prelude::*;
 use diesel::sql_types;
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use graphix_common_types::BlockRangeInput;
 use graphix_indexer_client::{BlockPointer, Indexer, IndexerId, WritablePoi};
 use tracing::info;
@@ -18,8 +19,8 @@ use crate::models::{
 use crate::schema::{self, live_pois};
 
 // This is a single SQL statement, a transaction is not necessary.
-pub(super) fn pois(
-    conn: &mut PgConnection,
+pub(super) async fn pois(
+    conn: &mut AsyncPgConnection,
     indexer_id: Option<&str>,
     sg_deployments: Option<&[String]>,
     block_range: Option<BlockRangeInput>,
@@ -77,7 +78,7 @@ pub(super) fn pois(
                 .filter(blocks_filter)
                 .filter(indexer_filter)
                 .limit(limit);
-            Ok(query.load::<models::Poi>(conn)?)
+            Ok(query.load::<models::Poi>(conn).await?)
         }
         // This will additionally join with `live_pois` to filter out any Pois that are not live.
         true => {
@@ -92,13 +93,13 @@ pub(super) fn pois(
                 .filter(blocks_filter)
                 .filter(indexer_filter)
                 .limit(limit);
-            Ok(query.load::<models::Poi>(conn)?)
+            Ok(query.load::<models::Poi>(conn).await?)
         }
     }
 }
 
-pub fn write_indexers(
-    conn: &mut PgConnection,
+pub async fn write_indexers(
+    conn: &mut AsyncPgConnection,
     indexers: &[impl AsRef<dyn Indexer>],
 ) -> anyhow::Result<()> {
     use schema::indexers;
@@ -117,17 +118,22 @@ pub fn write_indexers(
     diesel::insert_into(indexers::table)
         .values(insertable_indexers)
         .on_conflict_do_nothing()
-        .execute(conn)?;
+        .execute(conn)
+        .await?;
 
     Ok(())
 }
 
 // The caller must make sure that `conn` is within a transaction.
-pub(super) fn write_pois(
-    conn: &mut PgConnection,
-    pois: &[impl WritablePoi],
+pub(super) async fn write_pois<W>(
+    conn: &mut AsyncPgConnection,
+    pois: Vec<W>,
     live: PoiLiveness,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<()>
+where
+    W: WritablePoi + Send + Sync,
+    W::IndexerId: Send + Sync,
+{
     use diesel::insert_into;
     use schema::pois;
 
@@ -135,7 +141,7 @@ pub(super) fn write_pois(
 
     // Group PoIs by deployment
     let mut grouped_pois: BTreeMap<_, Vec<_>> = BTreeMap::new();
-    for poi in pois {
+    for poi in pois.iter() {
         grouped_pois
             .entry(poi.deployment_cid())
             .or_insert_with(Vec::new)
@@ -143,7 +149,7 @@ pub(super) fn write_pois(
     }
 
     for (deployment, poi_group) in grouped_pois {
-        let sg_deployment_id = get_or_insert_deployment(conn, deployment)?;
+        let sg_deployment_id = get_or_insert_deployment(conn, deployment).await?;
         let block_ptr = poi_group[0].block();
 
         // Make sure all PoIs have the same block ptr
@@ -153,36 +159,37 @@ pub(super) fn write_pois(
             ));
         }
 
-        let block_id = get_or_insert_block(conn, block_ptr)?;
+        let block_id = get_or_insert_block(conn, block_ptr).await?;
 
-        let new_pois: Vec<_> = poi_group
-            .iter()
-            .map(|poi| {
-                let indexer_id =
-                    get_indexer_id(conn, poi.indexer_id().name(), poi.indexer_id().address())?;
+        let mut new_pois = vec![];
 
-                Ok(NewPoi {
-                    sg_deployment_id,
-                    indexer_id,
-                    block_id,
-                    poi: poi.proof_of_indexing().to_vec(),
-                    created_at: Utc::now().naive_utc(),
-                })
-            })
-            .collect::<anyhow::Result<_>>()?;
+        for poi in poi_group.iter() {
+            let indexer_id =
+                get_indexer_id(conn, poi.indexer_id().name(), poi.indexer_id().address()).await?;
+
+            new_pois.push(NewPoi {
+                sg_deployment_id,
+                indexer_id,
+                block_id,
+                poi: poi.proof_of_indexing().to_vec(),
+                created_at: Utc::now().naive_utc(),
+            });
+        }
 
         // Insert all PoIs for this deployment
         let id_and_indexer: Vec<(i32, i32)> = insert_into(pois::table)
             .values(&new_pois)
             .returning((pois::id, pois::indexer_id))
-            .get_results(conn)?;
+            .get_results(conn)
+            .await?;
 
         if live == PoiLiveness::Live {
             // Clear any live pois for this deployment
             diesel::delete(
                 live_pois::table.filter(live_pois::sg_deployment_id.eq(sg_deployment_id)),
             )
-            .execute(conn)?;
+            .execute(conn)
+            .await?;
 
             for (poi_id, indexer_id) in id_and_indexer {
                 let value = NewLivePoi {
@@ -192,7 +199,8 @@ pub(super) fn write_pois(
                 };
                 diesel::insert_into(live_pois::table)
                     .values(&value)
-                    .execute(conn)?;
+                    .execute(conn)
+                    .await?;
             }
         }
     }
@@ -201,7 +209,10 @@ pub(super) fn write_pois(
     Ok(())
 }
 
-fn get_or_insert_block(conn: &mut PgConnection, block: BlockPointer) -> anyhow::Result<i64> {
+async fn get_or_insert_block(
+    conn: &mut AsyncPgConnection,
+    block: BlockPointer,
+) -> anyhow::Result<i64> {
     use schema::blocks;
 
     // First, attempt to find the existing block by hash
@@ -209,6 +220,7 @@ fn get_or_insert_block(conn: &mut PgConnection, block: BlockPointer) -> anyhow::
     let existing_block: Option<models::Block> = blocks::table
         .filter(blocks::hash.eq(&block.hash.unwrap().0.as_slice()))
         .get_result(conn)
+        .await
         .optional()?;
 
     if let Some(existing_block) = existing_block {
@@ -224,14 +236,15 @@ fn get_or_insert_block(conn: &mut PgConnection, block: BlockPointer) -> anyhow::
         let block_id = diesel::insert_into(blocks::table)
             .values(&new_block)
             .returning(blocks::id)
-            .get_result(conn)?;
+            .get_result(conn)
+            .await?;
         Ok(block_id)
     }
 }
 
-pub fn get_indexer_id(
-    conn: &mut PgConnection,
-    name: Option<Cow<str>>,
+pub async fn get_indexer_id<'a>(
+    conn: &mut AsyncPgConnection,
+    name: Option<Cow<'a, str>>,
     address: &[u8],
 ) -> anyhow::Result<i32> {
     use schema::indexers;
@@ -240,6 +253,7 @@ pub fn get_indexer_id(
         .filter(indexers::name.is_not_distinct_from(&name))
         .filter(indexers::address.is_not_distinct_from(address))
         .get_result(conn)
+        .await
         .optional()?;
 
     if let Some(i) = existing_indexer {
@@ -253,8 +267,8 @@ pub fn get_indexer_id(
     }
 }
 
-fn get_or_insert_deployment(
-    conn: &mut PgConnection,
+async fn get_or_insert_deployment(
+    conn: &mut AsyncPgConnection,
     deployment_cid: &str,
 ) -> Result<i32, anyhow::Error> {
     use schema::sg_deployments;
@@ -262,6 +276,7 @@ fn get_or_insert_deployment(
     let existing_sg_deployment: Option<SgDeployment> = sg_deployments::table
         .filter(sg_deployments::ipfs_cid.eq(&deployment_cid))
         .get_result(conn)
+        .await
         .optional()?;
     Ok(
         if let Some(existing_sg_deployment) = existing_sg_deployment {
@@ -277,7 +292,8 @@ fn get_or_insert_deployment(
             diesel::insert_into(sg_deployments::table)
                 .values(&new_sg_deployment)
                 .returning(sg_deployments::id)
-                .get_result(conn)?
+                .get_result(conn)
+                .await?
         },
     )
 }

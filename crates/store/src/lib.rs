@@ -1,6 +1,10 @@
 //! Database access (read and write) abstractions for the Graphix backend.
 
 mod diesel_queries;
+use diesel_async::pooled_connection::deadpool::{Object, Pool};
+use diesel_async::pooled_connection::AsyncDieselConnectionManager;
+use diesel_async::scoped_futures::ScopedFutureExt;
+use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 #[cfg(tests)]
 pub use diesel_queries;
 use graphix_common_types::{
@@ -14,9 +18,7 @@ use std::sync::Arc;
 
 use anyhow::Error;
 use diesel::prelude::*;
-use diesel::r2d2::{self, ConnectionManager, Pool, PooledConnection};
-use diesel::{Connection, PgConnection};
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel_async_migrations::{embed_migrations, EmbeddedMigrations};
 use graphix_indexer_client::{Indexer, WritablePoi};
 use tracing::info;
 
@@ -33,43 +35,50 @@ const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 /// it's cheaply cloneable.
 #[derive(Clone)]
 pub struct Store {
-    pool: Pool<ConnectionManager<PgConnection>>,
+    pool: Pool<AsyncPgConnection>,
 }
 
 impl Store {
     /// Connects to the database and runs all pending migrations.
     pub async fn new(db_url: &str) -> anyhow::Result<Self> {
         info!("Initializing database connection pool");
-        let manager = r2d2::ConnectionManager::<PgConnection>::new(db_url);
-        let pool = r2d2::Builder::new().build(manager)?;
+        let manager = AsyncDieselConnectionManager::new(db_url);
+        let pool = Pool::builder(manager).build()?;
         let store = Self { pool };
-        store.run_migrations()?;
+        store.run_migrations().await?;
         Ok(store)
     }
 
-    fn run_migrations(&self) -> anyhow::Result<()> {
-        let mut conn = self.pool.get()?;
+    async fn run_migrations(&self) -> anyhow::Result<()> {
+        let mut conn = self.pool.get().await?;
 
         // Get a lock for running migrations. Blocks until we get the lock.
         // We need this because different Graphix instances may attempt
         // to run migrations concurrently (that's a big no-no).
-        diesel::sql_query("select pg_advisory_lock(1)").execute(&mut conn)?;
+        diesel::sql_query("select pg_advisory_lock(1)")
+            .execute(&mut conn)
+            .await?;
         info!("Run database migrations");
-        conn.run_pending_migrations(MIGRATIONS)
+
+        MIGRATIONS
+            .run_pending_migrations(&mut conn)
+            .await
             .map_err(|e| anyhow::anyhow!(e))?;
 
         // Release the migration lock.
-        diesel::sql_query("select pg_advisory_unlock(1)").execute(&mut conn)?;
+        diesel::sql_query("select pg_advisory_unlock(1)")
+            .execute(&mut conn)
+            .await?;
         Ok(())
     }
 
-    fn conn(&self) -> anyhow::Result<PooledConnection<ConnectionManager<PgConnection>>> {
-        Ok(self.pool.get()?)
+    async fn conn(&self) -> anyhow::Result<Object<AsyncPgConnection>> {
+        Ok(self.pool.get().await?)
     }
 
     /// Returns subgraph deployments stored in the database that match the
     /// filtering criteria.
-    pub fn sg_deployments(
+    pub async fn sg_deployments(
         &self,
         filter: SgDeploymentsQuery,
     ) -> anyhow::Result<Vec<QueriedSgDeployment>> {
@@ -99,10 +108,16 @@ impl Store {
             query = query.limit(limit.into());
         }
 
-        Ok(query.load::<QueriedSgDeployment>(&mut self.conn()?)?)
+        Ok(query
+            .load::<QueriedSgDeployment>(&mut self.conn().await?)
+            .await?)
     }
 
-    pub fn create_sg_deployment(&self, network_name: &str, ipfs_cid: &str) -> anyhow::Result<()> {
+    pub async fn create_sg_deployment(
+        &self,
+        network_name: &str,
+        ipfs_cid: &str,
+    ) -> anyhow::Result<()> {
         use schema::sg_deployments as sgd;
 
         diesel::insert_into(sgd::table)
@@ -114,12 +129,17 @@ impl Store {
                     .single_value()
                     .assume_not_null()),
             ))
-            .execute(&mut self.conn()?)?;
+            .execute(&mut self.conn().await?)
+            .await?;
 
         Ok(())
     }
 
-    pub fn set_deployment_name(&self, sg_deployment_id: &str, name: &str) -> anyhow::Result<()> {
+    pub async fn set_deployment_name(
+        &self,
+        sg_deployment_id: &str,
+        name: &str,
+    ) -> anyhow::Result<()> {
         use schema::{sg_deployments as sgd, sg_names};
 
         diesel::insert_into(sg_names::table)
@@ -134,13 +154,14 @@ impl Store {
             .on_conflict(sg_names::sg_deployment_id)
             .do_update()
             .set(sg_names::name.eq(name))
-            .execute(&mut self.conn()?)?;
+            .execute(&mut self.conn().await?)
+            .await?;
 
         Ok(())
     }
 
     /// Fetches a Poi from the database.
-    pub fn poi(&self, poi: &str) -> anyhow::Result<Option<Poi>> {
+    pub async fn poi(&self, poi: &str) -> anyhow::Result<Option<Poi>> {
         use schema::{blocks, indexers, pois, sg_deployments};
 
         let poi = hex::decode(poi)?;
@@ -159,28 +180,30 @@ impl Store {
             ))
             .filter(pois::poi.eq(poi));
 
-        Ok(query.get_result(&mut self.conn()?).optional()?)
+        Ok(query.get_result(&mut self.conn().await?).await.optional()?)
     }
 
     /// Deletes the network with the given name from the database, together with
     /// **all** of its related data (indexers, deployments, etc.).
-    pub fn delete_network(&self, network_name: &str) -> anyhow::Result<()> {
+    pub async fn delete_network(&self, network_name: &str) -> anyhow::Result<()> {
         use schema::networks;
 
         diesel::delete(networks::table.filter(networks::name.eq(network_name)))
-            .execute(&mut self.conn()?)?;
+            .execute(&mut self.conn().await?)
+            .await?;
         // The `ON DELETE CASCADE`s should take care of the rest of the cleanup.
 
         Ok(())
     }
 
-    pub fn networks(&self) -> anyhow::Result<Vec<Network>> {
+    pub async fn networks(&self) -> anyhow::Result<Vec<Network>> {
         use schema::networks;
 
-        let mut conn = self.conn()?;
+        let mut conn = self.conn().await?;
         let rows = networks::table
             .select((networks::name, networks::caip2))
-            .load::<(String, Option<String>)>(&mut conn)?;
+            .load::<(String, Option<String>)>(&mut conn)
+            .await?;
 
         let networks = rows
             .into_iter()
@@ -191,7 +214,7 @@ impl Store {
     }
 
     /// Returns all indexers stored in the database.
-    pub fn indexers(&self, filter: IndexersQuery) -> anyhow::Result<Vec<models::Indexer>> {
+    pub async fn indexers(&self, filter: IndexersQuery) -> anyhow::Result<Vec<models::Indexer>> {
         use schema::indexers;
 
         let mut query = indexers::table.into_boxed();
@@ -204,20 +227,20 @@ impl Store {
             query = query.limit(limit.into());
         }
 
-        let rows = query.load::<IndexerModel>(&mut self.conn()?)?;
+        let rows = query.load::<IndexerModel>(&mut self.conn().await?).await?;
 
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
     /// Queries the database for proofs of indexing that refer to the specified
     /// subgraph deployments and in the given [`BlockRange`], if given.
-    pub fn pois(
+    pub async fn pois(
         &self,
         sg_deployments: &[String],
         block_range: Option<BlockRangeInput>,
         limit: Option<u16>,
     ) -> anyhow::Result<Vec<Poi>> {
-        let mut conn = self.conn()?;
+        let mut conn = self.conn().await?;
         diesel_queries::pois(
             &mut conn,
             None,
@@ -226,17 +249,18 @@ impl Store {
             limit,
             false,
         )
+        .await
     }
 
     /// Like `pois`, but only returns live pois.
-    pub fn live_pois(
+    pub async fn live_pois(
         &self,
         indexer_name: Option<&str>,
         sg_deployments_cids: Option<&[String]>,
         block_range: Option<BlockRangeInput>,
         limit: Option<u16>,
     ) -> anyhow::Result<Vec<Poi>> {
-        let mut conn = self.conn()?;
+        let mut conn = self.conn().await?;
         diesel_queries::pois(
             &mut conn,
             indexer_name,
@@ -245,29 +269,42 @@ impl Store {
             limit,
             true,
         )
+        .await
     }
 
-    pub fn write_pois(&self, pois: &[impl WritablePoi], live: PoiLiveness) -> anyhow::Result<()> {
-        self.conn()?
-            .transaction::<_, Error, _>(|conn| diesel_queries::write_pois(conn, pois, live))
+    pub async fn write_pois<W>(&self, pois: Vec<W>, live: PoiLiveness) -> anyhow::Result<()>
+    where
+        W: WritablePoi + Send + Sync,
+        W::IndexerId: Send + Sync,
+    {
+        self.conn()
+            .await?
+            .transaction::<_, Error, _>(|conn| {
+                async move {
+                    diesel_queries::write_pois(conn, pois, live).await?;
+                    Ok(())
+                }
+                .scope_boxed()
+            })
+            .await
     }
 
-    pub fn write_indexers(&self, indexers: &[impl AsRef<dyn Indexer>]) -> anyhow::Result<()> {
-        let mut conn = self.conn()?;
-        diesel_queries::write_indexers(&mut conn, indexers)?;
+    pub async fn write_indexers(&self, indexers: &[impl AsRef<dyn Indexer>]) -> anyhow::Result<()> {
+        let mut conn = self.conn().await?;
+        diesel_queries::write_indexers(&mut conn, indexers).await?;
         Ok(())
     }
 
-    pub fn write_graph_node_versions(
+    pub async fn write_graph_node_versions(
         &self,
         versions: HashMap<Arc<dyn Indexer>, anyhow::Result<IndexerVersion>>,
     ) -> anyhow::Result<()> {
         use schema::indexer_versions;
         for (indexer, version) in versions {
-            let conn = &mut self.conn()?;
+            let conn = &mut self.conn().await?;
 
             let indexer_id =
-                diesel_queries::get_indexer_id(conn, indexer.name(), indexer.address())?;
+                diesel_queries::get_indexer_id(conn, indexer.name(), indexer.address()).await?;
 
             let new_version = match version {
                 Ok(v) => models::NewIndexerVersion {
@@ -286,24 +323,26 @@ impl Store {
 
             diesel::insert_into(indexer_versions::table)
                 .values(&new_version)
-                .execute(conn)?;
+                .execute(conn)
+                .await?;
         }
 
         Ok(())
     }
 
-    pub fn get_first_pending_divergence_investigation_request(
+    pub async fn get_first_pending_divergence_investigation_request(
         &self,
     ) -> anyhow::Result<Option<(String, serde_json::Value)>> {
         use schema::pending_divergence_investigation_requests as requests;
 
         Ok(requests::table
             .select((requests::uuid, requests::request))
-            .first::<(String, serde_json::Value)>(&mut self.conn()?)
+            .first::<(String, serde_json::Value)>(&mut self.conn().await?)
+            .await
             .optional()?)
     }
 
-    pub fn create_divergence_investigation_request(
+    pub async fn create_divergence_investigation_request(
         &self,
         request: serde_json::Value,
     ) -> anyhow::Result<String> {
@@ -312,14 +351,15 @@ impl Store {
         let uuid = uuid::Uuid::new_v4().to_string();
         diesel::insert_into(requests::table)
             .values((requests::uuid.eq(&uuid), requests::request.eq(&request)))
-            .execute(&mut self.conn()?)?;
+            .execute(&mut self.conn().await?)
+            .await?;
 
         Ok(uuid)
     }
 
     /// Fetches the divergence investigation report with the given UUID, if it
     /// exists.
-    pub fn divergence_investigation_report(
+    pub async fn divergence_investigation_report(
         &self,
         uuid: &str,
     ) -> anyhow::Result<Option<serde_json::Value>> {
@@ -328,11 +368,12 @@ impl Store {
         Ok(reports::table
             .select(reports::report)
             .filter(reports::uuid.eq(uuid))
-            .first(&mut self.conn()?)
+            .first(&mut self.conn().await?)
+            .await
             .optional()?)
     }
 
-    pub fn create_or_update_divergence_investigation_report(
+    pub async fn create_or_update_divergence_investigation_report(
         &self,
         uuid: &str,
         report: serde_json::Value,
@@ -344,27 +385,33 @@ impl Store {
             .on_conflict(reports::uuid)
             .do_update()
             .set(reports::report.eq(&report))
-            .execute(&mut self.conn()?)?;
+            .execute(&mut self.conn().await?)
+            .await?;
 
         Ok(())
     }
 
-    pub fn divergence_investigation_request_exists(&self, uuid: &str) -> anyhow::Result<bool> {
+    pub async fn divergence_investigation_request_exists(
+        &self,
+        uuid: &str,
+    ) -> anyhow::Result<bool> {
         use schema::pending_divergence_investigation_requests as requests;
 
         let exists = requests::table
             .filter(requests::uuid.eq(uuid))
             .count()
-            .get_result::<i64>(&mut self.conn()?)?
+            .get_result::<i64>(&mut self.conn().await?)
+            .await?
             > 0;
         Ok(exists)
     }
 
-    pub fn delete_divergence_investigation_request(&self, uuid: &str) -> anyhow::Result<()> {
+    pub async fn delete_divergence_investigation_request(&self, uuid: &str) -> anyhow::Result<()> {
         use schema::pending_divergence_investigation_requests as requests;
 
         diesel::delete(requests::table.filter(requests::uuid.eq(uuid)))
-            .execute(&mut self.conn()?)?;
+            .execute(&mut self.conn().await?)
+            .await?;
 
         Ok(())
     }

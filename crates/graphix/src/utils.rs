@@ -25,12 +25,12 @@ where
 }
 
 /// Given a Poi, find any of the indexers that have been known to produce it.
-pub fn find_any_indexer_for_poi(
+pub async fn find_any_indexer_for_poi(
     store: &Store,
     poi_s: &str,
     indexers: &[Arc<dyn Indexer>],
 ) -> anyhow::Result<Option<Arc<dyn Indexer>>> {
-    let poi = if let Some(poi) = store.poi(poi_s)? {
+    let poi = if let Some(poi) = store.poi(poi_s).await? {
         poi
     } else {
         return Ok(None);
@@ -42,38 +42,6 @@ pub fn find_any_indexer_for_poi(
         .cloned();
 
     Ok(indexer_opt)
-}
-
-pub fn find_indexer_pair(
-    store: &Store,
-    poi_1: &str,
-    poi_2: &str,
-    indexers: &[Arc<dyn Indexer>],
-) -> Result<(Arc<dyn Indexer>, Arc<dyn Indexer>), DivergenceInvestigationError> {
-    let indexer1 = find_any_indexer_for_poi(store, poi_1, indexers)
-        .map_err(DivergenceInvestigationError::Database)
-        .and_then(|opt| {
-            if let Some(indexer) = opt {
-                Ok(indexer)
-            } else {
-                Err(DivergenceInvestigationError::IndexerNotFound {
-                    poi: poi_1.to_string(),
-                })
-            }
-        })?;
-    let indexer2 = find_any_indexer_for_poi(store, poi_2, indexers)
-        .map_err(DivergenceInvestigationError::Database)
-        .and_then(|opt| {
-            if let Some(indexer) = opt {
-                Ok(indexer)
-            } else {
-                Err(DivergenceInvestigationError::IndexerNotFound {
-                    poi: poi_2.to_string(),
-                })
-            }
-        })?;
-
-    Ok((indexer1, indexer2))
 }
 
 #[cfg(test)]

@@ -19,7 +19,7 @@ impl QueryRoot {
         filter: SgDeploymentsQuery,
     ) -> Result<Vec<QueriedSgDeployment>> {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
-        Ok(api_ctx.store.sg_deployments(filter)?)
+        Ok(api_ctx.store.sg_deployments(filter).await?)
     }
 
     /// Fetches all tracked indexers in this Graphix instance and filters them
@@ -30,7 +30,7 @@ impl QueryRoot {
         filter: IndexersQuery,
     ) -> Result<Vec<types::Indexer>> {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
-        let indexers = api_ctx.store.indexers(filter)?;
+        let indexers = api_ctx.store.indexers(filter).await?;
 
         Ok(indexers.into_iter().map(Into::into).collect())
     }
@@ -45,7 +45,7 @@ impl QueryRoot {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let pois = api_ctx
             .store
-            .pois(&filter.deployments, filter.block_range, filter.limit)?;
+            .pois(&filter.deployments, filter.block_range, filter.limit).await?;
 
         Ok(pois.into_iter().map(types::ProofOfIndexing::from).collect())
     }
@@ -64,7 +64,7 @@ impl QueryRoot {
             Some(&filter.deployments),
             filter.block_range,
             filter.limit,
-        )?;
+        ).await?;
 
         Ok(pois.into_iter().map(Into::into).collect())
     }
@@ -79,7 +79,7 @@ impl QueryRoot {
         // Query live POIs of a the requested indexer.
         let indexer_pois = api_ctx
             .store
-            .live_pois(Some(&indexer_name), None, None, None)?;
+            .live_pois(Some(&indexer_name), None, None, None).await?;
 
         let deployment_cids: Vec<_> = indexer_pois
             .iter()
@@ -90,7 +90,7 @@ impl QueryRoot {
         let all_deployment_pois =
             api_ctx
                 .store
-                .live_pois(None, Some(&deployment_cids), None, None)?;
+                .live_pois(None, Some(&deployment_cids), None, None).await?;
 
         // Convert POIs to ProofOfIndexing and group by deployment
         let mut deployment_to_pois: BTreeMap<String, Vec<types::ProofOfIndexing>> = BTreeMap::new();
@@ -168,14 +168,14 @@ impl QueryRoot {
     ) -> Result<Option<DivergenceInvestigationReport>> {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
 
-        if let Some(report_json) = api_ctx.store.divergence_investigation_report(&uuid)? {
+        if let Some(report_json) = api_ctx.store.divergence_investigation_report(&uuid).await? {
             Ok(
                 serde_json::from_value(report_json)
                     .expect("Can't deserialize report from database"),
             )
         } else if api_ctx
             .store
-            .divergence_investigation_request_exists(&uuid)?
+            .divergence_investigation_request_exists(&uuid).await?
         {
             Ok(Some(DivergenceInvestigationReport {
                 uuid,
@@ -191,7 +191,7 @@ impl QueryRoot {
     async fn networks(&self, ctx: &Context<'_>) -> Result<Vec<Network>> {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
 
-        let networks = api_ctx.store.networks()?;
+        let networks = api_ctx.store.networks().await?;
         Ok(networks)
     }
 }
@@ -209,7 +209,7 @@ impl MutationRoot {
         let store = &api_ctx.store;
 
         let request_serialized = serde_json::to_value(req).unwrap();
-        let uuid = store.create_divergence_investigation_request(request_serialized)?;
+        let uuid = store.create_divergence_investigation_request(request_serialized).await?;
 
         let report = DivergenceInvestigationReport {
             uuid: uuid.clone(),
@@ -230,7 +230,7 @@ impl MutationRoot {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let store = &api_ctx.store;
 
-        store.set_deployment_name(&deployment_ipfs_cid, &name)?;
+        store.set_deployment_name(&deployment_ipfs_cid, &name).await?;
 
         Ok(Deployment {
             id: deployment_ipfs_cid,
@@ -241,7 +241,7 @@ impl MutationRoot {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let store = &api_ctx.store;
 
-        store.delete_network(&network)?;
+        store.delete_network(&network).await?;
 
         Ok(network)
     }
