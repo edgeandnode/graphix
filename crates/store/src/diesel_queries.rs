@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use chrono::Utc;
 use diesel::prelude::*;
 use diesel::sql_types;
-use graphix_common_types::{BlockRangeInput, IndexerVersion};
+use graphix_common_types::BlockRangeInput;
 use graphix_indexer_client::{BlockPointer, Indexer, IndexerId, WritablePoi};
 use tracing::info;
 
@@ -16,28 +16,6 @@ use crate::models::{
     self, Indexer as IndexerModel, NewIndexer, NewLivePoi, NewPoi, NewSgDeployment, SgDeployment,
 };
 use crate::schema::{self, live_pois};
-
-pub(super) fn poi(conn: &mut PgConnection, poi: &str) -> anyhow::Result<Option<models::Poi>> {
-    use schema::{blocks, indexers, pois, sg_deployments};
-
-    let poi = hex::decode(poi)?;
-
-    let query = pois::table
-        .inner_join(sg_deployments::table)
-        .inner_join(indexers::table)
-        .inner_join(blocks::table)
-        .select((
-            pois::id,
-            pois::poi,
-            pois::created_at,
-            sg_deployments::all_columns,
-            indexers::all_columns,
-            blocks::all_columns,
-        ))
-        .filter(pois::poi.eq(poi));
-
-    Ok(query.get_result::<models::Poi>(conn).optional()?)
-}
 
 // This is a single SQL statement, a transaction is not necessary.
 pub(super) fn pois(
@@ -140,39 +118,6 @@ pub fn write_indexers(
         .values(insertable_indexers)
         .on_conflict_do_nothing()
         .execute(conn)?;
-
-    Ok(())
-}
-
-pub fn set_deployment_name(
-    conn: &mut PgConnection,
-    sg_deployment_id: &str,
-    name: &str,
-) -> anyhow::Result<()> {
-    use schema::{sg_deployments as sgd, sg_names};
-
-    diesel::insert_into(sg_names::table)
-        .values((
-            sg_names::sg_deployment_id.eq(sgd::table
-                .select(sgd::id)
-                .filter(sgd::ipfs_cid.eq(sg_deployment_id))
-                .single_value()
-                .assume_not_null()),
-            sg_names::name.eq(name),
-        ))
-        .on_conflict(sg_names::sg_deployment_id)
-        .do_update()
-        .set(sg_names::name.eq(name))
-        .execute(conn)?;
-
-    Ok(())
-}
-
-pub fn delete_network(conn: &mut PgConnection, network_name: &str) -> anyhow::Result<()> {
-    use schema::networks;
-
-    diesel::delete(networks::table.filter(networks::name.eq(network_name))).execute(conn)?;
-    // The `ON DELETE CASCADE`s should take care of the rest of the cleanup.
 
     Ok(())
 }
@@ -284,38 +229,7 @@ fn get_or_insert_block(conn: &mut PgConnection, block: BlockPointer) -> anyhow::
     }
 }
 
-pub fn write_graph_node_version(
-    conn: &mut PgConnection,
-    indexer: &dyn Indexer,
-    version: anyhow::Result<IndexerVersion>,
-) -> anyhow::Result<()> {
-    use schema::indexer_versions;
-
-    let indexer_id = get_indexer_id(conn, indexer.name(), indexer.address())?;
-
-    let new_version = match version {
-        Ok(v) => models::NewIndexerVersion {
-            indexer_id,
-            error: None,
-            version_string: Some(v.version),
-            version_commit: Some(v.commit),
-        },
-        Err(err) => models::NewIndexerVersion {
-            indexer_id,
-            error: Some(err.to_string()),
-            version_string: None,
-            version_commit: None,
-        },
-    };
-
-    diesel::insert_into(indexer_versions::table)
-        .values(&new_version)
-        .execute(conn)?;
-
-    Ok(())
-}
-
-fn get_indexer_id(
+pub fn get_indexer_id(
     conn: &mut PgConnection,
     name: Option<Cow<str>>,
     address: &[u8],

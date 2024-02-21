@@ -120,21 +120,58 @@ impl Store {
     }
 
     pub fn set_deployment_name(&self, sg_deployment_id: &str, name: &str) -> anyhow::Result<()> {
-        let mut conn = self.conn()?;
-        diesel_queries::set_deployment_name(&mut conn, sg_deployment_id, name)
+        use schema::{sg_deployments as sgd, sg_names};
+
+        diesel::insert_into(sg_names::table)
+            .values((
+                sg_names::sg_deployment_id.eq(sgd::table
+                    .select(sgd::id)
+                    .filter(sgd::ipfs_cid.eq(sg_deployment_id))
+                    .single_value()
+                    .assume_not_null()),
+                sg_names::name.eq(name),
+            ))
+            .on_conflict(sg_names::sg_deployment_id)
+            .do_update()
+            .set(sg_names::name.eq(name))
+            .execute(&mut self.conn()?)?;
+
+        Ok(())
     }
 
     /// Fetches a Poi from the database.
     pub fn poi(&self, poi: &str) -> anyhow::Result<Option<Poi>> {
-        let mut conn = self.conn()?;
-        diesel_queries::poi(&mut conn, poi)
+        use schema::{blocks, indexers, pois, sg_deployments};
+
+        let poi = hex::decode(poi)?;
+
+        let query = pois::table
+            .inner_join(sg_deployments::table)
+            .inner_join(indexers::table)
+            .inner_join(blocks::table)
+            .select((
+                pois::id,
+                pois::poi,
+                pois::created_at,
+                sg_deployments::all_columns,
+                indexers::all_columns,
+                blocks::all_columns,
+            ))
+            .filter(pois::poi.eq(poi));
+
+        Ok(query.get_result(&mut self.conn()?).optional()?)
     }
 
     /// Deletes the network with the given name from the database, together with
     /// **all** of its related data (indexers, deployments, etc.).
     pub fn delete_network(&self, network_name: &str) -> anyhow::Result<()> {
-        let mut conn = self.conn()?;
-        diesel_queries::delete_network(&mut conn, network_name)
+        use schema::networks;
+
+        diesel::delete(networks::table.filter(networks::name.eq(network_name)))
+            .execute(&mut self.conn()?)?;
+        // The `ON DELETE CASCADE`s should take care of the rest of the cleanup.
+
+        Ok(())
     }
 
     pub fn networks(&self) -> anyhow::Result<Vec<Network>> {
@@ -225,9 +262,31 @@ impl Store {
         &self,
         versions: HashMap<Arc<dyn Indexer>, anyhow::Result<IndexerVersion>>,
     ) -> anyhow::Result<()> {
+        use schema::indexer_versions;
         for (indexer, version) in versions {
-            let mut conn = self.conn()?;
-            diesel_queries::write_graph_node_version(&mut conn, &*indexer, version)?;
+            let conn = &mut self.conn()?;
+
+            let indexer_id =
+                diesel_queries::get_indexer_id(conn, indexer.name(), indexer.address())?;
+
+            let new_version = match version {
+                Ok(v) => models::NewIndexerVersion {
+                    indexer_id,
+                    error: None,
+                    version_string: Some(v.version),
+                    version_commit: Some(v.commit),
+                },
+                Err(err) => models::NewIndexerVersion {
+                    indexer_id,
+                    error: Some(err.to_string()),
+                    version_string: None,
+                    version_commit: None,
+                },
+            };
+
+            diesel::insert_into(indexer_versions::table)
+                .values(&new_version)
+                .execute(conn)?;
         }
 
         Ok(())
