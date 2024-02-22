@@ -1,0 +1,254 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Config",
+  "description": "A [`serde`]-compatible representation of Graphix's YAML configuration file.",
+  "type": "object",
+  "required": [
+    "databaseUrl",
+    "graphql",
+    "sources"
+  ],
+  "properties": {
+    "blockChoicePolicy": {
+      "default": "maxSyncedBlocks",
+      "allOf": [
+        {
+          "$ref": "#/definitions/BlockChoicePolicy"
+        }
+      ]
+    },
+    "chains": {
+      "description": "Chain-specific configuration.",
+      "default": {},
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/ChainConfig"
+      }
+    },
+    "databaseUrl": {
+      "description": "The URL of the PostgreSQL database to use.",
+      "type": "string"
+    },
+    "graphql": {
+      "description": "GraphQL API configuration.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/GraphQlConfig"
+        }
+      ]
+    },
+    "pollingPeriodInSeconds": {
+      "default": 120,
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "prometheusPort": {
+      "description": "The port on which the Prometheus exporter should listen.",
+      "default": 9184,
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ConfigSource"
+      }
+    }
+  },
+  "definitions": {
+    "BlockChoicePolicy": {
+      "type": "string",
+      "enum": [
+        "earliest",
+        "maxSyncedBlocks"
+      ]
+    },
+    "BlockExplorerUrlTemplateForBlock": {
+      "type": "string"
+    },
+    "ChainConfig": {
+      "type": "object",
+      "properties": {
+        "avgBlockTimeInMsecs": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "blockExplorerUrlTemplateForBlock": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/BlockExplorerUrlTemplateForBlock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sampleBlockHeight": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "sampleTimestamp": {
+          "description": "In RFC 3339 format.",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "ConfigSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "address",
+            "indexNodeEndpoint",
+            "type"
+          ],
+          "properties": {
+            "address": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "uint8",
+                "minimum": 0.0
+              }
+            },
+            "indexNodeEndpoint": {
+              "type": "string",
+              "format": "uri"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "indexer"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "address",
+            "type"
+          ],
+          "properties": {
+            "address": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "uint8",
+                "minimum": 0.0
+              }
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "indexerByAddress"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "name",
+            "poiByte",
+            "target",
+            "type"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "poiByte": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            },
+            "target": {
+              "$ref": "#/definitions/HexString"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "interceptor"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "endpoint",
+            "stakeThreshold",
+            "type"
+          ],
+          "properties": {
+            "endpoint": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "query": {
+              "description": "What query out of several available ones to use to fetch the list of indexers from the network subgraph?",
+              "default": "byAllocations",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/NetworkSubgraphQuery"
+                }
+              ]
+            },
+            "stakeThreshold": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "networkSubgraph"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "GraphQlConfig": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "description": "The port on which the GraphQL API server should listen. Set it to 0 to disable the API server entirely.",
+          "default": 3030,
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0.0
+        }
+      }
+    },
+    "HexString": {
+      "type": "string"
+    },
+    "NetworkSubgraphQuery": {
+      "type": "string",
+      "enum": [
+        "byAllocations",
+        "byStakedTokens"
+      ]
+    }
+  }
+}

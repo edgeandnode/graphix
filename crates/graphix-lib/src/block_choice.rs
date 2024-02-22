@@ -1,7 +1,8 @@
 use graphix_indexer_client::IndexingStatus;
-use serde::Deserialize;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, Debug, Default, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum BlockChoicePolicy {
     // Use the earliest block that all indexers have in common

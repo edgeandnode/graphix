@@ -1,4 +1,5 @@
-apiPort: 3030
+graphql:
+  port: 3030
 
 databaseUrl: postgres://postgres:password@postgres-graphix:5432/graphix
 sources:

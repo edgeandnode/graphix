@@ -1,0 +1,13 @@
+graphql:
+  port: 3030
+
+databaseUrl: postgres://postgres:password@postgres-graphix:5432/graphix
+
+chains:
+  mainnet:
+    blockExplorerUrlTemplateForBlock: "https://etherscan.io/block/{block}"
+    sampleBlockNumber: 19280735
+    sampleTimestamp: "2024-02-22T05:19:11+01:00"
+    avgBlockTimeInMsecs: 12060 # https://ycharts.com/indicators/ethereum_average_block_time
+
+sources: []

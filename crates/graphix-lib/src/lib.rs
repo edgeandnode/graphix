@@ -8,3 +8,5 @@ pub mod queries;
 pub mod test_utils;
 
 pub use prometheus_metrics::{metrics, PrometheusExporter, PrometheusMetrics};
+
+pub const GRAPHIX_VERSION: &str = env!("CARGO_PKG_VERSION");

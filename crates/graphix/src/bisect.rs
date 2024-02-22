@@ -183,7 +183,9 @@ pub async fn handle_divergence_investigation_requests(
 
         let (req_uuid, req_contents_blob) = {
             loop {
-                let req_opt = store.get_first_pending_divergence_investigation_request().await?;
+                let req_opt = store
+                    .get_first_pending_divergence_investigation_request()
+                    .await?;
                 if let Some(req) = req_opt {
                     break req;
                 } else {
@@ -209,8 +211,12 @@ pub async fn handle_divergence_investigation_requests(
             req_uuid,
             "Writing divergence investigation report to database"
         );
-        store.create_or_update_divergence_investigation_report(&req_uuid, serialized_report).await?;
-        store.delete_divergence_investigation_request(&req_uuid).await?;
+        store
+            .create_or_update_divergence_investigation_report(&req_uuid, serialized_report)
+            .await?;
+        store
+            .delete_divergence_investigation_request(&req_uuid)
+            .await?;
     }
 }
 
@@ -418,7 +424,9 @@ async fn handle_divergence_investigation_request(
         debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Finished bisection run");
         report.bisection_runs.push(bisection_run_report);
         let report_json = serde_json::to_value(&report).unwrap();
-        if let Err(err) = store.create_or_update_divergence_investigation_report(&uuid, report_json).await
+        if let Err(err) = store
+            .create_or_update_divergence_investigation_report(&uuid, report_json)
+            .await
         {
             error!(req_uuid = req_uuid_str, error = %err, "Failed to upsert divergence investigation report to the database");
         }

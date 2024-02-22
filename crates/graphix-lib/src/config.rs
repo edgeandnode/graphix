@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
@@ -6,28 +7,64 @@ use std::sync::Arc;
 use anyhow::Context;
 use graphix_indexer_client::{HexString, Indexer, IndexerId, IndexerInterceptor, RealIndexer};
 use graphix_network_sg_client::NetworkSubgraphClient;
-use serde::{Deserialize, Deserializer};
+use schemars::JsonSchema;
+use serde::{Deserialize, Deserializer, Serialize};
 use tracing::{info, warn};
 use url::Url;
 
 use crate::block_choice::BlockChoicePolicy;
 use crate::PrometheusMetrics;
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphQlConfig {
+    /// The port on which the GraphQL API server should listen. Set it to 0 to
+    /// disable the API server entirely.
+    #[serde(default = "Config::default_graphql_api_port")]
+    pub port: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct BlockExplorerUrlTemplateForBlock(pub String);
+
+impl BlockExplorerUrlTemplateForBlock {
+    pub fn url_for_block(&self, block_height: u64) -> String {
+        self.0.replace("{block}", block_height.to_string().as_str())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ChainSpeedConfig {
+    pub sample_block_height: u64,
+    /// In RFC 3339 format.
+    pub sample_timestamp: chrono::DateTime<chrono::Utc>,
+    pub avg_block_time_in_msecs: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ChainConfig {
+    #[serde(flatten, default)]
+    pub speed: Option<ChainSpeedConfig>,
+    #[serde(default)]
+    pub block_explorer_url_template_for_block: Option<BlockExplorerUrlTemplateForBlock>,
+}
+
 /// A [`serde`]-compatible representation of Graphix's YAML configuration file.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    #[serde(default = "Config::default_true")]
-    pub enable_indexing: bool,
-    #[serde(default = "Config::default_true")]
-    pub enable_api: bool,
-
+    /// GraphQL API configuration.
+    pub graphql: GraphQlConfig,
+    /// The URL of the PostgreSQL database to use.
+    pub database_url: String,
+    /// The port on which the Prometheus exporter should listen.
     #[serde(default = "Config::default_prometheus_port")]
     pub prometheus_port: u16,
-    #[serde(default = "Config::default_api_port")]
-    pub api_port: u16,
-
-    pub database_url: String,
+    /// Chain-specific configuration.
+    #[serde(default)]
+    pub chains: HashMap<String, ChainConfig>,
 
     // Indexing options
     // ----------------
@@ -96,22 +133,25 @@ impl Config {
         9184
     }
 
-    fn default_api_port() -> u16 {
+    fn default_graphql_api_port() -> u16 {
         3030
-    }
-
-    fn default_true() -> bool {
-        true
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct IndexerConfig {
     pub name: Option<String>,
     pub address: Vec<u8>,
-    #[serde(deserialize_with = "deserialize_url")]
+    #[serde(serialize_with = "serializ_url", deserialize_with = "deserialize_url")]
     pub index_node_endpoint: Url,
+}
+
+fn serializ_url<S>(url: &Url, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    url.as_str().serialize(serializer)
 }
 
 fn deserialize_url<'de, D>(deserializer: D) -> Result<Url, D::Error>
@@ -135,14 +175,14 @@ impl IndexerId for IndexerConfig {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct IndexerByAddressConfig {
     #[serde(deserialize_with = "deserialize_hexstring")]
     pub address: Vec<u8>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkSubgraphConfig {
     pub endpoint: String,
@@ -154,7 +194,7 @@ pub struct NetworkSubgraphConfig {
     pub limit: Option<u32>,
 }
 
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum NetworkSubgraphQuery {
     #[default]
@@ -162,7 +202,7 @@ pub enum NetworkSubgraphQuery {
     ByStakedTokens,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InterceptorConfig {
     pub name: String,
@@ -170,7 +210,7 @@ pub struct InterceptorConfig {
     pub poi_byte: u8,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ConfigSource {
     Indexer(IndexerConfig),

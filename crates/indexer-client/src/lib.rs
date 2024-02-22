@@ -13,6 +13,7 @@ use async_trait::async_trait;
 use graphix_common_types::IndexerVersion;
 pub use interceptor::IndexerInterceptor;
 pub use real_indexer::RealIndexer;
+use schemars::schema::Schema;
 use serde::{Deserialize, Serialize};
 
 /// An indexer is a `graph-node` instance that can be queried for information.
@@ -197,6 +198,16 @@ impl<'a> Deserialize<'a> for HexString<Vec<u8>> {
         hex::decode(&s[2..])
             .map(Self)
             .map_err(serde::de::Error::custom)
+    }
+}
+
+impl<T> schemars::JsonSchema for HexString<T> {
+    fn schema_name() -> String {
+        "HexString".to_owned()
+    }
+
+    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
+        gen.subschema_for::<String>()
     }
 }
 

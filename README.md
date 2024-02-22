@@ -68,8 +68,8 @@ cd dist/
 Spin up the docker-compose environment
 ```sh
 cd ops/compose
-docker compose build
-docker compose up
+docker compose -f graphix.yml build
+docker compose -f graphix.yml up
 ```
 
 Deploy at least 1 subgraph to the test graph-nodes

@@ -45,7 +45,8 @@ impl QueryRoot {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let pois = api_ctx
             .store
-            .pois(&filter.deployments, filter.block_range, filter.limit).await?;
+            .pois(&filter.deployments, filter.block_range, filter.limit)
+            .await?;
 
         Ok(pois.into_iter().map(types::ProofOfIndexing::from).collect())
     }
@@ -59,12 +60,15 @@ impl QueryRoot {
         filter: PoisQuery,
     ) -> Result<Vec<types::ProofOfIndexing>> {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
-        let pois = api_ctx.store.live_pois(
-            None,
-            Some(&filter.deployments),
-            filter.block_range,
-            filter.limit,
-        ).await?;
+        let pois = api_ctx
+            .store
+            .live_pois(
+                None,
+                Some(&filter.deployments),
+                filter.block_range,
+                filter.limit,
+            )
+            .await?;
 
         Ok(pois.into_iter().map(Into::into).collect())
     }
@@ -79,7 +83,8 @@ impl QueryRoot {
         // Query live POIs of a the requested indexer.
         let indexer_pois = api_ctx
             .store
-            .live_pois(Some(&indexer_name), None, None, None).await?;
+            .live_pois(Some(&indexer_name), None, None, None)
+            .await?;
 
         let deployment_cids: Vec<_> = indexer_pois
             .iter()
@@ -87,10 +92,10 @@ impl QueryRoot {
             .collect();
 
         // Query all live POIs for the specific deployments.
-        let all_deployment_pois =
-            api_ctx
-                .store
-                .live_pois(None, Some(&deployment_cids), None, None).await?;
+        let all_deployment_pois = api_ctx
+            .store
+            .live_pois(None, Some(&deployment_cids), None, None)
+            .await?;
 
         // Convert POIs to ProofOfIndexing and group by deployment
         let mut deployment_to_pois: BTreeMap<String, Vec<types::ProofOfIndexing>> = BTreeMap::new();
@@ -175,7 +180,8 @@ impl QueryRoot {
             )
         } else if api_ctx
             .store
-            .divergence_investigation_request_exists(&uuid).await?
+            .divergence_investigation_request_exists(&uuid)
+            .await?
         {
             Ok(Some(DivergenceInvestigationReport {
                 uuid,
@@ -209,7 +215,9 @@ impl MutationRoot {
         let store = &api_ctx.store;
 
         let request_serialized = serde_json::to_value(req).unwrap();
-        let uuid = store.create_divergence_investigation_request(request_serialized).await?;
+        let uuid = store
+            .create_divergence_investigation_request(request_serialized)
+            .await?;
 
         let report = DivergenceInvestigationReport {
             uuid: uuid.clone(),
@@ -230,7 +238,9 @@ impl MutationRoot {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let store = &api_ctx.store;
 
-        store.set_deployment_name(&deployment_ipfs_cid, &name).await?;
+        store
+            .set_deployment_name(&deployment_ipfs_cid, &name)
+            .await?;
 
         Ok(Deployment {
             id: deployment_ipfs_cid,
