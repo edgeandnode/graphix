@@ -89,15 +89,13 @@ CREATE TABLE live_pois (
 -- Divergence investigations.
 
 CREATE TABLE pending_divergence_investigation_requests (
-  -- We're wasting space and performance by using UUID as TEXT, but it's simpler
-  -- and operations on this table won't be a bottleneck.
-  uuid TEXT PRIMARY KEY,
+  uuid UUID PRIMARY KEY,
   request JSONB NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE divergence_investigation_reports (
-  uuid TEXT PRIMARY KEY,
+  uuid UUID PRIMARY KEY,
   report JSONB NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

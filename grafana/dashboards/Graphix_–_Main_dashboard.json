@@ -24,6 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
+  "id": null,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -59,7 +60,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unitScale": true
         },
         "overrides": [
           {
@@ -71,6 +73,21 @@
               {
                 "id": "displayName",
                 "value": "Deployment ID"
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "Graphix – Deployment details",
+                    "url": "/d/c76a3ad9-175c-4ac7-874b-901cd316a2a3/graphix-e28093-deployment-details?var-deployment=${__value.text}"
+                  },
+                  {
+                    "targetBlank": true,
+                    "title": "ipfs.io (manifest)",
+                    "url": "https://ipfs.io/ipfs/${__value.text}"
+                  }
+                ]
               }
             ]
           },
@@ -149,7 +166,7 @@
         "showHeader": true,
         "sortBy": []
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "10.3.3",
       "targets": [
         {
           "aliasBy": "",
@@ -164,7 +181,7 @@
           },
           "endTimePath": "endTime",
           "groupBy": "",
-          "queryText": "query {\n deployments(filter: {}) { id\n networkName\n name\n   }\n}",
+          "queryText": "query {\n deployments(filter: {}) { id\n networkName\n name\n }\n}",
           "refId": "A",
           "timePath": ""
         }
@@ -183,6 +200,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -196,6 +214,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -225,7 +244,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unitScale": true
         },
         "overrides": []
       },
@@ -277,6 +297,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -290,6 +311,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -319,7 +341,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unitScale": true
         },
         "overrides": []
       },
@@ -371,6 +394,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -384,6 +408,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -414,7 +439,8 @@
               }
             ]
           },
-          "unit": "hertz"
+          "unit": "hertz",
+          "unitScale": true
         },
         "overrides": []
       },
@@ -478,7 +504,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unitScale": true
         },
         "overrides": []
       },
@@ -501,9 +528,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "10.3.3",
       "targets": [
         {
           "aliasBy": "",
@@ -571,7 +600,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unitScale": true
         },
         "overrides": [
           {
@@ -593,13 +623,18 @@
                 "value": [
                   {
                     "targetBlank": true,
-                    "title": "Indexer page on the Network Explorer",
+                    "title": "thegraph.com (Network Explorer)",
                     "url": "https://thegraph.com/explorer/profile/${__value.text}?view=Overview&chain=mainnet"
                   },
                   {
                     "targetBlank": true,
-                    "title": "Etherscan",
+                    "title": "etherscan.io",
                     "url": "https://etherscan.io/address/${__value.text}"
+                  },
+                  {
+                    "targetBlank": true,
+                    "title": "Graphix – Indexer details",
+                    "url": "/d/c3d782e5-f574-4dc3-9908-b33367ced256/by-indexer?var-indexer=${__value.text}"
                   }
                 ]
               }
@@ -634,6 +669,10 @@
               {
                 "id": "noValue",
                 "value": "-"
+              },
+              {
+                "id": "custom.filterable",
+                "value": true
               }
             ]
           },
@@ -659,6 +698,7 @@
       },
       "id": 9,
       "options": {
+        "cellHeight": "sm",
         "footer": {
           "countRows": false,
           "enablePagination": true,
@@ -669,9 +709,14 @@
           "show": false
         },
         "showHeader": true,
-        "sortBy": []
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Indexer ID (address)"
+          }
+        ]
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "10.3.3",
       "targets": [
         {
           "aliasBy": "",
@@ -686,7 +731,7 @@
           },
           "endTimePath": "endTime",
           "groupBy": "",
-          "queryText": "query {\n      indexers(filter: {}) {\n        address\n        name\n        allocatedTokens\n      }\n}",
+          "queryText": "query {\n indexers(filter: {}) {\n address\n name\n allocatedTokens\n }\n}",
           "refId": "A",
           "timePath": ""
         }
@@ -725,7 +770,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unitScale": true
         },
         "overrides": [
           {
@@ -741,6 +787,16 @@
               {
                 "id": "custom.filterable",
                 "value": true
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "thegraph.com (Graph Explorer)",
+                    "url": "https://thegraph.com/explorer?indexedNetwork=${__value.text}"
+                  }
+                ]
               }
             ]
           },
@@ -770,6 +826,7 @@
       },
       "id": 11,
       "options": {
+        "cellHeight": "sm",
         "footer": {
           "countRows": false,
           "fields": "",
@@ -786,7 +843,7 @@
           }
         ]
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "10.3.3",
       "targets": [
         {
           "aliasBy": "",
@@ -801,7 +858,7 @@
           },
           "endTimePath": "endTime",
           "groupBy": "",
-          "queryText": "query {\n      networks {\n        name\n        caip2\n       }\n}",
+          "queryText": "query {\n networks {\n name\n caip2\n }\n}",
           "refId": "A",
           "timePath": ""
         }
@@ -812,8 +869,7 @@
   ],
   "refresh": "",
   "revision": 1,
-  "schemaVersion": 38,
-  "style": "dark",
+  "schemaVersion": 39,
   "tags": [],
   "templating": {
     "list": []
@@ -824,8 +880,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Graphix Dashboard",
+  "title": "Graphix – Main dashboard",
   "uid": "dee4d09d-0dbc-4af2-b4a2-2fcb9ecf35cc",
-  "version": 9,
+  "version": 5,
   "weekStart": ""
 }

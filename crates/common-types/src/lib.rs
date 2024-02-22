@@ -3,15 +3,25 @@
 //! A few of these are shared with database models as well. Should we keep them
 //! separate? It would be cleaner, but at the cost of some code duplication.
 
+mod hex_string;
+
 use async_graphql::*;
 use diesel::deserialize::FromSqlRow;
-use serde::{Deserialize, Serialize};
-
-type HexBytesWith0xPrefix = String;
-type UuidString = String;
-
 pub use divergence_investigation::*;
 pub use filters::*;
+pub use hex_string::HexString;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+/// A PoI (proof of indexing) is always 32 bytes.
+pub type PoiBytes = HexString<[u8; 32]>;
+
+/// Note that block hashes have variable length, to easily deal with different
+/// hash sizes across networks.
+pub type BlockHash = HexString<Vec<u8>>;
+
+/// Ethereum addresses, and indexers' as a consequence, are 20 bytes long.
+pub type IndexerAddress = HexString<[u8; 20]>;
 
 mod divergence_investigation {
     use super::*;
@@ -39,7 +49,7 @@ mod divergence_investigation {
         /// The UUID of the divergence investigation request that this report
         /// pertains to. This UUID is also used to identify the report, as well
         /// as the request.
-        pub uuid: UuidString,
+        pub uuid: Uuid,
         /// The latest known status of the divergence investigation.
         pub status: DivergenceInvestigationStatus,
         /// A list of bisection runs that were performed as part of this
@@ -86,11 +96,11 @@ mod divergence_investigation {
         /// The UUID of the bisection run that this report pertains to. This UUID
         /// is different from the UUID of the parent divergence investigation
         /// request.
-        pub uuid: UuidString,
+        pub uuid: Uuid,
         /// The first PoI that was used to start the bisection run.
-        pub poi1: HexBytesWith0xPrefix,
+        pub poi1: PoiBytes,
         /// The second PoI that was used to start the bisection run.
-        pub poi2: HexBytesWith0xPrefix,
+        pub poi2: PoiBytes,
         /// The lower and upper block bounds inside which the bisection run
         /// occurred.
         pub divergence_block_bounds: DivergenceBlockBounds,
@@ -123,7 +133,7 @@ mod divergence_investigation {
         /// A list of PoI hashes that should be investigated for divergence.
         /// If this list contains more than two PoIs, a new bisection run will be performed
         /// for each unordered pair of PoIs.
-        pub pois: Vec<String>,
+        pub pois: Vec<PoiBytes>,
         /// Indicates whether to collect `graph-node`'s block cache contents
         /// during bisection runs to include in the report.
         pub query_block_caches: Option<bool>,
@@ -193,7 +203,7 @@ mod filters {
     pub struct IndexersQuery {
         /// The address of the indexer, encoded as a hex string with a '0x'
         /// prefix.
-        pub address: Option<HexBytesWith0xPrefix>,
+        pub address: Option<IndexerAddress>,
         /// Upper limit on the number of shown results.
         pub limit: Option<u16>,
     }
@@ -226,7 +236,7 @@ pub struct Block {
     /// The block number (or height).
     pub number: u64,
     /// The block hash, expressed as a hex string with a '0x' prefix.
-    pub hash: HexBytesWith0xPrefix,
+    pub hash: BlockHash,
 }
 
 /// A block number that may or may not also have an associated hash.
@@ -235,7 +245,7 @@ pub struct PartialBlock {
     /// The block number (or height).
     pub number: i64,
     /// The block hash, if known. Expressed as a hex string with a '0x' prefix.
-    pub hash: Option<String>,
+    pub hash: Option<BlockHash>,
 }
 
 #[derive(SimpleObject, Debug)]
@@ -249,7 +259,7 @@ pub struct ProofOfIndexing {
     /// The block height and hash for which this PoI is valid.
     pub block: Block,
     /// The PoI's hash.
-    pub hash: String,
+    pub hash: PoiBytes,
     /// The subgraph deployment that this PoI is for.
     pub deployment: Deployment,
     /// The amount of allocated tokens by the indexer for this PoI, if known.
@@ -261,9 +271,8 @@ pub struct ProofOfIndexing {
 /// An indexer that is known to Graphix.
 #[derive(SimpleObject, Debug)]
 pub struct Indexer {
-    pub id: String,
+    pub address: IndexerAddress,
     pub name: Option<String>,
-    pub address: Option<HexBytesWith0xPrefix>,
     pub version: Option<IndexerVersion>,
     /// The number of tokens allocated to the indexer, if known.
     pub allocated_tokens: Option<u64>,
@@ -276,8 +285,8 @@ pub struct IndexerVersion {
 }
 
 #[derive(InputObject)]
-#[graphql(input_name = "POICrossCheckReportRequest")]
-struct POICrossCheckReportRequest {
+#[graphql(input_name = "PoiCrossCheckReportRequest")]
+struct PoiCrossCheckReportRequest {
     deployments: Vec<String>,
     indexer1: Option<String>,
     indexer2: Option<String>,
@@ -286,8 +295,8 @@ struct POICrossCheckReportRequest {
 #[derive(SimpleObject)]
 pub struct DivergingBlock {
     pub block: PartialBlock,
-    pub proof_of_indexing1: String,
-    pub proof_of_indexing2: String,
+    pub proof_of_indexing1: PoiBytes,
+    pub proof_of_indexing2: PoiBytes,
 }
 
 #[derive(SimpleObject)]
@@ -298,8 +307,8 @@ pub struct PoiCrossCheckReport {
     indexer2: String,
     deployment: String,
     block: PartialBlock,
-    proof_of_indexing1: String,
-    proof_of_indexing2: String,
+    proof_of_indexing1: PoiBytes,
+    proof_of_indexing2: PoiBytes,
     diverging_block: Option<DivergingBlock>,
 }
 
@@ -309,19 +318,19 @@ pub struct PoiCrossCheckReport {
 #[derive(SimpleObject)]
 #[graphql(name = "PoiAgreementRatio")]
 pub struct PoiAgreementRatio {
-    pub poi: String,
+    pub poi: PoiBytes,
     pub deployment: Deployment,
     pub block: PartialBlock,
 
     /// Total number of indexers that have live pois for the deployment.
-    pub total_indexers: i32,
+    pub total_indexers: u32,
 
     /// Number of indexers that agree on the POI with the specified indexer,
     /// including the indexer itself.
-    pub n_agreeing_indexers: i32,
+    pub n_agreeing_indexers: u32,
 
     /// Number of indexers that disagree on the POI with the specified indexer.
-    pub n_disagreeing_indexers: i32,
+    pub n_disagreeing_indexers: u32,
 
     /// Indicates if a consensus on the POI exists among indexers.
     pub has_consensus: bool,

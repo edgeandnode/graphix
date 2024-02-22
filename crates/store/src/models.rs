@@ -6,11 +6,11 @@ use diesel::backend::Backend;
 use diesel::deserialize::FromSql;
 use diesel::pg::Pg;
 use diesel::sql_types::Jsonb;
-use diesel::{AsChangeset, AsExpression, FromSqlRow, Insertable, Queryable};
+use diesel::{AsChangeset, AsExpression, FromSqlRow, Insertable, Queryable, Selectable};
 use graphix_common_types as types;
 use graphix_indexer_client::IndexerId;
 use serde::{Deserialize, Serialize};
-use types::{Deployment, Network};
+use types::{BlockHash, Deployment, IndexerAddress, Network, PoiBytes};
 
 use super::schema::*;
 
@@ -19,9 +19,18 @@ pub type BigIntId = i64;
 pub type SgDeploymentCid = String;
 
 #[derive(Queryable, Serialize, Debug)]
+pub struct FailedQuery {
+    pub indexer_id: IntId,
+    pub query_name: String,
+    pub raw_query: String,
+    pub response: String,
+    pub timestamp: NaiveDateTime,
+}
+
+#[derive(Queryable, Serialize, Debug)]
 pub struct Poi {
     pub id: IntId,
-    pub poi: Vec<u8>,
+    pub poi: PoiBytes,
     #[serde(skip)]
     pub created_at: NaiveDateTime,
     pub sg_deployment: SgDeployment,
@@ -29,13 +38,7 @@ pub struct Poi {
     pub block: Block,
 }
 
-impl Poi {
-    pub fn poi_hex(&self) -> String {
-        hex::encode(&self.poi)
-    }
-}
-
-#[derive(Insertable, Debug)]
+#[derive(Selectable, Insertable, Debug)]
 #[diesel(table_name = indexer_versions)]
 pub struct NewIndexerVersion {
     pub indexer_id: IntId,
@@ -44,10 +47,21 @@ pub struct NewIndexerVersion {
     pub version_commit: Option<String>,
 }
 
+#[derive(Queryable, Selectable, Debug)]
+#[diesel(table_name = indexer_versions)]
+pub struct IndexerVersion {
+    pub id: IntId,
+    pub indexer_id: IntId,
+    pub error: Option<String>,
+    pub version_string: Option<String>,
+    pub version_commit: Option<String>,
+    pub created_at: NaiveDateTime,
+}
+
 #[derive(Insertable, Debug)]
 #[diesel(table_name = pois)]
 pub struct NewPoi {
-    pub poi: Vec<u8>,
+    pub poi: PoiBytes,
     pub created_at: NaiveDateTime,
     pub sg_deployment_id: IntId,
     pub indexer_id: IntId,
@@ -59,7 +73,7 @@ pub struct Block {
     pub(super) id: BigIntId,
     _network_id: IntId,
     pub number: i64,
-    pub hash: Vec<u8>,
+    pub hash: BlockHash,
 }
 
 #[derive(Debug, Insertable)]
@@ -67,21 +81,21 @@ pub struct Block {
 pub struct NewBlock {
     pub network_id: IntId,
     pub number: i64,
-    pub hash: Vec<u8>,
+    pub hash: BlockHash,
 }
 
-#[derive(Debug, Queryable, Serialize)]
+#[derive(Debug, Queryable, Selectable, Serialize)]
 pub struct Indexer {
     pub id: IntId,
     pub name: Option<String>,
-    pub address: Vec<u8>,
+    pub address: IndexerAddress,
     #[serde(skip)]
     pub created_at: NaiveDateTime,
 }
 
 impl IndexerId for Indexer {
-    fn address(&self) -> &[u8] {
-        self.address.as_slice()
+    fn address(&self) -> IndexerAddress {
+        self.address
     }
 
     fn name(&self) -> Option<Cow<str>> {
@@ -95,7 +109,7 @@ impl IndexerId for Indexer {
 #[derive(Debug, Insertable)]
 #[diesel(table_name = indexers)]
 pub struct NewIndexer {
-    pub address: Vec<u8>,
+    pub address: IndexerAddress,
     pub name: Option<String>,
 }
 
@@ -164,12 +178,10 @@ impl FromSql<Jsonb, Pg> for DivergingBlock {
 
 impl From<Indexer> for graphix_common_types::Indexer {
     fn from(indexer: Indexer) -> Self {
-        let address_string = indexer.address_string();
         Self {
-            id: address_string.clone(),
+            address: indexer.address(),
             name: indexer.name,
-            version: None, // TODO
-            address: Some(address_string),
+            version: None,          // TODO
             allocated_tokens: None, // TODO: we don't store this in the db yet
         }
     }
@@ -182,14 +194,14 @@ impl From<Poi> for types::ProofOfIndexing {
             deployment: Deployment {
                 id: poi.sg_deployment.cid.clone(),
             },
-            hash: poi.poi_hex(),
+            hash: poi.poi,
             block: graphix_common_types::Block {
                 network: Network {
                     name: "mainnet".to_string(),
                     caip2: None,
                 },
                 number: poi.block.number as u64,
-                hash: hex::encode(poi.block.hash),
+                hash: poi.block.hash,
             },
             indexer: poi.indexer.into(),
         }

@@ -110,12 +110,7 @@
           ],
           "properties": {
             "address": {
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "format": "uint8",
-                "minimum": 0.0
-              }
+              "$ref": "#/definitions/HexString"
             },
             "indexNodeEndpoint": {
               "type": "string",
@@ -143,12 +138,7 @@
           ],
           "properties": {
             "address": {
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "format": "uint8",
-                "minimum": 0.0
-              }
+              "$ref": "#/definitions/HexString"
             },
             "type": {
               "type": "string",

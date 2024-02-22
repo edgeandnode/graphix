@@ -4,10 +4,10 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use graphix_common_types::IndexerVersion;
+use graphix_common_types::{IndexerAddress, IndexerVersion};
 
 use super::{CachedEthereumCall, EntityChanges};
-use crate::{Bytes32, Indexer, IndexingStatus, PoiRequest, ProofOfIndexing};
+use crate::{Indexer, IndexingStatus, PoiRequest, ProofOfIndexing};
 
 /// Pretends to be an indexer by routing requests a
 /// [`RealIndexer`](crate::indexer::RealIndexer) and then intercepting the
@@ -34,7 +34,7 @@ impl Indexer for IndexerInterceptor {
             .map(|name| Cow::Owned(format!("interceptor-{}", name)))
     }
 
-    fn address(&self) -> &[u8] {
+    fn address(&self) -> IndexerAddress {
         self.target.address()
     }
 
@@ -69,7 +69,7 @@ impl Indexer for IndexerInterceptor {
 
         pois.into_iter()
             .map(|poi| {
-                let divergent_poi = Bytes32([self.poi_byte; 32]);
+                let divergent_poi = [self.poi_byte; 32].into();
                 ProofOfIndexing {
                     indexer: self.clone(),
                     deployment: poi.deployment,

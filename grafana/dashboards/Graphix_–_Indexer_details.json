@@ -11,12 +11,6 @@
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
-        "target": {
-          "limit": 100,
-          "matchAny": false,
-          "tags": [],
-          "type": "dashboard"
-        },
         "type": "dashboard"
       }
     ]
@@ -38,6 +32,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -51,33 +52,31 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unitScale": true
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
+        "h": 8,
         "w": 24,
         "x": 0,
         "y": 0
       },
-      "id": 2,
+      "id": 1,
       "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
             "sum"
           ],
-          "fields": "/.*/",
-          "values": false
+          "show": false
         },
-        "text": {},
-        "textMode": "auto"
+        "showHeader": true
       },
-      "pluginVersion": "9.4.7",
+      "pluginVersion": "10.3.3",
       "targets": [
         {
           "aliasBy": "",
@@ -85,50 +84,32 @@
           "annotationText": "",
           "annotationTitle": "",
           "constant": 6.5,
-          "dataPath": "launchCrossCheckReport",
+          "dataPath": "poiAgreementRatios",
           "datasource": {
             "type": "fifemon-graphql-datasource",
             "uid": "gYhzyBE4k"
           },
           "endTimePath": "endTime",
           "groupBy": "",
-          "queryText": "mutation {\n\tlaunchCrossCheckReport(req: {\n\t\tpoi1: \"$poi1\",\n\t\tpoi2: \"$poi2\",\n\t\tqueryBlockCaches: true,\n\t\tqueryEthCallCaches: false,\n\t\tqueryEntityChanges: true\n\t}) {\n\t\tid\n\t}\n}",
+          "queryText": "query {\n poiAgreementRatios(indexerAddress: \"$indexer\") {\n deployment {\n id\n }\n poi\n block {\n number\n }\n totalIndexers\n nAgreeingIndexers\n nDisagreeingIndexers\n hasConsensus\n inConsensus\n }\n}",
           "refId": "A",
           "timePath": ""
         }
       ],
-      "title": "PoIs difference request ID",
-      "type": "stat"
+      "title": "PoI Agreement",
+      "type": "table"
     }
   ],
   "refresh": "",
-  "revision": 1,
-  "schemaVersion": 38,
-  "style": "dark",
+  "schemaVersion": 39,
   "tags": [],
   "templating": {
     "list": [
       {
         "current": {},
         "hide": 0,
-        "label": "PoI #1",
-        "name": "poi1",
-        "options": [
-          {
-            "selected": false,
-            "text": "",
-            "value": ""
-          }
-        ],
-        "query": "",
-        "skipUrlSync": false,
-        "type": "textbox"
-      },
-      {
-        "current": {},
-        "hide": 0,
-        "label": "PoI #2",
-        "name": "poi2",
+        "label": "Indexer address",
+        "name": "indexer",
         "options": [
           {
             "selected": false,
@@ -148,8 +129,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "PoIs difference bisecting tool",
-  "uid": "4zm1Ad6Vz",
-  "version": 8,
+  "title": "Graphix – Indexer details",
+  "uid": "c3d782e5-f574-4dc3-9908-b33367ced256",
+  "version": 3,
   "weekStart": ""
 }

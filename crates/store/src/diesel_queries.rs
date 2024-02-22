@@ -8,7 +8,7 @@ use chrono::Utc;
 use diesel::prelude::*;
 use diesel::sql_types;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
-use graphix_common_types::BlockRangeInput;
+use graphix_common_types::{BlockRangeInput, IndexerAddress};
 use graphix_indexer_client::{BlockPointer, Indexer, IndexerId, WritablePoi};
 use tracing::info;
 
@@ -21,7 +21,7 @@ use crate::schema::{self, live_pois};
 // This is a single SQL statement, a transaction is not necessary.
 pub(super) async fn pois(
     conn: &mut AsyncPgConnection,
-    indexer_id: Option<&str>,
+    indexer_address: Option<&IndexerAddress>,
     sg_deployments: Option<&[String]>,
     block_range: Option<BlockRangeInput>,
     limit: Option<u16>,
@@ -58,9 +58,11 @@ pub(super) async fn pois(
         None => sgd::ipfs_cid.eq_any([]).or(TRUE.clone()),
     };
 
-    let indexer_filter = match indexer_id {
-        Some(indexer_id) => indexers::name.eq(indexer_id).or(FALSE),
-        None => indexers::name.eq("").or(TRUE),
+    let default_indexer_address = IndexerAddress::default();
+    let indexer_filter = match indexer_address {
+        // Ugly hacks to have the match arms' types match.
+        Some(addr) => indexers::address.eq(addr).or(FALSE),
+        None => indexers::address.eq(&default_indexer_address).or(TRUE),
     };
 
     let order_by = (blocks::number.desc(), schema::pois::created_at.desc());
@@ -165,13 +167,13 @@ where
 
         for poi in poi_group.iter() {
             let indexer_id =
-                get_indexer_id(conn, poi.indexer_id().name(), poi.indexer_id().address()).await?;
+                get_indexer_id(conn, poi.indexer_id().name(), &poi.indexer_id().address()).await?;
 
             new_pois.push(NewPoi {
                 sg_deployment_id,
                 indexer_id,
                 block_id,
-                poi: poi.proof_of_indexing().to_vec(),
+                poi: *poi.proof_of_indexing(),
                 created_at: Utc::now().naive_utc(),
             });
         }
@@ -211,14 +213,14 @@ where
 
 async fn get_or_insert_block(
     conn: &mut AsyncPgConnection,
-    block: BlockPointer,
+    block: &BlockPointer,
 ) -> anyhow::Result<i64> {
     use schema::blocks;
 
     // First, attempt to find the existing block by hash
     // TODO: also filter by network to be extra safe
     let existing_block: Option<models::Block> = blocks::table
-        .filter(blocks::hash.eq(&block.hash.unwrap().0.as_slice()))
+        .filter(blocks::hash.eq(&block.hash.as_ref().unwrap().0.as_slice()))
         .get_result(conn)
         .await
         .optional()?;
@@ -230,7 +232,7 @@ async fn get_or_insert_block(
         // If the block doesn't exist, insert a new one and return its id
         let new_block = models::NewBlock {
             number: block.number as i64,
-            hash: block.hash.unwrap().0.to_vec(),
+            hash: block.hash.clone().unwrap(),
             network_id: 1, // Network assumed to be mainnet, see also: hardcoded-mainnet
         };
         let block_id = diesel::insert_into(blocks::table)
@@ -245,7 +247,7 @@ async fn get_or_insert_block(
 pub async fn get_indexer_id<'a>(
     conn: &mut AsyncPgConnection,
     name: Option<Cow<'a, str>>,
-    address: &[u8],
+    address: &IndexerAddress,
 ) -> anyhow::Result<i32> {
     use schema::indexers;
 

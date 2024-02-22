@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::anyhow;
+use graphix_common_types::IndexerAddress;
 use graphix_indexer_client::{Indexer as IndexerTrait, RealIndexer};
 use prometheus::IntCounterVec;
 use serde::de::DeserializeOwned;
@@ -101,7 +102,8 @@ impl NetworkSubgraphClient {
 
             for indexer in response_data.indexers {
                 if let Some(url) = indexer.url {
-                    let address = hex::decode(indexer.id.trim_start_matches("0x"))?;
+                    let address = str::parse::<IndexerAddress>(&indexer.id)
+                        .map_err(|e| anyhow!("invalid indexer address: {}", e))?;
                     let real_indexer = RealIndexer::new(
                         indexer.default_display_name,
                         address,
@@ -130,10 +132,9 @@ impl NetworkSubgraphClient {
     /// querying the necessary information from the network subgraph.
     pub async fn indexer_by_address(
         &self,
-        address: &[u8],
+        address: &IndexerAddress,
     ) -> anyhow::Result<Arc<dyn IndexerTrait>> {
-        let hex_encoded_addr_json = serde_json::to_value(format!("0x{}", hex::encode(address)))
-            .expect("Unable to hex encode address");
+        let hex_encoded_addr_json = serde_json::to_value(address).unwrap();
         let response_data: ResponseData = self
             .graphql_query_no_errors(
                 queries::INDEXER_BY_ADDRESS_QUERY,
@@ -155,13 +156,14 @@ impl NetworkSubgraphClient {
             default_display_name: String,
         }
 
-        let indexer_data = response_data.indexers.first().ok_or_else(|| {
-            anyhow::anyhow!("No indexer found for address 0x{}", hex::encode(address))
-        })?;
+        let indexer_data = response_data
+            .indexers
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("No indexer found for address {}", address))?;
 
         let indexer = RealIndexer::new(
             Some(indexer_data.default_display_name.clone()),
-            address.to_vec(),
+            *address,
             Url::parse(&format!("{}/status", indexer_data.url))?.to_string(),
             self.public_poi_requests.clone(),
         );
@@ -262,7 +264,7 @@ fn indexer_allocation_data_to_real_indexer(
 ) -> anyhow::Result<RealIndexer> {
     let name = indexer_allocation.indexer.default_display_name.clone();
     let indexer = indexer_allocation.indexer;
-    let address = hex::decode(indexer.id.trim_start_matches("0x"))?;
+    let address = str::parse(&indexer.id).map_err(|e| anyhow!("invalid indexer address: {}", e))?;
     let mut url: Url = indexer
         .url
         .ok_or_else(|| anyhow!("Indexer without URL"))?
@@ -392,7 +394,7 @@ mod tests {
         let client = network_sg_client_on_ethereum();
         // ellipfra.eth:
         // htps://thegraph.com/explorer/profile/0x62a0bd1d110ff4e5b793119e95fc07c9d1fc8c4a?view=Indexing&chain=mainnet
-        let address = hex::decode("62a0bd1d110ff4e5b793119e95fc07c9d1fc8c4a").unwrap();
+        let address = str::parse("62a0bd1d110ff4e5b793119e95fc07c9d1fc8c4a").unwrap();
         let indexer = client.indexer_by_address(&address).await.unwrap();
         assert_eq!(indexer.address(), address);
     }

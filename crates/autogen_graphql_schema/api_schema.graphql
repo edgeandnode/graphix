@@ -30,15 +30,15 @@ type BisectionRunReport {
 	is different from the UUID of the parent divergence investigation
 	request.
 	"""
-	uuid: String!
+	uuid: UUID!
 	"""
 	The first PoI that was used to start the bisection run.
 	"""
-	poi1: String!
+	poi1: HexString!
 	"""
 	The second PoI that was used to start the bisection run.
 	"""
-	poi2: String!
+	poi2: HexString!
 	"""
 	The lower and upper block bounds inside which the bisection run
 	occurred.
@@ -72,7 +72,7 @@ type Block {
 	"""
 	The block hash, expressed as a hex string with a '0x' prefix.
 	"""
-	hash: String!
+	hash: HexString!
 }
 
 """
@@ -109,7 +109,7 @@ type DivergenceInvestigationReport {
 	pertains to. This UUID is also used to identify the report, as well
 	as the request.
 	"""
-	uuid: String!
+	uuid: UUID!
 	"""
 	The latest known status of the divergence investigation.
 	"""
@@ -139,7 +139,7 @@ input DivergenceInvestigationRequest {
 	If this list contains more than two PoIs, a new bisection run will be performed
 	for each unordered pair of PoIs.
 	"""
-	pois: [String!]!
+	pois: [HexString!]!
 	"""
 	Indicates whether to collect `graph-node`'s block cache contents
 	during bisection runs to include in the report.
@@ -181,14 +181,15 @@ enum DivergenceInvestigationStatus {
 }
 
 
+scalar HexString
+
 
 """
 An indexer that is known to Graphix.
 """
 type Indexer {
-	id: String!
+	address: HexString!
 	name: String
-	address: String
 	version: IndexerVersion
 	"""
 	The number of tokens allocated to the indexer, if known.
@@ -209,7 +210,7 @@ input IndexersQuery {
 	The address of the indexer, encoded as a hex string with a '0x'
 	prefix.
 	"""
-	address: String
+	address: HexString
 	"""
 	Upper limit on the number of shown results.
 	"""
@@ -249,7 +250,7 @@ type PartialBlock {
 	"""
 	The block hash, if known. Expressed as a hex string with a '0x' prefix.
 	"""
-	hash: String
+	hash: HexString
 }
 
 """
@@ -258,7 +259,7 @@ indexers, given its own poi for each deployment. A consensus currently means a m
 indexers agreeing on a particular POI.
 """
 type PoiAgreementRatio {
-	poi: String!
+	poi: HexString!
 	deployment: Deployment!
 	block: PartialBlock!
 	"""
@@ -320,7 +321,7 @@ type ProofOfIndexing {
 	"""
 	The PoI's hash.
 	"""
-	hash: String!
+	hash: HexString!
 	"""
 	The subgraph deployment that this PoI is for.
 	"""
@@ -375,8 +376,8 @@ type QueryRoot {
 	subgraph deployment.
 	"""
 	liveProofsOfIndexing(filter: PoisQuery!): [ProofOfIndexing!]!
-	poiAgreementRatios(indexerName: String!): [PoiAgreementRatio!]!
-	divergenceInvestigationReport(uuid: String!): DivergenceInvestigationReport
+	poiAgreementRatios(indexerAddress: HexString!): [PoiAgreementRatio!]!
+	divergenceInvestigationReport(uuid: UUID!): DivergenceInvestigationReport
 	networks: [Network!]!
 }
 
@@ -402,6 +403,18 @@ input SgDeploymentsQuery {
 	limit: Int
 }
 
+
+"""
+A UUID is a unique 128-bit number, stored as 16 octets. UUIDs are parsed as
+Strings within GraphQL. UUIDs are used to assign unique identifiers to
+entities without requiring a central allocating authority.
+
+# References
+
+* [Wikipedia: Universally Unique Identifier](http://en.wikipedia.org/wiki/Universally_unique_identifier)
+* [RFC4122: A Universally Unique IDentifier (UUID) URN Namespace](http://tools.ietf.org/html/rfc4122)
+"""
+scalar UUID
 
 directive @include(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
 directive @skip(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT

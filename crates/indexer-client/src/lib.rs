@@ -3,24 +3,23 @@ mod real_indexer;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::fmt::{self, Debug, Display};
+use std::fmt::{self, Debug};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::anyhow;
 use async_trait::async_trait;
-use graphix_common_types::IndexerVersion;
+use graphix_common_types::{BlockHash, IndexerAddress, IndexerVersion, PoiBytes};
 pub use interceptor::IndexerInterceptor;
 pub use real_indexer::RealIndexer;
-use schemars::schema::Schema;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 /// An indexer is a `graph-node` instance that can be queried for information.
 #[async_trait]
 pub trait Indexer: Send + Sync + Debug {
     /// The indexer's address.
-    fn address(&self) -> &[u8];
+    fn address(&self) -> IndexerAddress;
 
     /// Human-readable name of the indexer.
     fn name(&self) -> Option<Cow<str>>;
@@ -79,13 +78,13 @@ pub trait Indexer: Send + Sync + Debug {
 /// one) or its name (if it doesn't have an address i.e. it's not a network
 /// participant), strictly in this order.
 pub trait IndexerId {
-    fn address(&self) -> &[u8];
+    fn address(&self) -> IndexerAddress;
     fn name(&self) -> Option<Cow<str>>;
 
     /// Returns the string representation of the indexer's address using
     /// [`HexString`].
     fn address_string(&self) -> String {
-        HexString(self.address()).to_string()
+        self.address().to_string()
     }
 }
 
@@ -93,7 +92,7 @@ impl<T> IndexerId for T
 where
     T: Indexer,
 {
-    fn address(&self) -> &[u8] {
+    fn address(&self) -> IndexerAddress {
         Indexer::address(self)
     }
 
@@ -103,7 +102,7 @@ where
 }
 
 impl IndexerId for Arc<dyn Indexer> {
-    fn address(&self) -> &[u8] {
+    fn address(&self) -> IndexerAddress {
         Indexer::address(&**self)
     }
 
@@ -137,7 +136,7 @@ impl PartialOrd for dyn Indexer {
 
 impl Ord for dyn Indexer {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.address().cmp(other.address())
+        self.address().cmp(&other.address())
     }
 }
 
@@ -168,53 +167,10 @@ pub struct EntityChanges {
     pub deletions: HashMap<EntityType, Vec<EntityId>>,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct HexString<T>(pub T);
-
-impl<T: AsRef<[u8]>> Display for HexString<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "0x{}", hex::encode(self.0.as_ref()))
-    }
-}
-
-impl<T: AsRef<[u8]>> Serialize for HexString<T> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.collect_str(&self)
-    }
-}
-
-impl<'a> Deserialize<'a> for HexString<Vec<u8>> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'a>,
-    {
-        let s = String::deserialize(deserializer)?;
-        if !s.starts_with("0x") {
-            return Err(serde::de::Error::custom("hexstring must start with 0x"));
-        }
-        hex::decode(&s[2..])
-            .map(Self)
-            .map_err(serde::de::Error::custom)
-    }
-}
-
-impl<T> schemars::JsonSchema for HexString<T> {
-    fn schema_name() -> String {
-        "HexString".to_owned()
-    }
-
-    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
-        gen.subschema_for::<String>()
-    }
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
 pub struct BlockPointer {
     pub number: u64,
-    pub hash: Option<Bytes32>,
+    pub hash: Option<BlockHash>,
 }
 
 impl fmt::Display for BlockPointer {
@@ -259,43 +215,12 @@ impl PartialEq for IndexingStatus {
     }
 }
 
-/// A 32-byte array that can be easily converted to and from hex strings.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd)]
-pub struct Bytes32(pub [u8; 32]);
-
-impl TryFrom<&str> for Bytes32 {
-    type Error = anyhow::Error;
-
-    fn try_from(s: &str) -> Result<Self, Self::Error> {
-        Ok(Self(hex::FromHex::from_hex(s.trim_start_matches("0x"))?))
-    }
-}
-
-impl TryFrom<Vec<u8>> for Bytes32 {
-    type Error = anyhow::Error;
-
-    fn try_from(v: Vec<u8>) -> Result<Self, Self::Error> {
-        if v.len() != 32 {
-            return Err(anyhow::anyhow!("Expected 32 bytes, got {}", v.len()));
-        }
-        let mut bytes = [0u8; 32];
-        bytes.copy_from_slice(&v);
-        Ok(Self(bytes))
-    }
-}
-
-impl fmt::Display for Bytes32 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(self.0))
-    }
-}
-
 #[derive(Debug, Clone, Eq, PartialOrd, Ord)]
 pub struct ProofOfIndexing {
     pub indexer: Arc<dyn Indexer>,
     pub deployment: SubgraphDeployment,
     pub block: BlockPointer,
-    pub proof_of_indexing: Bytes32,
+    pub proof_of_indexing: PoiBytes,
 }
 
 impl PartialEq for ProofOfIndexing {
@@ -318,8 +243,8 @@ pub trait WritablePoi {
 
     fn deployment_cid(&self) -> &str;
     fn indexer_id(&self) -> Self::IndexerId;
-    fn block(&self) -> BlockPointer;
-    fn proof_of_indexing(&self) -> &[u8];
+    fn block(&self) -> &BlockPointer;
+    fn proof_of_indexing(&self) -> &PoiBytes;
 }
 
 impl WritablePoi for ProofOfIndexing {
@@ -333,20 +258,20 @@ impl WritablePoi for ProofOfIndexing {
         self.indexer.clone()
     }
 
-    fn block(&self) -> BlockPointer {
-        self.block
+    fn block(&self) -> &BlockPointer {
+        &self.block
     }
 
-    fn proof_of_indexing(&self) -> &[u8] {
-        &self.proof_of_indexing.0
+    fn proof_of_indexing(&self) -> &PoiBytes {
+        &self.proof_of_indexing
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 pub struct DivergingBlock {
     pub block: BlockPointer,
-    pub proof_of_indexing1: Bytes32,
-    pub proof_of_indexing2: Bytes32,
+    pub proof_of_indexing1: PoiBytes,
+    pub proof_of_indexing2: PoiBytes,
 }
 
 #[derive(Clone, Debug)]

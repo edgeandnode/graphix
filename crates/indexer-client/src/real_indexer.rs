@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Context};
 use async_trait::async_trait;
+use graphix_common_types::IndexerAddress;
 use graphql_client::{GraphQLQuery, Response};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -16,7 +17,7 @@ const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
 #[derive(Debug)]
 pub struct RealIndexer {
-    address: Vec<u8>,
+    address: IndexerAddress,
     name: Option<String>,
     endpoint: String,
     client: reqwest::Client,
@@ -26,11 +27,10 @@ pub struct RealIndexer {
 }
 
 impl RealIndexer {
-    // FIXME: this logic is bug-prone and should be replaced with proper sum types.
     #[instrument(skip_all)]
     pub fn new(
         name: Option<String>,
-        address: Vec<u8>,
+        address: IndexerAddress,
         endpoint: String,
         public_poi_requests: prometheus::IntCounterVec,
     ) -> Self {
@@ -104,8 +104,8 @@ impl RealIndexer {
 
 #[async_trait]
 impl Indexer for RealIndexer {
-    fn address(&self) -> &[u8] {
-        self.address.as_slice()
+    fn address(&self) -> IndexerAddress {
+        self.address
     }
 
     fn name(&self) -> Option<Cow<str>> {
@@ -318,6 +318,8 @@ impl Indexer for RealIndexer {
 }
 
 mod gql_types {
+    use graphix_common_types::{BlockHash, PoiBytes};
+
     use super::*;
     use crate::{BlockPointer, SubgraphDeployment};
 
@@ -373,7 +375,7 @@ mod gql_types {
             ) => match (latest_block, earliest_block) {
                 (Some(block), Some(earliest_block)) => (BlockPointer {
                     number: block.number.parse()?,
-                    hash: Some(block.hash.clone().as_str().try_into()?),
+                    hash: Some(str::parse::<BlockHash>(block.hash.as_str()).map_err(|e| anyhow!("invalid block hash: {}", e))?),
                 }, earliest_block.number.parse()?),
                 _ => {
                     return Err(anyhow!("deployment has not started indexing yet"));
@@ -417,9 +419,12 @@ mod gql_types {
                         .inner
                         .block
                         .hash
-                        .and_then(|hash| hash.as_str().try_into().ok()),
+                        .map(|hash_string| str::parse::<BlockHash>(hash_string.as_str()))
+                        .transpose()
+                        .map_err(|e| anyhow!("invalid block hash: {}", e))?,
                 },
-                proof_of_indexing: self.inner.proof_of_indexing.as_str().try_into()?,
+                proof_of_indexing: str::parse::<PoiBytes>(self.inner.proof_of_indexing.as_str())
+                    .map_err(|e| anyhow!("invalid PoI value: {}", e))?,
             })
         }
     }

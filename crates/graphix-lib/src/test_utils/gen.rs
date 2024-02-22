@@ -1,7 +1,8 @@
 use std::iter::repeat_with;
 use std::sync::Arc;
 
-use graphix_indexer_client::{BlockPointer, Bytes32, Indexer, SubgraphDeployment};
+use graphix_common_types::{BlockHash, PoiBytes};
+use graphix_indexer_client::{BlockPointer, Indexer, SubgraphDeployment};
 use rand::distributions::Alphanumeric;
 use rand::seq::IteratorRandom;
 use rand::Rng;
@@ -21,10 +22,10 @@ pub fn gen_deployments() -> Vec<SubgraphDeployment> {
 }
 
 pub fn gen_blocks() -> Vec<BlockPointer> {
-    let block_hash = |n: u64| -> Bytes32 {
+    let block_hash = |n: u64| -> BlockHash {
         let mut buf = [0u8; 32];
         buf[24..32].clone_from_slice(&n.to_be_bytes());
-        Bytes32(buf)
+        buf.to_vec().into()
     };
     (0..10)
         .map(|number| BlockPointer {
@@ -34,13 +35,13 @@ pub fn gen_blocks() -> Vec<BlockPointer> {
         .collect()
 }
 
-pub fn gen_bytes32<R>(rng: &mut R) -> Bytes32
+pub fn gen_poi_bytes<R>(rng: &mut R) -> PoiBytes
 where
     R: Rng,
 {
     let mut bytes = [0; 32];
     rng.fill_bytes(&mut bytes);
-    Bytes32::try_from(hex::encode(bytes).as_str()).unwrap()
+    bytes.into()
 }
 
 pub fn gen_pois<R>(blocks: Vec<BlockPointer>, mut rng: &mut R) -> Vec<PartialProofOfIndexing>
@@ -52,7 +53,7 @@ where
         .into_iter()
         .map(|block| PartialProofOfIndexing {
             block,
-            proof_of_indexing: gen_bytes32(&mut rng),
+            proof_of_indexing: gen_poi_bytes(&mut rng),
         })
         .collect()
 }
@@ -88,7 +89,7 @@ where
             .map(|deployment| DeploymentDetails {
                 deployment,
                 network: "mainnet".into(),
-                latest_block: *blocks.iter().choose(&mut rng).unwrap(),
+                latest_block: blocks.iter().choose(&mut rng).unwrap().clone(),
                 canonical_pois: gen_pois(blocks.clone(), &mut rng),
                 earliest_block_num: blocks[0].number,
             })

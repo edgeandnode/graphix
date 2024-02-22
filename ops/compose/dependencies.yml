@@ -8,6 +8,7 @@ services:
     user: ":"
     depends_on:
       - prometheus
+    network_mode: host
     ports:
       - "3000:3000"
     environment:
@@ -16,7 +17,6 @@ services:
       - GF_INSTALL_PLUGINS=fifemon-graphql-datasource
     volumes:
       - ./grafana/config/:/etc/grafana/
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
       - ./grafana/data:/var/lib/grafana/
 
   prometheus:
@@ -29,6 +29,7 @@ services:
       - --storage.tsdb.path=/prometheus
       - --web.console.libraries=/usr/share/prometheus/console_libraries
       - --web.console.templates=/usr/share/prometheus/consoles
+    network_mode: host
     ports:
       - "9090:9090"
     logging:
@@ -39,6 +40,7 @@ services:
   postgres-graphix:
     image: postgres
     restart: unless-stopped
+    network_mode: host
     ports:
       - "5433:5432"
     environment:

@@ -7,7 +7,7 @@ API_TOKEN="glsa_2Wx4YNsrPlNvQwAlr3RrhvJfk4h5yvmM_3dad0c24"
 GRAFANA_URL="http://localhost:3000"
 
 # Directory to save dashboards
-DASHBOARD_DIR="grafana/dashboards"
+DASHBOARD_DIR="../../grafana/dashboards"
 
 # Create directory if it doesn't exist
 mkdir -p $DASHBOARD_DIR

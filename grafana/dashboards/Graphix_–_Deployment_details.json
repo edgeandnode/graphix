@@ -18,6 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
+  "id": null,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -245,8 +246,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "By Deployment",
+  "title": "Graphix – Deployment details",
   "uid": "c76a3ad9-175c-4ac7-874b-901cd316a2a3",
-  "version": 14,
+  "version": 1,
   "weekStart": ""
 }

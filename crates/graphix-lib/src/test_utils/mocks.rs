@@ -3,9 +3,9 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use async_trait::async_trait;
-use graphix_common_types::IndexerVersion;
+use graphix_common_types::{IndexerAddress, IndexerVersion, PoiBytes};
 use graphix_indexer_client::{
-    BlockPointer, Bytes32, CachedEthereumCall, EntityChanges, Indexer, IndexingStatus, PoiRequest,
+    BlockPointer, CachedEthereumCall, EntityChanges, Indexer, IndexingStatus, PoiRequest,
     ProofOfIndexing, SubgraphDeployment,
 };
 
@@ -31,8 +31,10 @@ impl Indexer for MockIndexer {
         Some(Cow::Borrowed(&self.name))
     }
 
-    fn address(&self) -> &[u8] {
-        self.name.as_bytes()
+    fn address(&self) -> IndexerAddress {
+        let mut addr = self.name.clone().into_bytes();
+        addr.resize(20, 0);
+        <[u8; 20]>::try_from(addr).unwrap().into()
     }
 
     async fn indexing_statuses(self: Arc<Self>) -> Result<Vec<IndexingStatus>, anyhow::Error> {
@@ -81,7 +83,7 @@ impl Indexer for MockIndexer {
             .map(|(deployment_detail, poi)| ProofOfIndexing {
                 indexer: self.clone(),
                 deployment: deployment_detail.deployment.clone(),
-                block: poi.block,
+                block: poi.block.clone(),
                 proof_of_indexing: poi.proof_of_indexing,
             })
             .collect::<Vec<_>>()
@@ -132,5 +134,5 @@ impl Indexer for MockIndexer {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PartialProofOfIndexing {
     pub block: BlockPointer,
-    pub proof_of_indexing: Bytes32,
+    pub proof_of_indexing: PoiBytes,
 }

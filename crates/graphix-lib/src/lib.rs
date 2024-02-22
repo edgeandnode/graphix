@@ -3,6 +3,7 @@ pub mod config;
 pub mod graphql_api;
 mod prometheus_metrics;
 pub mod queries;
+mod unforgiving_indexer_client;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;

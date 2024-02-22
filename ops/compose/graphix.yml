@@ -15,6 +15,7 @@ services:
         condition: service_healthy
     environment:
       RUST_LOG: graphix=debug
+    network_mode: host
     ports:
       - "9184:9184"
       - "3030:3030"

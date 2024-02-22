@@ -5,10 +5,11 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::Context;
-use graphix_indexer_client::{HexString, Indexer, IndexerId, IndexerInterceptor, RealIndexer};
+use graphix_common_types::IndexerAddress;
+use graphix_indexer_client::{Indexer, IndexerId, IndexerInterceptor, RealIndexer};
 use graphix_network_sg_client::NetworkSubgraphClient;
 use schemars::JsonSchema;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 use url::Url;
 
@@ -142,29 +143,13 @@ impl Config {
 #[serde(rename_all = "camelCase")]
 pub struct IndexerConfig {
     pub name: Option<String>,
-    pub address: Vec<u8>,
-    #[serde(serialize_with = "serializ_url", deserialize_with = "deserialize_url")]
+    pub address: IndexerAddress,
     pub index_node_endpoint: Url,
 }
 
-fn serializ_url<S>(url: &Url, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    url.as_str().serialize(serializer)
-}
-
-fn deserialize_url<'de, D>(deserializer: D) -> Result<Url, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    Url::parse(&s).map_err(serde::de::Error::custom)
-}
-
 impl IndexerId for IndexerConfig {
-    fn address(&self) -> &[u8] {
-        self.address.as_slice()
+    fn address(&self) -> IndexerAddress {
+        self.address
     }
 
     fn name(&self) -> Option<Cow<str>> {
@@ -178,8 +163,7 @@ impl IndexerId for IndexerConfig {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct IndexerByAddressConfig {
-    #[serde(deserialize_with = "deserialize_hexstring")]
-    pub address: Vec<u8>,
+    pub address: IndexerAddress,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -206,7 +190,7 @@ pub enum NetworkSubgraphQuery {
 #[serde(rename_all = "camelCase")]
 pub struct InterceptorConfig {
     pub name: String,
-    pub target: HexString<Vec<u8>>,
+    pub target: IndexerAddress,
     pub poi_byte: u8,
 }
 
@@ -217,18 +201,6 @@ pub enum ConfigSource {
     IndexerByAddress(IndexerByAddressConfig),
     Interceptor(InterceptorConfig),
     NetworkSubgraph(NetworkSubgraphConfig),
-}
-
-fn deserialize_hexstring<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    if let Some(s) = s.strip_prefix("0x") {
-        hex::decode(s).map_err(serde::de::Error::custom)
-    } else {
-        Err(serde::de::Error::custom("missing 0x prefix"))
-    }
 }
 
 pub async fn config_to_indexers(
@@ -242,7 +214,7 @@ pub async fn config_to_indexers(
         info!(indexer_address = %config.address_string(), "Configuring indexer");
         indexers.push(Arc::new(RealIndexer::new(
             config.name().map(|s| s.into_owned()),
-            config.address().to_vec(),
+            config.address(),
             config.index_node_endpoint.to_string(),
             metrics.public_proofs_of_indexing_requests.clone(),
         )));
@@ -311,7 +283,7 @@ pub async fn config_to_indexers(
         info!(interceptor_id = %config.name, "Configuring interceptor");
         let target = indexers
             .iter()
-            .find(|indexer| indexer.address() == config.target.0)
+            .find(|indexer| indexer.address() == config.target)
             .expect("interceptor target indexer not found");
         indexers.push(Arc::new(IndexerInterceptor::new(
             target.clone(),

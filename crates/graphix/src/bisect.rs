@@ -4,7 +4,7 @@ use std::time::Duration;
 use graphix_common_types::{
     BisectionReport, BisectionRunReport, DivergenceBlockBounds, DivergenceInvestigationReport,
     DivergenceInvestigationRequest, DivergenceInvestigationStatus,
-    DivergingBlock as DivergentBlock, PartialBlock,
+    DivergingBlock as DivergentBlock, HexString, PartialBlock, PoiBytes,
 };
 use graphix_indexer_client::{
     BlockPointer, Indexer, IndexerId, PoiRequest, ProofOfIndexing, SubgraphDeployment,
@@ -27,10 +27,10 @@ impl From<DivergingBlock> for DivergentBlock {
         Self {
             block: PartialBlock {
                 number: other.poi1.block.number as _,
-                hash: other.poi1.block.hash.map(|h| h.to_string()),
+                hash: other.poi1.block.hash.map(|h| HexString(h.0.to_vec())),
             },
-            proof_of_indexing1: other.poi1.proof_of_indexing.to_string(),
-            proof_of_indexing2: other.poi2.proof_of_indexing.to_string(),
+            proof_of_indexing1: other.poi1.proof_of_indexing,
+            proof_of_indexing2: other.poi2.proof_of_indexing,
         }
     }
 }
@@ -38,7 +38,7 @@ impl From<DivergingBlock> for DivergentBlock {
 #[derive(Clone)]
 pub struct PoiBisectingContext {
     report: BisectionRunReport,
-    bisection_id: String,
+    bisection_id: Uuid,
     poi1: ProofOfIndexing,
     poi2: ProofOfIndexing,
     deployment: SubgraphDeployment,
@@ -47,7 +47,7 @@ pub struct PoiBisectingContext {
 impl PoiBisectingContext {
     pub fn new(
         report: BisectionRunReport,
-        bisection_id: String,
+        bisection_id: Uuid,
         poi1: ProofOfIndexing,
         poi2: ProofOfIndexing,
         deployment: SubgraphDeployment,
@@ -80,7 +80,7 @@ impl PoiBisectingContext {
         let deployment = self.deployment;
 
         info!(
-            bisection_id = self.bisection_id,
+            bisection_id = %self.bisection_id,
             deployment = deployment.as_str(),
             "Starting Poi bisecting"
         );
@@ -95,7 +95,7 @@ impl PoiBisectingContext {
             let block_number = (bounds.start() + bounds.end()) / 2;
 
             debug!(
-                bisection_id = self.bisection_id.clone(),
+                bisection_id = %self.bisection_id,
                 deployment = deployment.as_str(),
                 lower_bound = ?bounds.start(),
                 upper_bound = ?bounds.end(),
@@ -194,7 +194,7 @@ pub async fn handle_divergence_investigation_requests(
                 }
             }
         };
-        debug!(req_uuid, "Found new divergence investigation request");
+        debug!(?req_uuid, "Found new divergence investigation request");
 
         let req_contents =
             serde_json::from_value(req_contents_blob).expect("invalid request blob; this is a bug");
@@ -208,7 +208,7 @@ pub async fn handle_divergence_investigation_requests(
 
         let serialized_report = serde_json::to_value(&report).unwrap();
         debug!(
-            req_uuid,
+            ?req_uuid,
             "Writing divergence investigation report to database"
         );
         store
@@ -223,17 +223,19 @@ pub async fn handle_divergence_investigation_requests(
 async fn handle_divergence_investigation_request_pair(
     store: &Store,
     indexers: &[Arc<dyn Indexer>],
-    req_uuid_str: &str,
-    poi1_s: &str,
-    poi2_s: &str,
+    req_uuid: &Uuid,
+    poi1_s: &PoiBytes,
+    poi2_s: &PoiBytes,
 ) -> BisectionRunReport {
-    debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Bisecting Pois");
+    debug!(?req_uuid, poi1 = %poi1_s, poi2 = %poi2_s, "Bisecting Pois");
 
     let mut report = BisectionRunReport {
         bisects: vec![],
-        uuid: Uuid::new_v4().to_string(),
-        poi1: poi1_s.to_string(),
-        poi2: poi2_s.to_string(),
+        uuid: Uuid::new_v4(),
+        // TODO: .unwrap()s
+        // TODO: HexString expects a 0x prefix, are we sure these poi strings have it?
+        poi1: *poi1_s,
+        poi2: *poi2_s,
         divergence_block_bounds: DivergenceBlockBounds {
             lower_bound: PartialBlock {
                 number: 1,
@@ -247,7 +249,7 @@ async fn handle_divergence_investigation_request_pair(
         error: None,
     };
 
-    debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Fetching Pois");
+    debug!(?req_uuid, poi1 = %poi1_s, poi2 = %poi2_s, "Fetching Pois");
     let poi1 = match store
         .poi(poi1_s)
         .await
@@ -286,7 +288,7 @@ async fn handle_divergence_investigation_request_pair(
             return report;
         }
     };
-    debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Fetched Pois");
+    debug!(?req_uuid, poi1 = %poi1_s, poi2 = %poi2_s, "Fetched Pois");
     report.divergence_block_bounds.upper_bound.number = poi1.block.number as _;
 
     if poi1.sg_deployment.cid != poi2.sg_deployment.cid {
@@ -319,7 +321,7 @@ async fn handle_divergence_investigation_request_pair(
         hash: None,
     };
 
-    debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Fetching indexers");
+    debug!(?req_uuid, poi1 = %poi1_s, poi2 = %poi2_s, "Fetching indexers");
     let indexer1 = match indexers
         .iter()
         .find(|indexer| indexer.address() == poi1.indexer.address())
@@ -347,7 +349,7 @@ async fn handle_divergence_investigation_request_pair(
         }
     };
 
-    debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Fetched indexers");
+    debug!(?req_uuid, poi1 = %poi1_s, poi2 = %poi2_s, "Fetched indexers");
     if indexer1.address() == indexer2.address() {
         report.error = Some(
             DivergenceInvestigationError::SameIndexer {
@@ -358,12 +360,12 @@ async fn handle_divergence_investigation_request_pair(
         return report;
     }
 
-    let bisection_uuid = Uuid::new_v4().to_string();
+    let bisection_uuid = Uuid::new_v4();
 
     let poi1 = ProofOfIndexing {
         indexer: indexer1.clone(),
         deployment: deployment.clone(),
-        block,
+        block: block.clone(),
         proof_of_indexing: poi1.poi.try_into().expect("poi1 conversion failed"),
     };
     let poi2 = ProofOfIndexing {
@@ -382,13 +384,12 @@ async fn handle_divergence_investigation_request_pair(
 
 async fn handle_divergence_investigation_request(
     store: &Store,
-    req_uuid_str: &str,
+    req_uuid: &Uuid,
     req_contents: DivergenceInvestigationRequest,
     indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
 ) -> DivergenceInvestigationReport {
-    let uuid = req_uuid_str.to_string();
     let mut report = DivergenceInvestigationReport {
-        uuid: uuid.clone(),
+        uuid: req_uuid.clone(),
         status: DivergenceInvestigationStatus::Complete,
         bisection_runs: vec![],
         error: None,
@@ -414,25 +415,21 @@ async fn handle_divergence_investigation_request(
 
     for (poi1_s, poi2_s) in poi_pairs.into_iter() {
         let bisection_run_report = handle_divergence_investigation_request_pair(
-            store,
-            &indexers,
-            req_uuid_str,
-            &poi1_s,
-            &poi2_s,
+            store, &indexers, req_uuid, &poi1_s, &poi2_s,
         )
         .await;
-        debug!(req_uuid = req_uuid_str, poi1 = %poi1_s, poi2 = %poi2_s, "Finished bisection run");
+        debug!(?req_uuid, poi1 = %poi1_s, poi2 = %poi2_s, "Finished bisection run");
         report.bisection_runs.push(bisection_run_report);
         let report_json = serde_json::to_value(&report).unwrap();
         if let Err(err) = store
-            .create_or_update_divergence_investigation_report(&uuid, report_json)
+            .create_or_update_divergence_investigation_report(req_uuid, report_json)
             .await
         {
-            error!(req_uuid = req_uuid_str, error = %err, "Failed to upsert divergence investigation report to the database");
+            error!(?req_uuid, error = %err, "Failed to upsert divergence investigation report to the database");
         }
     }
 
-    info!(req_uuid = req_uuid_str, "Finished bisecting Pois");
+    info!(?req_uuid, "Finished bisecting Pois");
 
     report
 }

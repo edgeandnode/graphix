@@ -29,9 +29,14 @@ pub static TEST_SEED: Lazy<u64> = Lazy::new(|| {
 /// Test utility function to create a valid `Indexer` from an arbitrary base url.
 pub fn test_indexer_from_url(url: impl Into<String>) -> Arc<impl Indexer> {
     let url: Url = url.into().parse().expect("Invalid status url");
+
+    let mut addr = url.to_string().into_bytes();
+    addr.resize(20, 0);
+    let address = <[u8; 20]>::try_from(addr).unwrap().into();
+
     let conf = IndexerConfig {
         name: Some(url.host().unwrap().to_string()),
-        address: url.as_str().as_bytes().to_owned(),
+        address,
         index_node_endpoint: url.join("status").unwrap(),
     };
     Arc::new(RealIndexer::new(

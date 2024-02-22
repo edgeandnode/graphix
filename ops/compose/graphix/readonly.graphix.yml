@@ -8,6 +8,16 @@ chains:
     blockExplorerUrlTemplateForBlock: "https://etherscan.io/block/{block}"
     sampleBlockNumber: 19280735
     sampleTimestamp: "2024-02-22T05:19:11+01:00"
-    avgBlockTimeInMsecs: 12060 # https://ycharts.com/indicators/ethereum_average_block_time
+    avgBlockTimeInMsecs: 12060 # https://etherscan.io/chart/blocktime
+  arbitrum-one:
+    blockExplorerUrlTemplateForBlock: "https://arbiscan.io/block/{block}"
+    sampleBlockHeight: 159776355
+    sampleTimestamp: "2023-12-13T18:24:48+01:00"
+    avgBlockTimeInMsecs: 260 # https://arbiscan.io/chart/blocktime
+  optimism:
+    blockExplorerUrlTemplateForBlock: "https://optimistic.etherscan.io/block/{block}"
+    sampleBlockHeight: 116513382
+    sampleTimestamp: "2024-02-22T19:12:21+01:00"
+    avgBlockTimeInMsecs: 438 # https://dune.com/queries/2009572
 
 sources: []

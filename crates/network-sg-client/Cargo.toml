@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1"
+graphix_common_types = { path = "../common-types" }
 graphix_indexer_client = { path = "../indexer-client" }
 hex = "0.4"
 prometheus = { version = "0.13", default-features = false }

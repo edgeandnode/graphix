@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use std::hash::Hash;
 use std::sync::Arc;
 
+use graphix_common_types::PoiBytes;
 use graphix_indexer_client::Indexer;
 use graphix_store::Store;
 
@@ -25,7 +26,7 @@ where
 /// Given a Poi, find any of the indexers that have been known to produce it.
 pub async fn find_any_indexer_for_poi(
     store: &Store,
-    poi_s: &str,
+    poi_s: &PoiBytes,
     indexers: &[Arc<dyn Indexer>],
 ) -> anyhow::Result<Option<Arc<dyn Indexer>>> {
     let Some(poi) = store.poi(poi_s).await? else {

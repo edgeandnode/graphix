@@ -25,7 +25,8 @@ serde_json = "1"
 serde_yaml = "0.9"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
-url = "2.5"
+uuid = { version = "1", features = ["serde"] }
+url = { version = "2.5", features = ["serde"] }
 
 [build-dependencies]
 reqwest = { version = "0.11", features = ["blocking"] }

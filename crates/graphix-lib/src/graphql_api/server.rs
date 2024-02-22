@@ -5,7 +5,9 @@ use async_graphql::{Context, Object, Result};
 use graphix_common_types as types;
 use graphix_common_types::*;
 use graphix_store::models::QueriedSgDeployment;
-use graphix_store::Store;
+use uuid::Uuid;
+
+use super::ApiSchemaContext;
 
 pub struct QueryRoot;
 
@@ -32,7 +34,7 @@ impl QueryRoot {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
         let indexers = api_ctx.store.indexers(filter).await?;
 
-        Ok(indexers.into_iter().map(Into::into).collect())
+        Ok(indexers.into_iter().map(|(i, _)| i.into()).collect())
     }
 
     /// Filters through all PoIs ever collected by this Graphix
@@ -76,14 +78,14 @@ impl QueryRoot {
     async fn poi_agreement_ratios(
         &self,
         ctx: &Context<'_>,
-        indexer_name: String,
+        indexer_address: IndexerAddress,
     ) -> Result<Vec<PoiAgreementRatio>> {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
 
         // Query live POIs of a the requested indexer.
         let indexer_pois = api_ctx
             .store
-            .live_pois(Some(&indexer_name), None, None, None)
+            .live_pois(Some(&indexer_address), None, None, None)
             .await?;
 
         let deployment_cids: Vec<_> = indexer_pois
@@ -125,12 +127,12 @@ impl QueryRoot {
                 .get(&poi.deployment.id)
                 .context("inconsistent pois table, no pois for deployment")?;
 
-            let total_indexers = deployment_pois.len() as i32;
+            let total_indexers = deployment_pois.len() as u32;
 
             // Calculate POI agreement by creating a map to count unique POIs and their occurrence.
-            let mut poi_counts: BTreeMap<String, i32> = BTreeMap::new();
+            let mut poi_counts: BTreeMap<PoiBytes, u32> = BTreeMap::new();
             for dp in deployment_pois {
-                *poi_counts.entry(dp.hash.clone()).or_insert(0) += 1;
+                *poi_counts.entry(dp.hash).or_insert(0) += 1;
             }
 
             // Define consensus and agreement based on the map.
@@ -169,7 +171,7 @@ impl QueryRoot {
     async fn divergence_investigation_report(
         &self,
         ctx: &Context<'_>,
-        uuid: String,
+        uuid: Uuid,
     ) -> Result<Option<DivergenceInvestigationReport>> {
         let api_ctx = ctx.data::<ApiSchemaContext>()?;
 
@@ -255,8 +257,4 @@ impl MutationRoot {
 
         Ok(network)
     }
-}
-
-pub struct ApiSchemaContext {
-    pub store: Store,
 }

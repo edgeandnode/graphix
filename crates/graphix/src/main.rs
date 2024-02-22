@@ -122,7 +122,7 @@ fn deduplicate_indexers(indexers: &[Arc<dyn Indexer>]) -> Vec<Arc<dyn Indexer>> 
     let mut seen = HashSet::new();
     let mut deduplicated = vec![];
     for indexer in indexers {
-        if !seen.contains(indexer.address()) {
+        if !seen.contains(&indexer.address()) {
             deduplicated.push(indexer.clone());
             seen.insert(indexer.address());
         }
