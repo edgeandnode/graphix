@@ -7,8 +7,6 @@ use std::sync::Arc;
 use graphix_indexer_client::Indexer;
 use graphix_store::Store;
 
-use crate::bisect::DivergenceInvestigationError;
-
 /// Creates all combinations of elements in the iterator, without duplicates.
 /// Elements are never paired with themselves.
 pub fn unordered_pairs_combinations<T>(iter: impl Iterator<Item = T> + Clone) -> HashSet<(T, T)>
@@ -30,9 +28,7 @@ pub async fn find_any_indexer_for_poi(
     poi_s: &str,
     indexers: &[Arc<dyn Indexer>],
 ) -> anyhow::Result<Option<Arc<dyn Indexer>>> {
-    let poi = if let Some(poi) = store.poi(poi_s).await? {
-        poi
-    } else {
+    let Some(poi) = store.poi(poi_s).await? else {
         return Ok(None);
     };
 

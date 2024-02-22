@@ -1,8 +1,9 @@
 version: "3"
+
 services:
   grafana:
     image: grafana/grafana-oss
-    restart: always
+    restart: unless-stopped
     # https://community.grafana.com/t/new-docker-install-with-persistent-storage-permission-problem/10896/16
     user: ":"
     depends_on:
@@ -20,10 +21,10 @@ services:
 
   prometheus:
     image: prom/prometheus
-    restart: always
+    restart: unless-stopped
     entrypoint:
       - /bin/prometheus
-      - --log.level=warn
+      - --log.level=error
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --web.console.libraries=/usr/share/prometheus/console_libraries
@@ -35,31 +36,13 @@ services:
     volumes:
       - ./prometheus/:/etc/prometheus/
 
-  graphix:
-    image: edgeandnode/graphix
-    restart: on-failure
-    build:
-      context: ../..
-      args:
-        CARGO_PROFILE: dev
-    depends_on:
-      postgres-graphix:
-        condition: service_healthy
-    environment:
-      RUST_LOG: graphix=debug
-    ports:
-      - "9184:9184"
-      - "3030:3030"
-    volumes:
-      - ./graphix/:/config/
-    command: ["--config", "/config/two-empty-graph-nodes.yml"]
-
   postgres-graphix:
     image: postgres
+    restart: unless-stopped
     ports:
       - "5433:5432"
     environment:
-      POSTGRES_USER: graphix
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: graphix
       # FIXME: remove this env. var. which we shouldn't need. Introduced by
