@@ -10,7 +10,7 @@ async-trait = { version = "0.1", optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 diesel = "2"
 futures = "0.3"
-graphix_common_types = { path = "../common-types" }
+graphix_common_types = { path = "../common_types" }
 graphix_indexer_client = { path = "../indexer-client" }
 graphix_network_sg_client = { path = "../network-sg-client" }
 graphix_store = { path = "../store" }
@@ -35,7 +35,7 @@ reqwest = { version = "0.11", features = ["blocking"] }
 tests = ["async-trait", "once_cell", "prometheus", "rand"]
 
 [dev-dependencies]
-graphix_common_types = { path = "../common-types" }
+graphix_common_types = { path = "../common_types" }
 graphix_lib = { path = ".", features = ["tests"] }
 itertools = "0.12"
 once_cell = { version = "1.9.0" }

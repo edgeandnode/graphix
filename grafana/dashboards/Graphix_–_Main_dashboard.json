@@ -548,7 +548,7 @@
           "endTimePath": "endTime",
           "groupBy": "",
           "hide": false,
-          "queryText": "query {\n indexers(filter: {}) {\n id\n }\n}",
+          "queryText": "query {\n indexers(filter: {}) {\n address\n }\n}",
           "refId": "A",
           "timePath": ""
         }
@@ -882,6 +882,6 @@
   "timezone": "",
   "title": "Graphix – Main dashboard",
   "uid": "dee4d09d-0dbc-4af2-b4a2-2fcb9ecf35cc",
-  "version": 5,
+  "version": 7,
   "weekStart": ""
 }

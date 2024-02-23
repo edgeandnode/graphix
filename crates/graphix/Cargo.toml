@@ -10,7 +10,7 @@ async-graphql = "7"
 async-trait = "0.1.52"
 clap = { version = "4", features = ["derive", "env"] }
 futures = "0.3.18"
-graphix_common_types = { path = "../common-types" }
+graphix_common_types = { path = "../common_types" }
 graphix_indexer_client = { path = "../indexer-client" }
 graphix_lib = { path = "../graphix-lib" }
 graphix_network_sg_client = { path = "../network-sg-client" }
