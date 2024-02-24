@@ -1,8 +1,8 @@
 [package]
-name = "graphix-autogen-graphql-schema"
+name = "graphix_autogen_graphql_schema"
 version = "0.1.0"
 edition = "2021"
 
 [build-dependencies]
 async-graphql = "7"
-graphix_lib = { path = "../graphix-lib" }
+graphix_lib = { path = "../graphix_lib" }

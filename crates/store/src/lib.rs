@@ -1,16 +1,16 @@
 //! Database access (read and write) abstractions for the Graphix backend.
 
 mod diesel_queries;
+mod loader;
+
 use diesel_async::pooled_connection::deadpool::{Object, Pool};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 #[cfg(tests)]
 pub use diesel_queries;
-use graphix_common_types::{
-    BlockRangeInput, IndexerAddress, IndexersQuery, Network, PoiBytes, SgDeploymentsQuery,
-};
-use models::FailedQuery;
+use graphix_common_types::{inputs, IndexerAddress, Network, PoiBytes};
+use models::{FailedQueryRow, NewIndexerNetworkSubgraphMetadata, SgDeployment};
 use uuid::Uuid;
 pub mod models;
 mod schema;
@@ -23,16 +23,10 @@ use anyhow::Error;
 use diesel::prelude::*;
 use diesel_async_migrations::{embed_migrations, EmbeddedMigrations};
 use graphix_indexer_client::{Indexer, IndexerId, WritablePoi};
+pub use loader::StoreLoader;
 use tracing::info;
 
-use self::models::QueriedSgDeployment;
-use crate::models::{Indexer as IndexerModel, IndexerVersion, Poi};
-
-// TODO
-//#[cfg(test)]
-//mod tests;
-
-const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
+use crate::models::{GraphNodeCollectedVersion, Indexer as IndexerModel, IntId, NewNetwork, Poi};
 
 /// An abstraction over all database operations. It uses [`Arc`] internally, so
 /// it's cheaply cloneable.
@@ -48,6 +42,8 @@ impl Debug for Store {
 }
 
 impl Store {
+    const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
+
     /// Connects to the database and runs all pending migrations.
     pub async fn new(db_url: &str) -> anyhow::Result<Self> {
         info!("Initializing database connection pool");
@@ -69,7 +65,7 @@ impl Store {
             .await?;
         info!("Run database migrations");
 
-        MIGRATIONS
+        Self::MIGRATIONS
             .run_pending_migrations(&mut conn)
             .await
             .map_err(|e| anyhow::anyhow!(e))?;
@@ -81,31 +77,37 @@ impl Store {
         Ok(())
     }
 
-    async fn conn(&self) -> anyhow::Result<Object<AsyncPgConnection>> {
+    pub async fn conn(&self) -> anyhow::Result<Object<AsyncPgConnection>> {
         Ok(self.pool.get().await?)
+    }
+
+    pub async fn conn_err_string(&self) -> Result<Object<AsyncPgConnection>, String> {
+        Ok(self.pool.get().await.map_err(|e| e.to_string())?)
     }
 
     /// Returns subgraph deployments stored in the database that match the
     /// filtering criteria.
     pub async fn sg_deployments(
         &self,
-        filter: SgDeploymentsQuery,
-    ) -> anyhow::Result<Vec<QueriedSgDeployment>> {
+        filter: inputs::SgDeploymentsQuery,
+    ) -> anyhow::Result<Vec<SgDeployment>> {
         use schema::sg_deployments as sgd;
 
         let mut query = sgd::table
             .inner_join(schema::networks::table)
             .left_join(schema::sg_names::table)
             .select((
+                sgd::id,
                 sgd::ipfs_cid,
                 schema::sg_names::name.nullable(),
-                schema::networks::name,
+                sgd::network,
+                sgd::created_at,
             ))
             .order_by(sgd::ipfs_cid.asc())
             .into_boxed();
 
-        if let Some(network) = filter.network {
-            query = query.filter(schema::networks::name.eq(network));
+        if let Some(network_name) = filter.network_name {
+            query = query.filter(schema::networks::name.eq(network_name));
         }
         if let Some(name) = filter.name {
             query = query.filter(schema::sg_names::name.eq(name));
@@ -117,9 +119,7 @@ impl Store {
             query = query.limit(limit.into());
         }
 
-        Ok(query
-            .load::<QueriedSgDeployment>(&mut self.conn().await?)
-            .await?)
+        Ok(query.load::<SgDeployment>(&mut self.conn().await?).await?)
     }
 
     pub async fn create_sg_deployment(
@@ -171,20 +171,10 @@ impl Store {
 
     /// Fetches a Poi from the database.
     pub async fn poi(&self, poi: &PoiBytes) -> anyhow::Result<Option<Poi>> {
-        use schema::{blocks, indexers, pois, sg_deployments};
+        use schema::pois;
 
         let query = pois::table
-            .inner_join(sg_deployments::table)
-            .inner_join(indexers::table)
-            .inner_join(blocks::table)
-            .select((
-                pois::id,
-                pois::poi,
-                pois::created_at,
-                sg_deployments::all_columns,
-                indexers::all_columns,
-                blocks::all_columns,
-            ))
+            .select(pois::all_columns)
             .filter(pois::poi.eq(poi));
 
         Ok(query.get_result(&mut self.conn().await?).await.optional()?)
@@ -194,7 +184,7 @@ impl Store {
         &self,
         indexer: &impl IndexerId,
         query_name: &str,
-    ) -> anyhow::Result<Option<FailedQuery>> {
+    ) -> anyhow::Result<Option<FailedQueryRow>> {
         use schema::failed_queries;
 
         let conn = &mut self.conn().await?;
@@ -211,7 +201,7 @@ impl Store {
                 failed_queries::response,
                 failed_queries::request_timestamp,
             ))
-            .get_result::<FailedQuery>(conn)
+            .get_result::<FailedQueryRow>(conn)
             .await
             .optional()?;
 
@@ -229,6 +219,18 @@ impl Store {
         // The `ON DELETE CASCADE`s should take care of the rest of the cleanup.
 
         Ok(())
+    }
+
+    pub async fn create_network(&self, network: &NewNetwork) -> anyhow::Result<IntId> {
+        use schema::networks;
+
+        let id = diesel::insert_into(networks::table)
+            .values(network)
+            .returning(networks::id)
+            .get_result(&mut self.conn().await?)
+            .await?;
+
+        Ok(id)
     }
 
     /// Returns all networks stored in the database. Filtering is not really
@@ -254,13 +256,16 @@ impl Store {
     /// Returns all indexers stored in the database.
     pub async fn indexers(
         &self,
-        filter: IndexersQuery,
-    ) -> anyhow::Result<Vec<(models::Indexer, models::IndexerVersion)>> {
-        use schema::{indexer_versions, indexers};
+        filter: inputs::IndexersQuery,
+    ) -> anyhow::Result<Vec<(models::Indexer, models::GraphNodeCollectedVersion)>> {
+        use schema::{graph_node_collected_versions, indexers};
 
         let mut query = indexers::table
-            .inner_join(indexer_versions::table)
-            .select((indexers::all_columns, indexer_versions::all_columns))
+            .inner_join(graph_node_collected_versions::table)
+            .select((
+                indexers::all_columns,
+                graph_node_collected_versions::all_columns,
+            ))
             .into_boxed();
 
         if let Some(address) = filter.address {
@@ -271,7 +276,7 @@ impl Store {
         }
 
         let rows = query
-            .load::<(IndexerModel, IndexerVersion)>(&mut self.conn().await?)
+            .load::<(IndexerModel, GraphNodeCollectedVersion)>(&mut self.conn().await?)
             .await?;
 
         Ok(rows.into_iter().map(Into::into).collect())
@@ -282,7 +287,7 @@ impl Store {
     pub async fn pois(
         &self,
         sg_deployments: &[String],
-        block_range: Option<BlockRangeInput>,
+        block_range: Option<inputs::BlockRange>,
         limit: Option<u16>,
     ) -> anyhow::Result<Vec<Poi>> {
         let mut conn = self.conn().await?;
@@ -302,7 +307,7 @@ impl Store {
         &self,
         indexer_address: Option<&IndexerAddress>,
         sg_deployments_cids: Option<&[String]>,
-        block_range: Option<BlockRangeInput>,
+        block_range: Option<inputs::BlockRange>,
         limit: Option<u16>,
     ) -> anyhow::Result<Vec<Poi>> {
         let mut conn = self.conn().await?;
@@ -340,11 +345,85 @@ impl Store {
         Ok(())
     }
 
+    pub async fn delete_indexer_network_subgraph_metadata(
+        &self,
+        indexer_id: IntId,
+    ) -> anyhow::Result<()> {
+        use schema::indexers;
+
+        diesel::update(indexers::table.filter(indexers::id.eq(indexer_id)))
+            .set(indexers::network_subgraph_metadata.eq::<Option<IntId>>(None))
+            .execute(&mut self.conn().await?)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn create_or_update_indexer_network_subgraph_metadata(
+        &self,
+        indexer_id: IntId,
+        metadata: NewIndexerNetworkSubgraphMetadata,
+    ) -> anyhow::Result<IntId> {
+        use schema::{indexer_network_subgraph_metadata, indexers};
+
+        self.conn()
+            .await?
+            .transaction::<_, Error, _>(|conn| {
+                // Fetch the metadata id from indexer_id, and update it if it exists
+                // create a new one and set the foreign key to the indexer_id if it doesn't exist
+                async move {
+                    let metadata_id = indexers::table
+                        .select(indexers::network_subgraph_metadata)
+                        .filter(indexers::id.eq(indexer_id))
+                        .get_result::<Option<IntId>>(conn)
+                        .await?;
+
+                    let metadata_id = match metadata_id {
+                        Some(id) => {
+                            diesel::update(
+                                indexer_network_subgraph_metadata::table
+                                    .filter(indexer_network_subgraph_metadata::id.eq(id)),
+                            )
+                            .set(metadata)
+                            .execute(conn)
+                            .await?;
+                            id
+                        }
+                        None => {
+                            let metadata_id =
+                                diesel::insert_into(indexer_network_subgraph_metadata::table)
+                                    .values(&metadata)
+                                    .returning(indexer_network_subgraph_metadata::id)
+                                    .get_result(conn)
+                                    .await?;
+
+                            diesel::update(indexers::table)
+                                .filter(indexers::id.eq(indexer_id))
+                                .set(indexers::network_subgraph_metadata.eq(metadata_id))
+                                .execute(conn)
+                                .await?;
+
+                            metadata_id
+                        }
+                    };
+
+                    Ok(metadata_id)
+                }
+                .scope_boxed()
+            })
+            .await?;
+
+        Ok(indexer_id)
+    }
+
     pub async fn write_graph_node_versions(
         &self,
-        versions: HashMap<Arc<dyn Indexer>, anyhow::Result<graphix_common_types::IndexerVersion>>,
+        versions: HashMap<
+            Arc<dyn Indexer>,
+            anyhow::Result<graphix_common_types::GraphNodeCollectedVersion>,
+        >,
     ) -> anyhow::Result<()> {
-        use schema::indexer_versions;
+        use schema::graph_node_collected_versions;
         for (indexer, version) in versions {
             let conn = &mut self.conn().await?;
 
@@ -352,21 +431,19 @@ impl Store {
                 diesel_queries::get_indexer_id(conn, indexer.name(), &indexer.address()).await?;
 
             let new_version = match version {
-                Ok(v) => models::NewIndexerVersion {
-                    indexer_id,
-                    error: None,
-                    version_string: Some(v.version),
-                    version_commit: Some(v.commit),
+                Ok(v) => models::NewGraphNodeCollectedVersion {
+                    version_string: v.version,
+                    version_commit: v.commit,
+                    error_response: None,
                 },
-                Err(err) => models::NewIndexerVersion {
-                    indexer_id,
-                    error: Some(err.to_string()),
+                Err(err) => models::NewGraphNodeCollectedVersion {
                     version_string: None,
                     version_commit: None,
+                    error_response: Some(err.to_string()),
                 },
             };
 
-            diesel::insert_into(indexer_versions::table)
+            diesel::insert_into(graph_node_collected_versions::table)
                 .values(&new_version)
                 .execute(conn)
                 .await?;

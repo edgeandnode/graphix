@@ -57,28 +57,16 @@ type BisectionRunReport {
 	error: String
 }
 
-"""
-A block pointer for a specific network.
-"""
 type Block {
-	"""
-	The network that this block belongs to.
-	"""
-	network: Network!
-	"""
-	The block number (or height).
-	"""
 	number: Int!
-	"""
-	The block hash, expressed as a hex string with a '0x' prefix.
-	"""
 	hash: HexString!
+	network: Network!
 }
 
 """
 A block range, specified by optional start and end block numbers.
 """
-input BlockRangeInput {
+input BlockRange {
 	"""
 	The start block number (inclusive).
 	"""
@@ -181,25 +169,41 @@ enum DivergenceInvestigationStatus {
 }
 
 
+type GraphNodeCollectedVersion {
+	versionString: String
+	versionCommit: String
+	errorResponse: String
+	collectedAt: NaiveDateTime!
+}
+
 scalar HexString
 
 
-"""
-An indexer that is known to Graphix.
-"""
 type Indexer {
-	address: HexString!
-	name: String
-	version: IndexerVersion
+	address: String!
+	defaultDisplayName: String
 	"""
-	The number of tokens allocated to the indexer, if known.
+	The version of the indexer.
 	"""
-	allocatedTokens: Int
+	graphNodeVersion: GraphNodeCollectedVersion
+	"""
+	The network subgraph metadata of the indexer.
+	"""
+	networkSubgraphMetadata: IndexerNetworkSubgraphMetadata
 }
 
-type IndexerVersion {
-	version: String!
-	commit: String!
+type IndexerNetworkSubgraphMetadata {
+	geohash: String
+	indexerUrl: String
+	stakedTokens: Float!
+	allocatedTokens: Float!
+	lockedTokens: Float!
+	queryFeesCollected: Float!
+	queryFeeRebates: Float!
+	rewardsEarned: Float!
+	indexerIndexingRewards: Float!
+	delegatorIndexingRewards: Float!
+	lastUpdatedAt: NaiveDateTime!
 }
 
 """
@@ -225,12 +229,21 @@ type MutationRoot {
 }
 
 """
+ISO 8601 combined date and time without timezone.
+
+# Examples
+
+* `2015-07-01T08:59:60.123`,
+"""
+scalar NaiveDateTime
+
+"""
 A network where subgraph deployments are indexed.
 """
 type Network {
 	"""
 	Human-readable name of the network, following The Graph naming
-	conventions.
+	standards.
 	"""
 	name: String!
 	"""
@@ -260,8 +273,7 @@ indexers agreeing on a particular POI.
 """
 type PoiAgreementRatio {
 	poi: HexString!
-	deployment: Deployment!
-	block: PartialBlock!
+	block: Block!
 	"""
 	Total number of indexers that have live pois for the deployment.
 	"""
@@ -283,6 +295,7 @@ type PoiAgreementRatio {
 	Indicates if the specified indexer's POI is part of the consensus.
 	"""
 	inConsensus: Boolean!
+	deployment: SubgraphDeployment!
 }
 
 """
@@ -303,55 +316,18 @@ input PoisQuery {
 	Restricts the query to PoIs that were collected in the given block
 	range.
 	"""
-	blockRange: BlockRangeInput
+	blockRange: BlockRange
 	"""
 	Upper limit on the number of shown results.
 	"""
 	limit: Int
 }
 
-"""
-A PoI (proof of indexing) that was queried and collected by Graphix.
-"""
 type ProofOfIndexing {
-	"""
-	The block height and hash for which this PoI is valid.
-	"""
 	block: Block!
-	"""
-	The PoI's hash.
-	"""
 	hash: HexString!
-	"""
-	The subgraph deployment that this PoI is for.
-	"""
-	deployment: Deployment!
-	"""
-	The amount of allocated tokens by the indexer for this PoI, if known.
-	"""
-	allocatedTokens: Int
-	"""
-	The indexer that produced this PoI.
-	"""
+	deployment: SubgraphDeployment!
 	indexer: Indexer!
-}
-
-"""
-A subgraph deployment that is monitored by Graphix.
-"""
-type QueriedSgDeployment {
-	"""
-	IPFS CID of the subgraph deployment.
-	"""
-	id: String!
-	"""
-	Human-readable name of the subgraph deployment, if present.
-	"""
-	name: String
-	"""
-	Network name of the subgraph deployment.
-	"""
-	networkName: String!
 }
 
 type QueryRoot {
@@ -359,7 +335,7 @@ type QueryRoot {
 	Fetches all tracked subgraph deploymens in this Graphix instance and
 	filters them according to some filtering rules.
 	"""
-	deployments(filter: SgDeploymentsQuery!): [QueriedSgDeployment!]!
+	deployments(networkName: String, name: String, ipfsCid: String, limit: Int): [SubgraphDeployment!]!
 	"""
 	Fetches all tracked indexers in this Graphix instance and filters them
 	according to some filtering rules.
@@ -381,28 +357,21 @@ type QueryRoot {
 	networks: [Network!]!
 }
 
-"""
-A filter for subgraph deployments.
-"""
-input SgDeploymentsQuery {
+
+type SubgraphDeployment {
 	"""
-	What network the subgraph indexes.
+	IPFS CID of the subgraph deployment.
 	"""
-	network: String
+	cid: String!
 	"""
-	The human-readable name of the queried subgraph deployment(s).
+	Human-readable name of the subgraph deployment, if present.
 	"""
 	name: String
 	"""
-	The IPFS hash of the subgraph deployment(s).
+	Network of the subgraph deployment.
 	"""
-	ipfsCid: String
-	"""
-	Upper limit on the number of shown results.
-	"""
-	limit: Int
+	network: Network!
 }
-
 
 """
 A UUID is a unique 128-bit number, stored as 16 octets. UUIDs are parsed as

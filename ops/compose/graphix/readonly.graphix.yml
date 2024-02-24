@@ -1,7 +1,7 @@
 graphql:
   port: 3030
 
-databaseUrl: postgres://postgres:password@postgres-graphix:5432/graphix
+databaseUrl: postgres://postgres:password@localhost:5433/graphix
 
 chains:
   mainnet:

@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use async_graphql::SimpleObject;
+use bigdecimal::BigDecimal;
 use chrono::NaiveDateTime;
 use diesel::backend::Backend;
 use diesel::deserialize::FromSql;
@@ -19,7 +20,7 @@ pub type BigIntId = i64;
 pub type SgDeploymentCid = String;
 
 #[derive(Queryable, Serialize, Debug)]
-pub struct FailedQuery {
+pub struct FailedQueryRow {
     pub indexer_id: IntId,
     pub query_name: String,
     pub raw_query: String,
@@ -31,31 +32,40 @@ pub struct FailedQuery {
 pub struct Poi {
     pub id: IntId,
     pub poi: PoiBytes,
-    #[serde(skip)]
+    pub sg_deployment_id: IntId,
+    pub indexer_id: IntId,
+    pub block_id: BigIntId,
     pub created_at: NaiveDateTime,
-    pub sg_deployment: SgDeployment,
-    pub indexer: Indexer,
-    pub block: Block,
 }
 
 #[derive(Selectable, Insertable, Debug)]
-#[diesel(table_name = indexer_versions)]
-pub struct NewIndexerVersion {
-    pub indexer_id: IntId,
-    pub error: Option<String>,
+#[diesel(table_name = graph_node_collected_versions)]
+pub struct NewGraphNodeCollectedVersion {
     pub version_string: Option<String>,
     pub version_commit: Option<String>,
+    pub error_response: Option<String>,
 }
 
-#[derive(Queryable, Selectable, Debug)]
-#[diesel(table_name = indexer_versions)]
-pub struct IndexerVersion {
+#[derive(Queryable, Clone, Selectable, Debug, SimpleObject)]
+#[diesel(table_name = graph_node_collected_versions)]
+pub struct GraphNodeCollectedVersion {
+    #[graphql(skip)]
     pub id: IntId,
-    pub indexer_id: IntId,
-    pub error: Option<String>,
     pub version_string: Option<String>,
     pub version_commit: Option<String>,
-    pub created_at: NaiveDateTime,
+    pub error_response: Option<String>,
+    pub collected_at: NaiveDateTime,
+}
+
+impl GraphNodeCollectedVersion {
+    pub fn into_common_type(self) -> types::GraphNodeCollectedVersion {
+        types::GraphNodeCollectedVersion {
+            version: self.version_string,
+            commit: self.version_commit,
+            error_response: self.error_response,
+            collected_at: self.collected_at,
+        }
+    }
 }
 
 #[derive(Insertable, Debug)]
@@ -68,10 +78,10 @@ pub struct NewPoi {
     pub block_id: BigIntId,
 }
 
-#[derive(Queryable, Debug, Serialize)]
+#[derive(Queryable, Clone, Debug, Serialize)]
 pub struct Block {
-    pub(super) id: BigIntId,
-    _network_id: IntId,
+    pub id: BigIntId,
+    pub network_id: IntId,
     pub number: i64,
     pub hash: BlockHash,
 }
@@ -84,13 +94,27 @@ pub struct NewBlock {
     pub hash: BlockHash,
 }
 
-#[derive(Debug, Queryable, Selectable, Serialize)]
+#[derive(Debug, Clone, Queryable, Selectable, Serialize)]
+#[diesel(table_name = indexers)]
 pub struct Indexer {
     pub id: IntId,
-    pub name: Option<String>,
     pub address: IndexerAddress,
+    pub name: Option<String>,
+    pub graph_node_version: Option<IntId>,
+    pub network_subgraph_metadata: Option<IntId>,
     #[serde(skip)]
     pub created_at: NaiveDateTime,
+}
+
+impl Indexer {
+    pub fn into_common_type(self, version: Option<GraphNodeCollectedVersion>) -> types::Indexer {
+        types::Indexer {
+            address: self.address,
+            default_display_name: self.name,
+            graph_node_version: version.map(GraphNodeCollectedVersion::into_common_type),
+            network_subgraph_metadata: None,
+        }
+    }
 }
 
 impl IndexerId for Indexer {
@@ -106,6 +130,46 @@ impl IndexerId for Indexer {
     }
 }
 
+#[derive(Debug, Insertable, AsChangeset, Serialize)]
+#[diesel(table_name = indexer_network_subgraph_metadata)]
+pub struct NewIndexerNetworkSubgraphMetadata {
+    pub geohash: Option<String>,
+    pub indexer_url: Option<String>,
+    pub staked_tokens: BigDecimal,
+    pub allocated_tokens: BigDecimal,
+    pub locked_tokens: BigDecimal,
+    pub query_fees_collected: BigDecimal,
+    pub query_fee_rebates: BigDecimal,
+    pub rewards_earned: BigDecimal,
+    pub indexer_indexing_rewards: BigDecimal,
+    pub delegator_indexing_rewards: BigDecimal,
+    pub last_updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize)]
+#[diesel(table_name = indexer_network_subgraph_metadata)]
+pub struct IndexerNetworkSubgraphMetadata {
+    pub id: IntId,
+    pub geohash: Option<String>,
+    pub indexer_url: Option<String>,
+    pub staked_tokens: BigDecimal,
+    pub allocated_tokens: BigDecimal,
+    pub locked_tokens: BigDecimal,
+    pub query_fees_collected: BigDecimal,
+    pub query_fee_rebates: BigDecimal,
+    pub rewards_earned: BigDecimal,
+    pub indexer_indexing_rewards: BigDecimal,
+    pub delegator_indexing_rewards: BigDecimal,
+    pub last_updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = networks)]
+pub struct NewNetwork {
+    pub name: String,
+    pub caip2: Option<String>,
+}
+
 #[derive(Debug, Insertable)]
 #[diesel(table_name = indexers)]
 pub struct NewIndexer {
@@ -113,21 +177,11 @@ pub struct NewIndexer {
     pub name: Option<String>,
 }
 
-/// A subgraph deployment that is monitored by Graphix.
-#[derive(Debug, Queryable, Serialize, SimpleObject)]
-pub struct QueriedSgDeployment {
-    /// IPFS CID of the subgraph deployment.
-    pub id: SgDeploymentCid,
-    /// Human-readable name of the subgraph deployment, if present.
-    pub name: Option<String>,
-    /// Network name of the subgraph deployment.
-    pub network_name: String,
-}
-
-#[derive(Debug, Queryable, Serialize)]
+#[derive(Debug, Clone, Queryable, Serialize)]
 pub struct SgDeployment {
     pub id: IntId,
     pub cid: String,
+    pub name: Option<String>,
     pub network_id: IntId,
     #[serde(skip)]
     pub created_at: NaiveDateTime,
@@ -176,34 +230,23 @@ impl FromSql<Jsonb, Pg> for DivergingBlock {
     }
 }
 
-impl From<Indexer> for graphix_common_types::Indexer {
-    fn from(indexer: Indexer) -> Self {
-        Self {
-            address: indexer.address(),
-            name: indexer.name,
-            version: None,          // TODO
-            allocated_tokens: None, // TODO: we don't store this in the db yet
-        }
-    }
-}
-
-impl From<Poi> for types::ProofOfIndexing {
-    fn from(poi: Poi) -> Self {
-        Self {
-            allocated_tokens: None,
-            deployment: Deployment {
-                id: poi.sg_deployment.cid.clone(),
-            },
-            hash: poi.poi,
-            block: graphix_common_types::Block {
-                network: Network {
-                    name: "mainnet".to_string(),
-                    caip2: None,
-                },
-                number: poi.block.number as u64,
-                hash: poi.block.hash,
-            },
-            indexer: poi.indexer.into(),
-        }
-    }
-}
+//impl From<Poi> for types::ProofOfIndexing {
+//    fn from(poi: Poi) -> Self {
+//        Self {
+//            allocated_tokens: None,
+//            deployment: Deployment {
+//                id: poi.sg_deployment.cid.clone(),
+//            },
+//            hash: poi.poi,
+//            block: graphix_common_types::Block {
+//                network: Network {
+//                    name: "mainnet".to_string(),
+//                    caip2: None,
+//                },
+//                number: poi.block.number as u64,
+//                hash: poi.block.hash,
+//            },
+//            indexer: poi.indexer.into_common_type(None),
+//        }
+//    }
+//}

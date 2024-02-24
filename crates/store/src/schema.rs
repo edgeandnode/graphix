@@ -29,21 +29,39 @@ diesel::table! {
 }
 
 diesel::table! {
-    indexer_versions (id) {
+    graph_node_collected_versions (id) {
         id -> Int4,
-        indexer_id -> Int4,
-        error -> Nullable<Text>,
         version_string -> Nullable<Text>,
         version_commit -> Nullable<Text>,
-        created_at -> Timestamp,
+        error_response -> Nullable<Text>,
+        collected_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    indexer_network_subgraph_metadata (id) {
+        id -> Int4,
+        geohash -> Nullable<Text>,
+        indexer_url -> Nullable<Text>,
+        staked_tokens -> Numeric,
+        allocated_tokens -> Numeric,
+        locked_tokens -> Numeric,
+        query_fees_collected -> Numeric,
+        query_fee_rebates -> Numeric,
+        rewards_earned -> Numeric,
+        indexer_indexing_rewards -> Numeric,
+        delegator_indexing_rewards -> Numeric,
+        last_updated_at -> Timestamp,
     }
 }
 
 diesel::table! {
     indexers (id) {
         id -> Int4,
-        name -> Nullable<Text>,
         address -> Bytea,
+        name -> Nullable<Text>,
+        graph_node_version -> Nullable<Int4>,
+        network_subgraph_metadata -> Nullable<Int4>,
         created_at -> Timestamp,
     }
 }
@@ -61,8 +79,8 @@ diesel::table! {
     networks (id) {
         id -> Int4,
         name -> Text,
-        created_at -> Timestamp,
         caip2 -> Nullable<Text>,
+        created_at -> Timestamp,
     }
 }
 
@@ -115,7 +133,8 @@ diesel::table! {
 
 diesel::joinable!(blocks -> networks (network_id));
 diesel::joinable!(failed_queries -> indexers (indexer_id));
-diesel::joinable!(indexer_versions -> indexers (indexer_id));
+diesel::joinable!(indexers -> graph_node_collected_versions (graph_node_version));
+diesel::joinable!(indexers -> indexer_network_subgraph_metadata (network_subgraph_metadata));
 diesel::joinable!(live_pois -> indexers (indexer_id));
 diesel::joinable!(live_pois -> pois (poi_id));
 diesel::joinable!(live_pois -> sg_deployments (sg_deployment_id));
@@ -130,7 +149,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     blocks,
     divergence_investigation_reports,
     failed_queries,
-    indexer_versions,
+    graph_node_collected_versions,
+    indexer_network_subgraph_metadata,
     indexers,
     live_pois,
     networks,

@@ -8,7 +8,7 @@ use chrono::Utc;
 use diesel::prelude::*;
 use diesel::sql_types;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
-use graphix_common_types::{BlockRangeInput, IndexerAddress};
+use graphix_common_types::{inputs, IndexerAddress};
 use graphix_indexer_client::{BlockPointer, Indexer, IndexerId, WritablePoi};
 use tracing::info;
 
@@ -16,14 +16,14 @@ use super::PoiLiveness;
 use crate::models::{
     self, Indexer as IndexerModel, NewIndexer, NewLivePoi, NewPoi, NewSgDeployment, SgDeployment,
 };
-use crate::schema::{self, live_pois};
+use crate::schema::{self, live_pois, sg_names};
 
 // This is a single SQL statement, a transaction is not necessary.
 pub(super) async fn pois(
     conn: &mut AsyncPgConnection,
     indexer_address: Option<&IndexerAddress>,
     sg_deployments: Option<&[String]>,
-    block_range: Option<BlockRangeInput>,
+    block_range: Option<inputs::BlockRange>,
     limit: Option<u16>,
     live_only: bool,
 ) -> anyhow::Result<Vec<models::Poi>> {
@@ -33,24 +33,23 @@ pub(super) async fn pois(
     let FALSE = diesel::dsl::sql::<sql_types::Bool>("false");
     let TRUE = diesel::dsl::sql::<sql_types::Bool>("true");
 
-    let selection = (
-        pois::id,
-        pois::poi,
-        pois::created_at,
-        sgd::all_columns,
-        indexers::all_columns,
-        blocks::all_columns,
-    );
+    let selection = pois::all_columns;
 
+    // TODO: optimize this into a single comparison in the absence of lower or
+    // upper bounds.
     let blocks_filter = blocks::number.between(
         block_range
             .as_ref()
             .and_then(|b| b.start)
-            .map_or(0, |start| start as i64),
+            .map(|start| start.try_into())
+            .transpose()?
+            .unwrap_or(0),
         block_range
             .as_ref()
-            .and_then(|b| b.end)
-            .map_or(i64::max_value(), |end| end as i64),
+            .and_then(|b| b.start)
+            .map(|start| start.try_into())
+            .transpose()?
+            .unwrap_or(i64::MAX),
     );
 
     let deployments_filter = match sg_deployments {
@@ -276,6 +275,14 @@ async fn get_or_insert_deployment(
     use schema::sg_deployments;
 
     let existing_sg_deployment: Option<SgDeployment> = sg_deployments::table
+        .left_join(sg_names::table)
+        .select((
+            sg_deployments::id,
+            sg_deployments::ipfs_cid,
+            sg_names::name.nullable(),
+            sg_deployments::network,
+            sg_deployments::created_at,
+        ))
         .filter(sg_deployments::ipfs_cid.eq(&deployment_cid))
         .get_result(conn)
         .await

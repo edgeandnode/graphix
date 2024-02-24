@@ -53,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
             // Listen to requests forever.
             axum::serve(
                 TcpListener::bind((Ipv4Addr::UNSPECIFIED, config.graphql.port)).await?,
-                axum_server(&config).await?,
+                axum_server(config).await?,
             )
             .await?;
 
@@ -135,11 +135,12 @@ fn deduplicate_indexers(indexers: &[Arc<dyn Indexer>]) -> Vec<Arc<dyn Indexer>> 
     deduplicated
 }
 
-async fn axum_server(config: &Config) -> anyhow::Result<Router<()>> {
+async fn axum_server(config: Config) -> anyhow::Result<Router<()>> {
     use axum::routing::get;
 
     let store = Store::new(config.database_url.as_str()).await?;
-    let api_schema = graphql_api::api_schema(graphql_api::ApiSchemaContext { store });
+    let api_schema_ctx = graphql_api::ApiSchemaContext::new(store.clone(), config.clone());
+    let api_schema = graphql_api::api_schema(api_schema_ctx);
 
     Ok(axum::Router::new()
         .route(

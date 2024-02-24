@@ -8,7 +8,6 @@ services:
     user: ":"
     depends_on:
       - prometheus
-    network_mode: host
     ports:
       - "3000:3000"
     environment:
@@ -37,12 +36,16 @@ services:
     volumes:
       - ./prometheus/:/etc/prometheus/
 
-  postgres-graphix:
+  postgres:
     image: postgres
     restart: unless-stopped
     network_mode: host
     ports:
-      - "5433:5432"
+      # We want to be able to connect to the Postgres database both from within
+      # the Docker-compose network, and outside of it, to share Graphix
+      # configuration files. 5432 would conflict with other local databases, so
+      # 5433 it is.
+      - "5433:5433"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -51,10 +54,11 @@ services:
       # <https://github.com/graphprotocol/graph-node/pull/3511>, maybe as a
       # workaround for https://github.com/docker/for-mac/issues/6270?
       PGDATA: "/var/lib/postgresql/data"
+    command: -p 5433
     healthcheck:
-      test: psql -U graphix -c '\q' || exit 1
+      test: [ "CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}" ]
       interval: 1s
       timeout: 1s
       retries: 1000
     volumes:
-      - ./data/postgres-graphix:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data

@@ -8,7 +8,7 @@ chains:
     sampleTimestamp: "2024-02-22T05:19:11+01:00"
     avgBlockTimeInMsecs: 12060 # https://ycharts.com/indicators/ethereum_average_block_time
 
-databaseUrl: postgres://postgres:password@postgres-graphix:5432/graphix
+databaseUrl: postgres://postgres:password@localhost:5433/graphix
 
 sources:
  # - type: networkSubgraph

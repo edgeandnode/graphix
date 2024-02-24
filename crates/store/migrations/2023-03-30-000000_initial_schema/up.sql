@@ -1,31 +1,48 @@
--- We'll have a routine that runs every few hours or so that deletes all blocks, PoIs,
--- PoI divergence reports, and indexer metadata older than one week.
+CREATE TABLE graph_node_collected_versions (
+	id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+	version_string TEXT,
+	version_commit TEXT,
+	error_response TEXT,
+	collected_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE indexer_network_subgraph_metadata (
+	id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  geohash TEXT,
+  indexer_url TEXT,
+  staked_tokens DECIMAL NOT NULL,
+  allocated_tokens DECIMAL NOT NULL,
+  locked_tokens DECIMAL NOT NULL,
+  query_fees_collected DECIMAL NOT NULL,
+  query_fee_rebates DECIMAL NOT NULL,
+  rewards_earned DECIMAL NOT NULL,
+  indexer_indexing_rewards DECIMAL NOT NULL,
+  delegator_indexing_rewards DECIMAL NOT NULL,
+  last_updated_at TIMESTAMP NOT NULL
+);
 
 CREATE TABLE indexers (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  address BYTEA UNIQUE NOT NULL,
   name TEXT,
-  address BYTEA UNIQUE,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-
-  UNIQUE (name, address)
+  graph_node_version INTEGER REFERENCES graph_node_collected_versions ON DELETE CASCADE,
+  network_subgraph_metadata INTEGER REFERENCES indexer_network_subgraph_metadata ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX ON indexers (address);
 CREATE INDEX ON indexers (name);
 
--- Networks should be PostgreSQL namespaces ('schemas') but Diesel has poor
--- support for them.
+-- Networks should probably be PostgreSQL namespaces ('schemas') but Diesel has
+-- poor support for them.
 CREATE TABLE networks (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   name TEXT NOT NULL UNIQUE,
+  caip2 TEXT UNIQUE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX ON networks (name);
-
--- Insert the "mainnet" network with id == 1.
--- See also: hardcoded-mainnet
-INSERT INTO networks (name) VALUES ('mainnet');
 
 CREATE TABLE sg_deployments (
   id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -99,3 +116,24 @@ CREATE TABLE divergence_investigation_reports (
   report JSONB NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE sg_deployment_api_versions (
+	id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+	sg_deployment_id INTEGER NOT NULL REFERENCES sg_deployments(id) ON DELETE CASCADE,
+	api_versions TEXT[] DEFAULT '{}',
+	error TEXT,
+	created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX sg_deployment_api_versions_sg_deployment_id_idx ON sg_deployment_api_versions(sg_deployment_id);
+
+CREATE TABLE failed_queries (
+	id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+	indexer_id INTEGER NOT NULL REFERENCES indexers(id) ON DELETE CASCADE,
+	query_name TEXT NOT NULL,
+	raw_query TEXT NOT NULL,
+	response TEXT NOT NULL,
+	request_timestamp TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX ON failed_queries (indexer_id, query_name);

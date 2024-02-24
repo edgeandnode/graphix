@@ -1,7 +1,7 @@
 graphql:
   port: 3030
 
-databaseUrl: postgres://postgres:password@postgres-graphix:5432/graphix
+databaseUrl: postgres://postgres:password@postgres:5432/graphix
 sources:
  # - type: networkSubgraph
  #   endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-goerli

@@ -1,9 +1,9 @@
 [package]
-name = "graphix-autogen-config-json-schema"
+name = "graphix_autogen_config_json_schema"
 version = "0.1.0"
 edition = "2021"
 
 [build-dependencies]
-graphix_lib = { path = "../graphix-lib" }
+graphix_lib = { path = "../graphix_lib" }
 schemars = "0.8"
 serde_json = "1"

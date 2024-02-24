@@ -2,9 +2,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use graphix_common_types::{
-    BisectionReport, BisectionRunReport, DivergenceBlockBounds, DivergenceInvestigationReport,
-    DivergenceInvestigationRequest, DivergenceInvestigationStatus,
-    DivergingBlock as DivergentBlock, HexString, PartialBlock, PoiBytes,
+    inputs, BisectionReport, BisectionRunReport, DivergenceBlockBounds,
+    DivergenceInvestigationReport, DivergenceInvestigationStatus, DivergingBlock as DivergentBlock,
+    HexString, PartialBlock, PoiBytes,
 };
 use graphix_indexer_client::{
     BlockPointer, Indexer, IndexerId, PoiRequest, ProofOfIndexing, SubgraphDeployment,
@@ -232,8 +232,6 @@ async fn handle_divergence_investigation_request_pair(
     let mut report = BisectionRunReport {
         bisects: vec![],
         uuid: Uuid::new_v4(),
-        // TODO: .unwrap()s
-        // TODO: HexString expects a 0x prefix, are we sure these poi strings have it?
         poi1: *poi1_s,
         poi2: *poi2_s,
         divergence_block_bounds: DivergenceBlockBounds {
@@ -385,7 +383,7 @@ async fn handle_divergence_investigation_request_pair(
 async fn handle_divergence_investigation_request(
     store: &Store,
     req_uuid: &Uuid,
-    req_contents: DivergenceInvestigationRequest,
+    req_contents: inputs::DivergenceInvestigationRequest,
     indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
 ) -> DivergenceInvestigationReport {
     let mut report = DivergenceInvestigationReport {

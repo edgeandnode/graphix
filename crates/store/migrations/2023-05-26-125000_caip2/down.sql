@@ -1,2 +1,0 @@
-ALTER TABLE
-	networks DROP COLUMN caip2;

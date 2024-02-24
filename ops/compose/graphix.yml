@@ -11,7 +11,7 @@ services:
       args:
         CARGO_PROFILE: dev
     depends_on:
-      postgres-graphix:
+      postgres:
         condition: service_healthy
     environment:
       RUST_LOG: graphix=debug
