@@ -8,7 +8,6 @@ pub mod inputs;
 
 use async_graphql::*;
 use chrono::NaiveDateTime;
-use diesel::deserialize::Queryable;
 pub use divergence_investigation::*;
 pub use hex_string::HexString;
 use serde::{Deserialize, Serialize};
@@ -128,27 +127,6 @@ mod divergence_investigation {
     }
 }
 
-/// A network where subgraph deployments are indexed.
-#[derive(SimpleObject, Queryable, Clone, Debug, Serialize, PartialEq, Eq)]
-pub struct Network {
-    /// Human-readable name of the network, following The Graph naming
-    /// standards.
-    pub name: String,
-    /// CAIP-2 chain ID of the network, if it exists.
-    pub caip2: Option<String>,
-}
-
-/// A block pointer for a specific network.
-#[derive(SimpleObject, Debug)]
-pub struct Block {
-    /// The network that this block belongs to.
-    pub network: Network,
-    /// The block number (or height).
-    pub number: u64,
-    /// The block hash, expressed as a hex string with a '0x' prefix.
-    pub hash: BlockHash,
-}
-
 /// A block number that may or may not also have an associated hash.
 #[derive(Debug, Clone, Serialize, SimpleObject, Deserialize)]
 pub struct PartialBlock {
@@ -161,45 +139,6 @@ pub struct PartialBlock {
 #[derive(SimpleObject, Debug)]
 pub struct Deployment {
     pub id: String,
-}
-
-/// A PoI (proof of indexing) that was queried and collected by Graphix.
-#[derive(Debug)]
-pub struct ProofOfIndexing {
-    /// The block height and hash for which this PoI is valid.
-    pub block: Block,
-    /// The PoI's hash.
-    pub hash: PoiBytes,
-    /// The subgraph deployment that this PoI is for.
-    pub deployment: Deployment,
-    /// The amount of allocated tokens by the indexer for this PoI, if known.
-    pub allocated_tokens: Option<u64>,
-    /// The indexer that produced this PoI.
-    pub indexer: Indexer,
-}
-
-/// An indexer that is known to Graphix.
-#[derive(Debug)]
-pub struct Indexer {
-    pub address: IndexerAddress,
-    pub default_display_name: Option<String>,
-    pub graph_node_version: Option<GraphNodeCollectedVersion>,
-    pub network_subgraph_metadata: Option<IndexerNetworkSubgraphMetadata>,
-}
-
-#[derive(Debug, Clone, SimpleObject, Serialize)]
-pub struct IndexerNetworkSubgraphMetadata {
-    pub geohash: Option<String>,
-    pub indexer_url: Option<String>,
-    pub staked_tokens: f64,
-    pub allocated_tokens: f64,
-    pub locked_tokens: f64,
-    pub query_fees_collected: f64,
-    pub query_fee_rebates: f64,
-    pub rewards_earned: f64,
-    pub indexer_indexing_rewards: f64,
-    pub delegator_indexing_rewards: f64,
-    pub last_updated_at: NaiveDateTime,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Ord, PartialOrd, SimpleObject)]

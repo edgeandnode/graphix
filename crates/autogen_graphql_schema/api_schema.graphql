@@ -58,8 +58,17 @@ type BisectionRunReport {
 }
 
 type Block {
+	"""
+	The block number (a.k.a. height).
+	"""
 	number: Int!
+	"""
+	The block hash, expressed as a hex string with a '0x' prefix.
+	"""
 	hash: HexString!
+	"""
+	The network that this block belongs to.
+	"""
 	network: Network!
 }
 
@@ -237,9 +246,6 @@ ISO 8601 combined date and time without timezone.
 """
 scalar NaiveDateTime
 
-"""
-A network where subgraph deployments are indexed.
-"""
 type Network {
 	"""
 	Human-readable name of the network, following The Graph naming

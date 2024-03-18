@@ -106,17 +106,6 @@ pub struct Indexer {
     pub created_at: NaiveDateTime,
 }
 
-impl Indexer {
-    pub fn into_common_type(self, version: Option<GraphNodeCollectedVersion>) -> types::Indexer {
-        types::Indexer {
-            address: self.address,
-            default_display_name: self.name,
-            graph_node_version: version.map(GraphNodeCollectedVersion::into_common_type),
-            network_subgraph_metadata: None,
-        }
-    }
-}
-
 impl IndexerId for Indexer {
     fn address(&self) -> IndexerAddress {
         self.address
@@ -128,6 +117,14 @@ impl IndexerId for Indexer {
             None => None,
         }
     }
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, PartialEq, Eq)]
+#[diesel(table_name = networks)]
+pub struct Network {
+    pub id: IntId,
+    pub name: String,
+    pub caip2: Option<String>,
 }
 
 #[derive(Debug, Insertable, AsChangeset, Serialize)]

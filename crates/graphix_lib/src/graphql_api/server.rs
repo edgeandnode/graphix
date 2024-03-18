@@ -212,11 +212,11 @@ impl QueryRoot {
         }
     }
 
-    async fn networks(&self, ctx: &Context<'_>) -> Result<Vec<Network>> {
+    async fn networks(&self, ctx: &Context<'_>) -> Result<Vec<api_types::Network>> {
         let ctx_data = ctx_data(ctx);
         let networks = ctx_data.store.networks().await?;
 
-        Ok(networks)
+        Ok(networks.into_iter().map(Into::into).collect())
     }
 }
 

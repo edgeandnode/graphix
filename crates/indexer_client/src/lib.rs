@@ -236,12 +236,6 @@ impl PartialEq for ProofOfIndexing {
     }
 }
 
-impl From<ProofOfIndexing> for graphix_common_types::ProofOfIndexing {
-    fn from(value: ProofOfIndexing) -> Self {
-        todo!()
-    }
-}
-
 pub trait WritablePoi {
     type IndexerId: IndexerId;
 

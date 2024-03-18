@@ -36,14 +36,35 @@ impl SubgraphDeployment {
     }
 
     /// Network of the subgraph deployment.
-    async fn network(&self, ctx: &Context<'_>) -> Result<common::Network, String> {
+    async fn network(&self, ctx: &Context<'_>) -> Result<Network, String> {
         let loader = &ctx_data(ctx).loader_network;
 
         loader
             .load_one(self.model.network_id)
             .await
+            .map(|opt| opt.map(Into::into))
             .map_err(Into::into)
-            .and_then(|opt| opt.ok_or_else(|| "Network not found".to_string()))
+            .and_then(|opt: Option<Network>| opt.ok_or_else(|| "Network not found".to_string()))
+    }
+}
+
+/// A network where subgraph deployments are indexed.
+#[derive(derive_more::From)]
+pub struct Network {
+    model: models::Network,
+}
+
+#[Object]
+impl Network {
+    /// Human-readable name of the network, following The Graph naming
+    /// standards.
+    pub async fn name(&self) -> &str {
+        self.model.name.as_str()
+    }
+
+    /// CAIP-2 chain ID of the network, if it exists.
+    pub async fn caip2(&self) -> Option<&str> {
+        self.model.caip2.as_deref()
     }
 }
 
@@ -167,6 +188,7 @@ impl IndexerNetworkSubgraphMetadata {
     }
 }
 
+/// A block pointer for a specific network.
 #[derive(derive_more::From)]
 pub struct Block {
     model: models::Block,
@@ -188,37 +210,44 @@ impl Block {
 
 #[Object]
 impl Block {
+    /// The block number (a.k.a. height).
     #[graphql(name = "number")]
     async fn graphql_number(&self) -> u64 {
         self.model.number.try_into().unwrap()
     }
 
+    /// The block hash, expressed as a hex string with a '0x' prefix.
     #[graphql(name = "hash")]
     async fn graphql_hash(&self) -> common::BlockHash {
         self.model.hash.clone().into()
     }
 
-    pub async fn network(&self, ctx: &Context<'_>) -> Result<common::Network, String> {
+    /// The network that this block belongs to.
+    pub async fn network(&self, ctx: &Context<'_>) -> Result<Network, String> {
         let loader = &ctx_data(ctx).loader_network;
 
         loader
             .load_one(self.model.network_id)
             .await
+            .map(|opt| opt.map(Into::into))
             .map_err(Into::into)
             .and_then(|opt| opt.ok_or_else(|| "Network not found".to_string()))
     }
 }
 
+/// A PoI (proof of indexing) that was queried and collected by Graphix.
 #[derive(derive_more::From)]
 pub struct ProofOfIndexing {
     pub model: models::Poi,
 }
 
 impl ProofOfIndexing {
+    /// The PoI's hash.
     pub fn hash(&self) -> common::PoiBytes {
         self.model.poi.clone().into()
     }
 
+    /// The subgraph deployment that this PoI is for.
     pub async fn deployment(&self, ctx: &ApiSchemaContext) -> Result<SubgraphDeployment, String> {
         let loader = &ctx.loader_subgraph_deployment;
 
@@ -230,6 +259,7 @@ impl ProofOfIndexing {
             .map(Into::into)
     }
 
+    /// The block height and hash for which this PoI is valid.
     pub async fn block(&self, ctx: &ApiSchemaContext) -> Result<Block, String> {
         let loader = &ctx.loader_block;
 
@@ -241,6 +271,7 @@ impl ProofOfIndexing {
             .map(Into::into)
     }
 
+    /// The indexer that produced this PoI.
     pub async fn indexer(&self, ctx: &ApiSchemaContext) -> Result<Indexer, String> {
         let loader = &ctx.loader_indexer;
 

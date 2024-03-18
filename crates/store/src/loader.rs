@@ -69,8 +69,8 @@ impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::SgDeployme
 }
 
 #[async_trait]
-impl async_graphql::dataloader::Loader<IntId> for StoreLoader<graphix_common_types::Network> {
-    type Value = graphix_common_types::Network;
+impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::Network> {
+    type Value = models::Network;
     type Error = String;
 
     async fn load(&self, keys: &[IntId]) -> Result<HashMap<IntId, Self::Value>, Self::Error> {
@@ -78,10 +78,11 @@ impl async_graphql::dataloader::Loader<IntId> for StoreLoader<graphix_common_typ
 
         Ok(networks::table
             .filter(networks::id.eq_any(keys))
-            .select((networks::id, (networks::name, networks::caip2)))
-            .load::<(IntId, graphix_common_types::Network)>(
-                &mut self.store.conn_err_string().await?,
-            )
+            .select((
+                networks::id,
+                (networks::id, networks::name, networks::caip2),
+            ))
+            .load::<(IntId, models::Network)>(&mut self.store.conn_err_string().await?)
             .await
             .map_err(|e| e.to_string())?
             .into_iter()

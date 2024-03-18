@@ -1,8 +1,7 @@
 mod common;
 
 use graphix_common_types::inputs::SgDeploymentsQuery;
-use graphix_common_types::Network;
-use graphix_store::models::NewNetwork;
+use graphix_store::models::{Network, NewNetwork};
 use testcontainers::clients::Cli;
 
 use crate::common::EmptyStoreForTesting;
@@ -36,6 +35,7 @@ async fn create_then_delete_network() {
     assert_eq!(
         store.networks().await.unwrap(),
         vec![Network {
+            id: 1,
             name: "mainnet".to_string(),
             caip2: Some("eip155:1".to_string())
         }]

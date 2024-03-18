@@ -43,6 +43,8 @@ impl NetworkSubgraphClient {
     }
 
     /// Sets the timeout for requests to the network subgraph.
+    ///
+    /// The default timeout is 60 seconds.
     pub fn with_timeout(mut self, timeout: std::time::Duration) -> Self {
         self.timeout = timeout;
         self
