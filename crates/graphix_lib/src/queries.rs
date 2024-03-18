@@ -5,7 +5,7 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use graphix_common_types::GraphNodeCollectedVersion;
 use graphix_indexer_client::{
-    Indexer, IndexerId, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
+    IndexerClient, IndexerId, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
 };
 use tracing::*;
 
@@ -15,7 +15,7 @@ use crate::PrometheusMetrics;
 /// Queries all `indexingStatuses` for all the given indexers.
 #[instrument(skip_all)]
 pub async fn query_indexing_statuses(
-    indexers: Vec<Arc<dyn Indexer>>,
+    indexers: Vec<Arc<dyn IndexerClient>>,
     metrics: &PrometheusMetrics,
 ) -> Vec<IndexingStatus> {
     let indexer_count = indexers.len();
@@ -83,9 +83,9 @@ pub async fn query_indexing_statuses(
 
 /// Queries all `indexers` for their `graph-node` versions.
 pub async fn query_graph_node_versions(
-    indexers: &[Arc<dyn Indexer>],
+    indexers: &[Arc<dyn IndexerClient>],
     _metrics: &PrometheusMetrics,
-) -> HashMap<Arc<dyn Indexer>, anyhow::Result<GraphNodeCollectedVersion>> {
+) -> HashMap<Arc<dyn IndexerClient>, anyhow::Result<GraphNodeCollectedVersion>> {
     let span = span!(Level::TRACE, "query_graph_node_versions");
     let _enter_span = span.enter();
 

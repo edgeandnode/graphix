@@ -1,14 +1,17 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use anyhow::anyhow;
 use graphix_common_types::{
     inputs, BisectionReport, BisectionRunReport, DivergenceBlockBounds,
     DivergenceInvestigationReport, DivergenceInvestigationStatus, DivergingBlock as DivergentBlock,
     HexString, PartialBlock, PoiBytes,
 };
 use graphix_indexer_client::{
-    BlockPointer, Indexer, IndexerId, PoiRequest, ProofOfIndexing, SubgraphDeployment,
+    IndexerClient, IndexerId, PoiRequest, ProofOfIndexing, SubgraphDeployment,
 };
+use graphix_lib::graphql_api::api_types::{self, Indexer};
+use graphix_lib::graphql_api::ApiSchemaContext;
 use graphix_store::Store;
 use thiserror::Error;
 use tokio::sync::watch;
@@ -35,29 +38,26 @@ impl From<DivergingBlock> for DivergentBlock {
     }
 }
 
-#[derive(Clone)]
 pub struct PoiBisectingContext {
     report: BisectionRunReport,
     bisection_id: Uuid,
-    poi1: ProofOfIndexing,
-    poi2: ProofOfIndexing,
-    deployment: SubgraphDeployment,
+    poi1_data: PoiWithRelatedData,
+    poi2_data: PoiWithRelatedData,
 }
 
 impl PoiBisectingContext {
-    pub fn new(
+    fn new(
         report: BisectionRunReport,
         bisection_id: Uuid,
-        poi1: ProofOfIndexing,
-        poi2: ProofOfIndexing,
-        deployment: SubgraphDeployment,
+        poi1_data: PoiWithRelatedData,
+        poi2_data: PoiWithRelatedData,
     ) -> anyhow::Result<Self> {
         // Before attempting to bisect Pois, we need to make sure that the Pois refer to:
         // 1. the same subgraph deployment, and
         // 2. the same block.
 
-        anyhow::ensure!(poi1.deployment == poi2.deployment);
-        anyhow::ensure!(poi1.block == poi2.block);
+        anyhow::ensure!(poi1_data.deployment.cid() == poi2_data.deployment.cid());
+        anyhow::ensure!(poi1_data.block.number() == poi2_data.block.number());
         // FIXME!
         // Let's also check block hashes are present (and identical, by extension).
         //anyhow::ensure!(poi1.block.hash.is_some());
@@ -68,20 +68,24 @@ impl PoiBisectingContext {
         Ok(Self {
             report,
             bisection_id,
-            poi1,
-            poi2,
-            deployment,
+            poi1_data,
+            poi2_data,
         })
     }
 
+    fn deployment(&self) -> &api_types::SubgraphDeployment {
+        &self.poi1_data.deployment
+    }
+
     pub async fn start(mut self) -> (BisectionRunReport, u64) {
-        let indexer1 = self.poi1.indexer;
-        let indexer2 = self.poi2.indexer;
-        let deployment = self.deployment;
+        let deployment: api_types::SubgraphDeployment = self.deployment().clone();
+
+        let indexer1 = self.poi1_data.indexer_client.clone();
+        let indexer2 = self.poi2_data.indexer_client.clone();
 
         info!(
             bisection_id = %self.bisection_id,
-            deployment = deployment.as_str(),
+            deployment = deployment.cid(),
             "Starting Poi bisecting"
         );
 
@@ -89,14 +93,14 @@ impl PoiBisectingContext {
         // inclusively both below and above. The bisection algorithm will
         // continue searching until only a single block number is left in the
         // range.
-        let mut bounds = 0..=self.poi1.block.number;
+        let mut bounds = 0..=self.poi1_data.block.number();
 
         loop {
             let block_number = (bounds.start() + bounds.end()) / 2;
 
             debug!(
                 bisection_id = %self.bisection_id,
-                deployment = deployment.as_str(),
+                deployment = deployment.cid(),
                 lower_bound = ?bounds.start(),
                 upper_bound = ?bounds.end(),
                 block_number,
@@ -106,14 +110,14 @@ impl PoiBisectingContext {
             let poi1 = indexer1
                 .clone()
                 .proof_of_indexing(PoiRequest {
-                    deployment: deployment.clone(),
+                    deployment: SubgraphDeployment(deployment.cid().to_string()),
                     block_number,
                 })
                 .await;
             let poi2 = indexer2
                 .clone()
                 .proof_of_indexing(PoiRequest {
-                    deployment: deployment.clone(),
+                    deployment: SubgraphDeployment(deployment.cid().to_string()),
                     block_number,
                 })
                 .await;
@@ -176,7 +180,8 @@ pub enum DivergenceInvestigationError {
 
 pub async fn handle_divergence_investigation_requests(
     store: &Store,
-    indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
+    indexers: watch::Receiver<Vec<Arc<dyn IndexerClient>>>,
+    ctx: &ApiSchemaContext,
 ) -> anyhow::Result<()> {
     loop {
         debug!("Checking for new divergence investigation requests");
@@ -203,6 +208,7 @@ pub async fn handle_divergence_investigation_requests(
             &req_uuid,
             req_contents,
             indexers.clone(),
+            ctx,
         )
         .await;
 
@@ -220,12 +226,69 @@ pub async fn handle_divergence_investigation_requests(
     }
 }
 
+/// Just a group of data related to a PoI, that is needed to perform a
+/// bisection.
+struct PoiWithRelatedData {
+    poi_bytes: PoiBytes,
+    poi: api_types::ProofOfIndexing,
+    deployment: api_types::SubgraphDeployment,
+    block: api_types::Block,
+    indexer: Indexer,
+    indexer_client: Arc<dyn IndexerClient>,
+}
+
+impl PoiWithRelatedData {
+    async fn new(
+        poi_bytes: &PoiBytes,
+        store: &Store,
+        indexers: &[Arc<dyn IndexerClient>],
+        ctx: &ApiSchemaContext,
+    ) -> anyhow::Result<Option<Self>> {
+        let Some(poi_model) = store.poi(poi_bytes).await? else {
+            return Ok(None);
+        };
+
+        let poi = api_types::ProofOfIndexing { model: poi_model };
+
+        let deployment = poi
+            .deployment(ctx)
+            .await
+            .map_err(|err| anyhow!("failed to load deployment: {err}"))?;
+
+        let block = poi
+            .block(ctx)
+            .await
+            .map_err(|err| anyhow!("failed to load block: {err}"))?;
+
+        let indexer = poi
+            .indexer(ctx)
+            .await
+            .map_err(|err| anyhow!("failed to load indexer: {err}"))?;
+
+        let indexer_client = indexers
+            .iter()
+            .find(|indexer| indexer.address() == indexer.address())
+            .cloned()
+            .ok_or_else(|| anyhow!("indexer not found"))?;
+
+        Ok(Some(Self {
+            poi_bytes: poi_bytes.clone(),
+            poi,
+            deployment,
+            block,
+            indexer,
+            indexer_client,
+        }))
+    }
+}
+
 async fn handle_divergence_investigation_request_pair(
     store: &Store,
-    indexers: &[Arc<dyn Indexer>],
+    indexers: &[Arc<dyn IndexerClient>],
     req_uuid: &Uuid,
     poi1_s: &PoiBytes,
     poi2_s: &PoiBytes,
+    ctx: &ApiSchemaContext,
 ) -> BisectionRunReport {
     debug!(?req_uuid, poi1 = %poi1_s, poi2 = %poi2_s, "Bisecting Pois");
 
@@ -248,132 +311,65 @@ async fn handle_divergence_investigation_request_pair(
     };
 
     debug!(?req_uuid, poi1 = %poi1_s, poi2 = %poi2_s, "Fetching Pois");
-    let poi1 = match store
-        .poi(poi1_s)
-        .await
-        .map_err(DivergenceInvestigationError::Database)
-        .and_then(|poi_opt| {
-            if let Some(poi) = poi_opt {
-                Ok(poi)
-            } else {
-                Err(DivergenceInvestigationError::IndexerNotFound {
-                    poi: poi1_s.to_string(),
-                })
-            }
-        }) {
-        Ok(poi) => poi,
+    let poi1_data = match PoiWithRelatedData::new(poi1_s, store, indexers, ctx).await {
+        Ok(Some(data)) => data,
+        Ok(None) => return report,
         Err(err) => {
             report.error = Some(err.to_string());
             return report;
         }
     };
-    let poi2 = match store
-        .poi(poi2_s)
-        .await
-        .map_err(DivergenceInvestigationError::Database)
-        .and_then(|poi_opt| {
-            if let Some(poi) = poi_opt {
-                Ok(poi)
-            } else {
-                Err(DivergenceInvestigationError::IndexerNotFound {
-                    poi: poi2_s.to_string(),
-                })
-            }
-        }) {
-        Ok(poi) => poi,
+    let poi2_data = match PoiWithRelatedData::new(poi2_s, store, indexers, ctx).await {
+        Ok(Some(data)) => data,
+        Ok(None) => return report,
         Err(err) => {
             report.error = Some(err.to_string());
             return report;
         }
     };
-    debug!(?req_uuid, poi1 = %poi1_s, poi2 = %poi2_s, "Fetched Pois");
-    report.divergence_block_bounds.upper_bound.number = poi1.block.number as _;
 
-    if poi1.sg_deployment.cid != poi2.sg_deployment.cid {
+    debug!(?req_uuid, poi1 = %poi1_s, poi2 = %poi2_s, "Fetched Pois");
+
+    report.divergence_block_bounds.upper_bound.number = poi1_data.block.number_i64();
+
+    // Two PoIs need to relate to the same subgraph deployment to be comparable.
+    if poi1_data.deployment.cid() != poi2_data.deployment.cid() {
         report.error = Some(
             DivergenceInvestigationError::DifferentDeployments {
                 poi1: poi1_s.to_string(),
                 poi2: poi2_s.to_string(),
-                poi1_deployment: poi1.sg_deployment.cid.to_string(),
-                poi2_deployment: poi2.sg_deployment.cid.to_string(),
+                poi1_deployment: poi1_data.deployment.cid().to_string(),
+                poi2_deployment: poi2_data.deployment.cid().to_string(),
             }
             .to_string(),
         );
     }
 
-    if poi1.block.number != poi2.block.number {
+    // Two PoIs need to have the same block number to be comparable.
+    if poi1_data.block.number() != poi2_data.block.number() {
         report.error = Some(
             DivergenceInvestigationError::DifferentBlocks {
                 poi1: poi1_s.to_string(),
                 poi2: poi2_s.to_string(),
-                poi1_block: poi1.block.number,
-                poi2_block: poi2.block.number,
+                poi1_block: poi1_data.block.number_i64(),
+                poi2_block: poi2_data.block.number_i64(),
             }
             .to_string(),
         );
     }
 
-    let deployment = SubgraphDeployment(poi1.sg_deployment.cid);
-    let block = BlockPointer {
-        number: poi1.block.number as _,
-        hash: None,
-    };
-
     debug!(?req_uuid, poi1 = %poi1_s, poi2 = %poi2_s, "Fetching indexers");
-    let indexer1 = match indexers
-        .iter()
-        .find(|indexer| indexer.address() == poi1.indexer.address())
-        .cloned()
-        .ok_or(DivergenceInvestigationError::IndexerNotFound {
-            poi: poi1_s.to_string(),
-        }) {
-        Ok(indexer) => indexer,
-        Err(err) => {
-            report.error = Some(err.to_string());
-            return report;
-        }
-    };
-    let indexer2 = match indexers
-        .iter()
-        .find(|indexer| indexer.address() == poi2.indexer.address())
-        .cloned()
-        .ok_or(DivergenceInvestigationError::IndexerNotFound {
-            poi: poi2_s.to_string(),
-        }) {
-        Ok(indexer) => indexer,
-        Err(err) => {
-            report.error = Some(err.to_string());
-            return report;
-        }
-    };
 
     debug!(?req_uuid, poi1 = %poi1_s, poi2 = %poi2_s, "Fetched indexers");
-    if indexer1.address() == indexer2.address() {
-        report.error = Some(
-            DivergenceInvestigationError::SameIndexer {
-                indexer_id: indexer1.address_string(),
-            }
-            .to_string(),
-        );
+    if poi1_data.indexer.address() == poi2_data.indexer.address() {
+        let indexer_id = poi1_data.indexer.address().to_string();
+        report.error = Some(DivergenceInvestigationError::SameIndexer { indexer_id }.to_string());
         return report;
     }
 
     let bisection_uuid = Uuid::new_v4();
 
-    let poi1 = ProofOfIndexing {
-        indexer: indexer1.clone(),
-        deployment: deployment.clone(),
-        block: block.clone(),
-        proof_of_indexing: poi1.poi.try_into().expect("poi1 conversion failed"),
-    };
-    let poi2 = ProofOfIndexing {
-        indexer: indexer2.clone(),
-        deployment: deployment.clone(),
-        block,
-        proof_of_indexing: poi2.poi.try_into().expect("poi2 conversion failed"),
-    };
-
-    let context = PoiBisectingContext::new(report, bisection_uuid, poi1, poi2, deployment.clone())
+    let context = PoiBisectingContext::new(report, bisection_uuid, poi1_data, poi2_data)
         .expect("bisect context creation failed");
     let (report, _block_num) = context.start().await;
 
@@ -384,7 +380,8 @@ async fn handle_divergence_investigation_request(
     store: &Store,
     req_uuid: &Uuid,
     req_contents: inputs::DivergenceInvestigationRequest,
-    indexers: watch::Receiver<Vec<Arc<dyn Indexer>>>,
+    indexers: watch::Receiver<Vec<Arc<dyn IndexerClient>>>,
+    ctx: &ApiSchemaContext,
 ) -> DivergenceInvestigationReport {
     let mut report = DivergenceInvestigationReport {
         uuid: req_uuid.clone(),
@@ -413,7 +410,7 @@ async fn handle_divergence_investigation_request(
 
     for (poi1_s, poi2_s) in poi_pairs.into_iter() {
         let bisection_run_report = handle_divergence_investigation_request_pair(
-            store, &indexers, req_uuid, &poi1_s, &poi2_s,
+            store, &indexers, req_uuid, &poi1_s, &poi2_s, ctx,
         )
         .await;
         debug!(?req_uuid, poi1 = %poi1_s, poi2 = %poi2_s, "Finished bisection run");

@@ -22,7 +22,7 @@ use std::sync::Arc;
 use anyhow::Error;
 use diesel::prelude::*;
 use diesel_async_migrations::{embed_migrations, EmbeddedMigrations};
-use graphix_indexer_client::{Indexer, IndexerId, WritablePoi};
+use graphix_indexer_client::{IndexerClient, IndexerId, WritablePoi};
 pub use loader::StoreLoader;
 use tracing::info;
 
@@ -339,7 +339,10 @@ impl Store {
             .await
     }
 
-    pub async fn write_indexers(&self, indexers: &[impl AsRef<dyn Indexer>]) -> anyhow::Result<()> {
+    pub async fn write_indexers(
+        &self,
+        indexers: &[impl AsRef<dyn IndexerClient>],
+    ) -> anyhow::Result<()> {
         let mut conn = self.conn().await?;
         diesel_queries::write_indexers(&mut conn, indexers).await?;
         Ok(())
@@ -419,7 +422,7 @@ impl Store {
     pub async fn write_graph_node_versions(
         &self,
         versions: HashMap<
-            Arc<dyn Indexer>,
+            Arc<dyn IndexerClient>,
             anyhow::Result<graphix_common_types::GraphNodeCollectedVersion>,
         >,
     ) -> anyhow::Result<()> {

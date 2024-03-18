@@ -2,11 +2,6 @@
 
 use std::collections::HashSet;
 use std::hash::Hash;
-use std::sync::Arc;
-
-use graphix_common_types::PoiBytes;
-use graphix_indexer_client::Indexer;
-use graphix_store::Store;
 
 /// Creates all combinations of elements in the iterator, without duplicates.
 /// Elements are never paired with themselves.
@@ -21,24 +16,6 @@ where
         }
     }
     pairs
-}
-
-/// Given a Poi, find any of the indexers that have been known to produce it.
-pub async fn find_any_indexer_for_poi(
-    store: &Store,
-    poi_s: &PoiBytes,
-    indexers: &[Arc<dyn Indexer>],
-) -> anyhow::Result<Option<Arc<dyn Indexer>>> {
-    let Some(poi) = store.poi(poi_s).await? else {
-        return Ok(None);
-    };
-
-    let indexer_opt = indexers
-        .iter()
-        .find(|indexer| indexer.address() == poi.indexer.address)
-        .cloned();
-
-    Ok(indexer_opt)
 }
 
 #[cfg(test)]

@@ -11,7 +11,7 @@ use diesel::{AsChangeset, AsExpression, FromSqlRow, Insertable, Queryable, Selec
 use graphix_common_types as types;
 use graphix_indexer_client::IndexerId;
 use serde::{Deserialize, Serialize};
-use types::{BlockHash, Deployment, IndexerAddress, Network, PoiBytes};
+use types::{BlockHash, IndexerAddress, PoiBytes};
 
 use super::schema::*;
 

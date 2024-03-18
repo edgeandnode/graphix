@@ -2,7 +2,7 @@ use std::iter::repeat_with;
 use std::sync::Arc;
 
 use graphix_common_types::{BlockHash, PoiBytes};
-use graphix_indexer_client::{BlockPointer, Indexer, SubgraphDeployment};
+use graphix_indexer_client::{BlockPointer, IndexerClient, SubgraphDeployment};
 use rand::distributions::Alphanumeric;
 use rand::seq::IteratorRandom;
 use rand::Rng;
@@ -58,7 +58,7 @@ where
         .collect()
 }
 
-pub fn gen_indexers<R>(mut rng: &mut R, max_indexers: usize) -> Vec<Arc<dyn Indexer>>
+pub fn gen_indexers<R>(mut rng: &mut R, max_indexers: usize) -> Vec<Arc<dyn IndexerClient>>
 where
     R: Rng,
 {
@@ -99,7 +99,7 @@ where
             name: id,
             deployment_details,
             fail_indexing_statuses: rng.gen_bool(0.1),
-        }) as Arc<dyn Indexer>
+        }) as Arc<dyn IndexerClient>
     })
     .take(number_of_indexers)
     .collect()

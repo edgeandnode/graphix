@@ -1,4 +1,4 @@
-mod api_types;
+pub mod api_types;
 mod server;
 
 use async_graphql::dataloader::DataLoader;

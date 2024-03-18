@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use graphix_indexer_client::{Indexer, PoiRequest};
+use graphix_indexer_client::{IndexerClient, PoiRequest};
 use graphix_lib::test_utils::{test_deployment_id, test_indexer_from_url};
 
 #[tokio::test]
@@ -16,7 +16,7 @@ async fn send_single_query_and_process_result() {
     };
 
     //// When
-    let request_fut = Indexer::proof_of_indexing(indexer, poi_request);
+    let request_fut = IndexerClient::proof_of_indexing(indexer, poi_request);
     let response = tokio::time::timeout(Duration::from_secs(10), request_fut)
         .await
         .expect("Timeout");
@@ -42,7 +42,7 @@ async fn send_single_query_of_unknown_deployment_id_and_handle_error() {
     };
 
     //// When
-    let request_fut = Indexer::proof_of_indexing(indexer, poi_request);
+    let request_fut = IndexerClient::proof_of_indexing(indexer, poi_request);
     let response = tokio::time::timeout(Duration::from_secs(10), request_fut)
         .await
         .expect("Timeout");
@@ -69,7 +69,7 @@ async fn send_single_query_of_unknown_block_number_and_handle_error() {
     };
 
     //// When
-    let request_fut = Indexer::proof_of_indexing(indexer, poi_request);
+    let request_fut = IndexerClient::proof_of_indexing(indexer, poi_request);
     let response = tokio::time::timeout(Duration::from_secs(10), request_fut)
         .await
         .expect("Timeout");
@@ -104,7 +104,7 @@ async fn send_multiple_queries_and_process_results() {
         .collect::<Vec<_>>();
 
     // When
-    let request_fut = Indexer::proofs_of_indexing(indexer, poi_requests);
+    let request_fut = IndexerClient::proofs_of_indexing(indexer, poi_requests);
     let response = tokio::time::timeout(Duration::from_secs(10), request_fut)
         .await
         .expect("Timeout");
@@ -147,7 +147,7 @@ async fn send_multiple_queries_of_unknown_deployment_id_and_process_results() {
     ];
 
     //// When
-    let request_fut = Indexer::proofs_of_indexing(indexer, poi_requests);
+    let request_fut = IndexerClient::proofs_of_indexing(indexer, poi_requests);
     let response = tokio::time::timeout(Duration::from_secs(10), request_fut)
         .await
         .expect("Timeout");

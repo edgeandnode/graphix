@@ -9,7 +9,7 @@ use diesel::prelude::*;
 use diesel::sql_types;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use graphix_common_types::{inputs, IndexerAddress};
-use graphix_indexer_client::{BlockPointer, Indexer, IndexerId, WritablePoi};
+use graphix_indexer_client::{BlockPointer, IndexerClient, IndexerId, WritablePoi};
 use tracing::info;
 
 use super::PoiLiveness;
@@ -101,7 +101,7 @@ pub(super) async fn pois(
 
 pub async fn write_indexers(
     conn: &mut AsyncPgConnection,
-    indexers: &[impl AsRef<dyn Indexer>],
+    indexers: &[impl AsRef<dyn IndexerClient>],
 ) -> anyhow::Result<()> {
     use schema::indexers;
 

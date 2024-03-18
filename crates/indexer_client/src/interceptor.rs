@@ -7,27 +7,27 @@ use async_trait::async_trait;
 use graphix_common_types::{GraphNodeCollectedVersion, IndexerAddress};
 
 use super::{CachedEthereumCall, EntityChanges};
-use crate::{Indexer, IndexingStatus, PoiRequest, ProofOfIndexing};
+use crate::{IndexerClient, IndexingStatus, PoiRequest, ProofOfIndexing};
 
 /// Pretends to be an indexer by routing requests a
 /// [`RealIndexer`](crate::indexer::RealIndexer) and then intercepting the
 /// responses to generate diverging Pois. The divergent pois will consist of a
-/// repetition of `poi_byte`. Interceptors have no [`Indexer::address`].
+/// repetition of `poi_byte`. Interceptors have no [`IndexerClient::address`].
 #[derive(Debug)]
 pub struct IndexerInterceptor {
-    target: Arc<dyn Indexer>,
+    target: Arc<dyn IndexerClient>,
     poi_byte: u8,
 }
 
 impl IndexerInterceptor {
-    pub fn new(target: Arc<dyn Indexer>, poi_byte: u8) -> Self {
+    pub fn new(target: Arc<dyn IndexerClient>, poi_byte: u8) -> Self {
         Self { target, poi_byte }
     }
 }
 
 #[async_trait]
 
-impl Indexer for IndexerInterceptor {
+impl IndexerClient for IndexerInterceptor {
     fn name(&self) -> Option<Cow<str>> {
         self.target
             .name()

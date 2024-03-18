@@ -1,25 +1,37 @@
 use async_graphql::{ComplexObject, Context, Object, SimpleObject};
-use common::{PartialBlock, PoiBytes};
+use common::{IndexerAddress, PoiBytes};
 use graphix_common_types as common;
 use graphix_store::models::{self, IntId};
 use num_traits::cast::ToPrimitive;
 
-use super::ctx_data;
+use super::{ctx_data, ApiSchemaContext};
 
-#[derive(derive_more::From)]
+#[derive(Clone, derive_more::From)]
 pub struct SubgraphDeployment {
     model: models::SgDeployment,
+}
+
+impl SubgraphDeployment {
+    pub fn cid(&self) -> &str {
+        &self.model.cid
+    }
+
+    pub fn name(&self) -> Option<&str> {
+        self.model.name.as_deref()
+    }
 }
 
 #[Object]
 impl SubgraphDeployment {
     /// IPFS CID of the subgraph deployment.
-    pub async fn cid(&self) -> String {
+    #[graphql(name = "cid")]
+    async fn graphql_cid(&self) -> String {
         self.model.cid.clone()
     }
 
     /// Human-readable name of the subgraph deployment, if present.
-    async fn name(&self) -> Option<String> {
+    #[graphql(name = "name")]
+    async fn graphql_name(&self) -> Option<String> {
         self.model.name.clone()
     }
 
@@ -41,9 +53,33 @@ pub struct Indexer {
     model: models::Indexer,
 }
 
+impl Indexer {
+    pub fn address(&self) -> IndexerAddress {
+        self.model.address
+    }
+
+    pub fn name(&self) -> Option<&str> {
+        self.model.name.as_deref()
+    }
+
+    pub async fn graph_node_version(
+        &self,
+        ctx: &ApiSchemaContext,
+    ) -> Result<Option<models::GraphNodeCollectedVersion>, String> {
+        let loader = &ctx.loader_graph_node_collected_version;
+
+        if let Some(id) = self.model.graph_node_version {
+            loader.load_one(id).await.map_err(Into::into)
+        } else {
+            Ok(None)
+        }
+    }
+}
+
 #[Object]
 impl Indexer {
-    async fn address(&self) -> String {
+    #[graphql(name = "address")]
+    async fn graphql_address(&self) -> String {
         self.model.address.to_string()
     }
 
@@ -52,17 +88,12 @@ impl Indexer {
     }
 
     /// The version of the indexer.
-    async fn graph_node_version(
+    #[graphql(name = "graphNodeVersion")]
+    async fn graphql_graph_node_version(
         &self,
         ctx: &Context<'_>,
     ) -> Result<Option<models::GraphNodeCollectedVersion>, String> {
-        let loader = &ctx_data(ctx).loader_graph_node_collected_version;
-
-        if let Some(id) = self.model.graph_node_version {
-            loader.load_one(id).await.map_err(Into::into)
-        } else {
-            Ok(None)
-        }
+        self.graph_node_version(ctx_data(ctx)).await
     }
 
     /// The network subgraph metadata of the indexer.
@@ -141,17 +172,33 @@ pub struct Block {
     model: models::Block,
 }
 
-#[Object]
 impl Block {
-    async fn number(&self) -> u64 {
+    pub fn number(&self) -> u64 {
         self.model.number.try_into().unwrap()
     }
 
-    async fn hash(&self) -> common::BlockHash {
+    pub fn number_i64(&self) -> i64 {
+        self.model.number
+    }
+
+    pub fn hash(&self) -> common::BlockHash {
+        self.model.hash.clone().into()
+    }
+}
+
+#[Object]
+impl Block {
+    #[graphql(name = "number")]
+    async fn graphql_number(&self) -> u64 {
+        self.model.number.try_into().unwrap()
+    }
+
+    #[graphql(name = "hash")]
+    async fn graphql_hash(&self) -> common::BlockHash {
         self.model.hash.clone().into()
     }
 
-    async fn network(&self, ctx: &Context<'_>) -> Result<common::Network, String> {
+    pub async fn network(&self, ctx: &Context<'_>) -> Result<common::Network, String> {
         let loader = &ctx_data(ctx).loader_network;
 
         loader
@@ -167,25 +214,13 @@ pub struct ProofOfIndexing {
     pub model: models::Poi,
 }
 
-#[Object]
 impl ProofOfIndexing {
-    pub async fn block(&self, ctx: &Context<'_>) -> Result<Block, String> {
-        let loader = &ctx_data(ctx).loader_block;
-
-        loader
-            .load_one(self.model.block_id)
-            .await
-            .map_err(Into::into)
-            .and_then(|opt| opt.ok_or_else(|| "Block not found".to_string()))
-            .map(Into::into)
-    }
-
-    pub async fn hash(&self) -> common::PoiBytes {
+    pub fn hash(&self) -> common::PoiBytes {
         self.model.poi.clone().into()
     }
 
-    pub async fn deployment(&self, ctx: &Context<'_>) -> Result<SubgraphDeployment, String> {
-        let loader = &ctx_data(ctx).loader_subgraph_deployment;
+    pub async fn deployment(&self, ctx: &ApiSchemaContext) -> Result<SubgraphDeployment, String> {
+        let loader = &ctx.loader_subgraph_deployment;
 
         loader
             .load_one(self.model.sg_deployment_id)
@@ -195,8 +230,19 @@ impl ProofOfIndexing {
             .map(Into::into)
     }
 
-    async fn indexer(&self, ctx: &Context<'_>) -> Result<Indexer, String> {
-        let loader = &ctx_data(ctx).loader_indexer;
+    pub async fn block(&self, ctx: &ApiSchemaContext) -> Result<Block, String> {
+        let loader = &ctx.loader_block;
+
+        loader
+            .load_one(self.model.block_id)
+            .await
+            .map_err(Into::into)
+            .and_then(|opt| opt.ok_or_else(|| "Block not found".to_string()))
+            .map(Into::into)
+    }
+
+    pub async fn indexer(&self, ctx: &ApiSchemaContext) -> Result<Indexer, String> {
+        let loader = &ctx.loader_indexer;
 
         loader
             .load_one(self.model.indexer_id)
@@ -204,6 +250,32 @@ impl ProofOfIndexing {
             .map_err(Into::into)
             .and_then(|opt| opt.ok_or_else(|| "Indexer not found".to_string()))
             .map(Into::into)
+    }
+}
+
+#[Object]
+impl ProofOfIndexing {
+    #[graphql(name = "block")]
+    pub async fn graphql_block(&self, ctx: &Context<'_>) -> Result<Block, String> {
+        self.block(ctx_data(ctx)).await
+    }
+
+    #[graphql(name = "hash")]
+    async fn graphql_hash(&self) -> common::PoiBytes {
+        self.hash()
+    }
+
+    #[graphql(name = "deployment")]
+    pub async fn graphql_deployment(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<SubgraphDeployment, String> {
+        self.deployment(ctx_data(ctx)).await
+    }
+
+    #[graphql(name = "indexer")]
+    pub async fn graphql_indexer(&self, ctx: &Context<'_>) -> Result<Indexer, String> {
+        self.indexer(ctx_data(ctx)).await
     }
 }
 

@@ -5,7 +5,7 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use graphix_common_types::{GraphNodeCollectedVersion, IndexerAddress, PoiBytes};
 use graphix_indexer_client::{
-    BlockPointer, CachedEthereumCall, EntityChanges, Indexer, IndexingStatus, PoiRequest,
+    BlockPointer, CachedEthereumCall, EntityChanges, IndexerClient, IndexingStatus, PoiRequest,
     ProofOfIndexing, SubgraphDeployment,
 };
 
@@ -26,7 +26,7 @@ pub struct MockIndexer {
 }
 
 #[async_trait]
-impl Indexer for MockIndexer {
+impl IndexerClient for MockIndexer {
     fn name(&self) -> Option<Cow<str>> {
         Some(Cow::Borrowed(&self.name))
     }
