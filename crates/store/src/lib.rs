@@ -266,7 +266,7 @@ impl Store {
     }
 
     /// Queries the database for proofs of indexing that refer to the specified
-    /// subgraph deployments and in the given [`BlockRange`], if given.
+    /// subgraph deployments and in the given [`inputs::BlockRange`], if given.
     pub async fn pois(
         &self,
         sg_deployments: &[String],
