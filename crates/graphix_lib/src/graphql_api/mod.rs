@@ -12,6 +12,7 @@ pub type ApiSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
 pub struct ApiSchemaContext {
     pub store: Store,
+    pub loader_poi: DataLoader<StoreLoader<graphix_store::models::Poi>>,
     pub loader_network: DataLoader<StoreLoader<graphix_store::models::Network>>,
     pub loader_graph_node_collected_version:
         DataLoader<StoreLoader<graphix_store::models::GraphNodeCollectedVersion>>,
@@ -25,6 +26,7 @@ pub struct ApiSchemaContext {
 
 impl ApiSchemaContext {
     pub fn new(store: Store, config: Config) -> Self {
+        let loader_poi = DataLoader::new(StoreLoader::new(store.clone()), tokio::task::spawn);
         let loader_network = DataLoader::new(StoreLoader::new(store.clone()), tokio::task::spawn);
         let loader_graph_node_collected_version =
             DataLoader::new(StoreLoader::new(store.clone()), tokio::task::spawn);
@@ -37,6 +39,7 @@ impl ApiSchemaContext {
 
         Self {
             store,
+            loader_poi,
             loader_network,
             loader_graph_node_collected_version,
             loader_indexer_network_subgraph_metadata,

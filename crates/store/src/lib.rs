@@ -26,7 +26,7 @@ use graphix_indexer_client::{IndexerClient, IndexerId, WritablePoi};
 pub use loader::StoreLoader;
 use tracing::info;
 
-use crate::models::{GraphNodeCollectedVersion, Indexer as IndexerModel, IntId, NewNetwork, Poi};
+use crate::models::{Indexer as IndexerModel, IntId, NewNetwork, Poi};
 
 /// An abstraction over all database operations. It uses [`Arc`] internally, so
 /// it's cheaply cloneable.
@@ -250,16 +250,10 @@ impl Store {
     pub async fn indexers(
         &self,
         filter: inputs::IndexersQuery,
-    ) -> anyhow::Result<Vec<(models::Indexer, models::GraphNodeCollectedVersion)>> {
-        use schema::{graph_node_collected_versions, indexers};
+    ) -> anyhow::Result<Vec<models::Indexer>> {
+        use schema::indexers;
 
-        let mut query = indexers::table
-            .inner_join(graph_node_collected_versions::table)
-            .select((
-                indexers::all_columns,
-                graph_node_collected_versions::all_columns,
-            ))
-            .into_boxed();
+        let mut query = indexers::table.select(indexers::all_columns).into_boxed();
 
         if let Some(address) = filter.address {
             query = query.filter(indexers::address.eq(address));
@@ -268,11 +262,7 @@ impl Store {
             query = query.limit(limit.into());
         }
 
-        let rows = query
-            .load::<(IndexerModel, GraphNodeCollectedVersion)>(&mut self.conn().await?)
-            .await?;
-
-        Ok(rows.into_iter().map(Into::into).collect())
+        Ok(query.load::<IndexerModel>(&mut self.conn().await?).await?)
     }
 
     /// Queries the database for proofs of indexing that refer to the specified

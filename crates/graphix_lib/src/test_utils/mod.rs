@@ -43,7 +43,11 @@ pub fn test_indexer_from_url(url: impl Into<String>) -> Arc<impl IndexerClient> 
         conf.name,
         conf.address,
         conf.index_node_endpoint.to_string(),
-        IntCounterVec::new(prometheus::Opts::new("foo", "bar"), &["a", "b"]).unwrap(),
+        IntCounterVec::new(
+            prometheus_exporter::prometheus::Opts::new("foo", "bar"),
+            &["a", "b"],
+        )
+        .unwrap(),
     ))
 }
 

@@ -278,8 +278,6 @@ indexers, given its own poi for each deployment. A consensus currently means a m
 indexers agreeing on a particular POI.
 """
 type PoiAgreementRatio {
-	poi: HexString!
-	block: Block!
 	"""
 	Total number of indexers that have live pois for the deployment.
 	"""
@@ -301,7 +299,10 @@ type PoiAgreementRatio {
 	Indicates if the specified indexer's POI is part of the consensus.
 	"""
 	inConsensus: Boolean!
-	deployment: SubgraphDeployment!
+	"""
+	The PoI in question.
+	"""
+	poi: ProofOfIndexing!
 }
 
 """
@@ -330,9 +331,21 @@ input PoisQuery {
 }
 
 type ProofOfIndexing {
+	"""
+	The block height and hash for which this PoI is valid.
+	"""
 	block: Block!
+	"""
+	The PoI's hash.
+	"""
 	hash: HexString!
+	"""
+	The subgraph deployment that this PoI is for.
+	"""
 	deployment: SubgraphDeployment!
+	"""
+	The indexer that produced this PoI.
+	"""
 	indexer: Indexer!
 }
 

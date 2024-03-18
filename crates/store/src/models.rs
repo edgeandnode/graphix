@@ -28,7 +28,7 @@ pub struct FailedQueryRow {
     pub timestamp: NaiveDateTime,
 }
 
-#[derive(Queryable, Serialize, Debug)]
+#[derive(Queryable, Serialize, Debug, Clone)]
 pub struct Poi {
     pub id: IntId,
     pub poi: PoiBytes,
