@@ -4,7 +4,7 @@ pub mod mocks;
 use std::env;
 use std::sync::Arc;
 
-use graphix_indexer_client::{Indexer, RealIndexer, SubgraphDeployment};
+use graphix_indexer_client::{IndexerClient, RealIndexer, SubgraphDeployment};
 use once_cell::sync::Lazy;
 use prometheus_exporter::prometheus::IntCounterVec;
 use rand::rngs::{OsRng, SmallRng};
@@ -27,7 +27,7 @@ pub static TEST_SEED: Lazy<u64> = Lazy::new(|| {
 });
 
 /// Test utility function to create a valid `Indexer` from an arbitrary base url.
-pub fn test_indexer_from_url(url: impl Into<String>) -> Arc<impl Indexer> {
+pub fn test_indexer_from_url(url: impl Into<String>) -> Arc<impl IndexerClient> {
     let url: Url = url.into().parse().expect("Invalid status url");
 
     let mut addr = url.to_string().into_bytes();

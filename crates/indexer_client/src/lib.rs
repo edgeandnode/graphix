@@ -17,8 +17,12 @@ use serde::Serialize;
 
 /// An indexer is a `graph-node` instance that can be queried for information.
 #[async_trait]
-pub trait Indexer: Send + Sync + Debug {
+pub trait IndexerClient: Send + Sync + Debug {
     /// The indexer's address.
+    ///
+    /// If the indexer is not a network participant (i.e. it can't be found on
+    /// the network subgraph), then a fake address MAY be used as long as it's
+    /// guaranteed to be unique.
     fn address(&self) -> IndexerAddress;
 
     /// Human-readable name of the indexer.
@@ -38,7 +42,7 @@ pub trait Indexer: Send + Sync + Debug {
         subgraph_id: &str,
     ) -> anyhow::Result<Vec<String>>;
 
-    /// Convenience wrapper around calling [`Indexer::proofs_of_indexing`] for a
+    /// Convenience wrapper around calling [`IndexerClient::proofs_of_indexing`] for a
     /// single POI.
     async fn proof_of_indexing(
         self: Arc<Self>,
@@ -90,36 +94,36 @@ pub trait IndexerId {
 
 impl<T> IndexerId for T
 where
-    T: Indexer,
+    T: IndexerClient,
 {
     fn address(&self) -> IndexerAddress {
-        Indexer::address(self)
+        IndexerClient::address(self)
     }
 
     fn name(&self) -> Option<Cow<str>> {
-        Indexer::name(self)
+        IndexerClient::name(self)
     }
 }
 
-impl IndexerId for Arc<dyn Indexer> {
+impl IndexerId for Arc<dyn IndexerClient> {
     fn address(&self) -> IndexerAddress {
-        Indexer::address(&**self)
+        IndexerClient::address(&**self)
     }
 
     fn name(&self) -> Option<Cow<str>> {
-        Indexer::name(&**self)
+        IndexerClient::name(&**self)
     }
 }
 
-impl PartialEq for dyn Indexer {
+impl PartialEq for dyn IndexerClient {
     fn eq(&self, other: &Self) -> bool {
         self.address() == other.address()
     }
 }
 
-impl Eq for dyn Indexer {}
+impl Eq for dyn IndexerClient {}
 
-impl Hash for dyn Indexer {
+impl Hash for dyn IndexerClient {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         // It's best to hash addresses even though entropy is typically already
         // high, because some Graphix configurations may use human-readable
@@ -128,13 +132,13 @@ impl Hash for dyn Indexer {
     }
 }
 
-impl PartialOrd for dyn Indexer {
+impl PartialOrd for dyn IndexerClient {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for dyn Indexer {
+impl Ord for dyn IndexerClient {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.address().cmp(&other.address())
     }
@@ -142,12 +146,12 @@ impl Ord for dyn Indexer {
 
 /// A wrapper around some inner data `T` that has an associated [`Indexer`].
 pub struct WithIndexer<T> {
-    pub indexer: Arc<dyn Indexer>,
+    pub indexer: Arc<dyn IndexerClient>,
     pub inner: T,
 }
 
 impl<T> WithIndexer<T> {
-    pub fn new(indexer: Arc<dyn Indexer>, inner: T) -> Self {
+    pub fn new(indexer: Arc<dyn IndexerClient>, inner: T) -> Self {
         Self { indexer, inner }
     }
 }
@@ -199,7 +203,7 @@ impl Deref for SubgraphDeployment {
 
 #[derive(Debug, Clone, Eq)]
 pub struct IndexingStatus {
-    pub indexer: Arc<dyn Indexer>,
+    pub indexer: Arc<dyn IndexerClient>,
     pub deployment: SubgraphDeployment,
     pub network: String,
     pub latest_block: BlockPointer,
@@ -217,7 +221,7 @@ impl PartialEq for IndexingStatus {
 
 #[derive(Debug, Clone, Eq, PartialOrd, Ord)]
 pub struct ProofOfIndexing {
-    pub indexer: Arc<dyn Indexer>,
+    pub indexer: Arc<dyn IndexerClient>,
     pub deployment: SubgraphDeployment,
     pub block: BlockPointer,
     pub proof_of_indexing: PoiBytes,
@@ -232,12 +236,6 @@ impl PartialEq for ProofOfIndexing {
     }
 }
 
-impl From<ProofOfIndexing> for graphix_common_types::ProofOfIndexing {
-    fn from(value: ProofOfIndexing) -> Self {
-        todo!()
-    }
-}
-
 pub trait WritablePoi {
     type IndexerId: IndexerId;
 
@@ -248,7 +246,7 @@ pub trait WritablePoi {
 }
 
 impl WritablePoi for ProofOfIndexing {
-    type IndexerId = Arc<dyn Indexer>;
+    type IndexerId = Arc<dyn IndexerClient>;
 
     fn deployment_cid(&self) -> &str {
         self.deployment.as_str()

@@ -14,9 +14,9 @@ use async_graphql_axum::GraphQL;
 use axum::response::IntoResponse;
 use axum::Router;
 use clap::Parser;
-use graphix_indexer_client::{Indexer, IndexerId};
+use graphix_indexer_client::{IndexerClient, IndexerId};
 use graphix_lib::config::Config;
-use graphix_lib::graphql_api::{self};
+use graphix_lib::graphql_api::{self, ApiSchemaContext};
 use graphix_lib::queries::{query_indexing_statuses, query_proofs_of_indexing};
 use graphix_lib::{config, metrics, PrometheusExporter, GRAPHIX_VERSION};
 use graphix_store::{PoiLiveness, Store};
@@ -70,8 +70,10 @@ async fn main() -> anyhow::Result<()> {
     info!("Initializing bisect request handler");
     let store_clone = store.clone();
     let (tx_indexers, rx_indexers) = watch::channel(vec![]);
+    let ctx = ApiSchemaContext::new(store_clone.clone(), config.clone());
+
     tokio::spawn(async move {
-        handle_divergence_investigation_requests(&store_clone, rx_indexers)
+        handle_divergence_investigation_requests(&store_clone, rx_indexers, &ctx)
             .await
             .unwrap()
     });
@@ -117,7 +119,7 @@ fn init_tracing() {
     tracing_subscriber::fmt::init();
 }
 
-fn deduplicate_indexers(indexers: &[Arc<dyn Indexer>]) -> Vec<Arc<dyn Indexer>> {
+fn deduplicate_indexers(indexers: &[Arc<dyn IndexerClient>]) -> Vec<Arc<dyn IndexerClient>> {
     info!(len = indexers.len(), "Deduplicating indexers");
     let mut seen = HashSet::new();
     let mut deduplicated = vec![];

@@ -10,7 +10,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tracing::*;
 
-use super::{CachedEthereumCall, EntityChanges, Indexer};
+use super::{CachedEthereumCall, EntityChanges, IndexerClient};
 use crate::{
     GraphNodeCollectedVersion, IndexerId, IndexingStatus, PoiRequest, ProofOfIndexing, WithIndexer,
 };
@@ -105,7 +105,7 @@ impl RealIndexer {
 }
 
 #[async_trait]
-impl Indexer for RealIndexer {
+impl IndexerClient for RealIndexer {
     fn address(&self) -> IndexerAddress {
         self.address
     }

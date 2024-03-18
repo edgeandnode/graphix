@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 use graphix_common_types::IndexerAddress;
-use graphix_indexer_client::{Indexer as IndexerTrait, RealIndexer};
+use graphix_indexer_client::{IndexerClient as IndexerTrait, RealIndexer};
 use prometheus::IntCounterVec;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -43,6 +43,8 @@ impl NetworkSubgraphClient {
     }
 
     /// Sets the timeout for requests to the network subgraph.
+    ///
+    /// The default timeout is 60 seconds.
     pub fn with_timeout(mut self, timeout: std::time::Duration) -> Self {
         self.timeout = timeout;
         self

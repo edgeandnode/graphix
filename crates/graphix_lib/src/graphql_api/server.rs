@@ -100,9 +100,11 @@ impl QueryRoot {
         // Query live POIs of a the requested indexer.
         let indexer_pois = live_pois(ctx, indexer_address).await?;
 
-        let deployments = try_join_all(indexer_pois.iter().map(|poi| poi.deployment(ctx))).await?;
+        let deployments =
+            try_join_all(indexer_pois.iter().map(|poi| poi.deployment(ctx_data))).await?;
 
-        let deployment_cids = try_join_all(deployments.iter().map(|d| d.cid(ctx))).await?;
+        let deployment_cids: Vec<String> =
+            deployments.iter().map(|d| d.cid().to_string()).collect();
 
         // Query all live POIs for the specific deployments.
         let all_deployment_pois = ctx_data
@@ -118,11 +120,10 @@ impl QueryRoot {
             deployment_to_pois
                 .entry(
                     proof_of_indexing
-                        .deployment(ctx)
+                        .deployment(ctx_data)
                         .await?
-                        .cid(ctx)
-                        .await?
-                        .clone(),
+                        .cid()
+                        .to_string(),
                 )
                 .or_default()
                 .push(proof_of_indexing);
@@ -132,10 +133,10 @@ impl QueryRoot {
 
         for poi in indexer_pois {
             let deployment_id = poi.model.sg_deployment_id;
-            let block = poi.block(ctx).await?;
+            let block = poi.block(ctx_data).await?;
 
             let deployment_pois = deployment_to_pois
-                .get(&poi.deployment(ctx).await?.cid(ctx).await?)
+                .get(&poi.deployment(ctx_data).await?.cid().to_string())
                 .context("inconsistent pois table, no pois for deployment")?;
 
             let total_indexers = deployment_pois.len() as u32;
@@ -143,7 +144,7 @@ impl QueryRoot {
             // Calculate POI agreement by creating a map to count unique POIs and their occurrence.
             let mut poi_counts: BTreeMap<PoiBytes, u32> = BTreeMap::new();
             for dp in deployment_pois {
-                *poi_counts.entry(dp.hash(ctx).await?).or_insert(0) += 1;
+                *poi_counts.entry(dp.hash()).or_insert(0) += 1;
             }
 
             // Define consensus and agreement based on the map.
@@ -155,15 +156,15 @@ impl QueryRoot {
             let has_consensus = *max_poi_count > total_indexers / 2;
 
             let n_agreeing_indexers = *poi_counts
-                .get(&poi.hash(ctx).await?)
+                .get(&poi.hash())
                 .context("inconsistent pois table, no matching poi")?;
 
             let n_disagreeing_indexers = total_indexers - n_agreeing_indexers;
 
-            let in_consensus = has_consensus && max_poi == &poi.hash(ctx).await?;
+            let in_consensus = has_consensus && max_poi == &poi.hash();
 
             let ratio = api_types::PoiAgreementRatio {
-                poi: poi.hash(ctx).await?,
+                poi: poi.hash(),
                 deployment_id,
                 block,
                 total_indexers,
@@ -211,11 +212,11 @@ impl QueryRoot {
         }
     }
 
-    async fn networks(&self, ctx: &Context<'_>) -> Result<Vec<Network>> {
+    async fn networks(&self, ctx: &Context<'_>) -> Result<Vec<api_types::Network>> {
         let ctx_data = ctx_data(ctx);
         let networks = ctx_data.store.networks().await?;
 
-        Ok(networks)
+        Ok(networks.into_iter().map(Into::into).collect())
     }
 }
 

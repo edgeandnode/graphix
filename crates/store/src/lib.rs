@@ -9,7 +9,7 @@ use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 #[cfg(tests)]
 pub use diesel_queries;
-use graphix_common_types::{inputs, IndexerAddress, Network, PoiBytes};
+use graphix_common_types::{inputs, IndexerAddress, PoiBytes};
 use models::{FailedQueryRow, NewIndexerNetworkSubgraphMetadata, SgDeployment};
 use uuid::Uuid;
 pub mod models;
@@ -22,7 +22,7 @@ use std::sync::Arc;
 use anyhow::Error;
 use diesel::prelude::*;
 use diesel_async_migrations::{embed_migrations, EmbeddedMigrations};
-use graphix_indexer_client::{Indexer, IndexerId, WritablePoi};
+use graphix_indexer_client::{IndexerClient, IndexerId, WritablePoi};
 pub use loader::StoreLoader;
 use tracing::info;
 
@@ -236,21 +236,14 @@ impl Store {
     /// Returns all networks stored in the database. Filtering is not really
     /// necessary here because the number of networks is expected to be small,
     /// so filtering can be done client-side.
-    pub async fn networks(&self) -> anyhow::Result<Vec<Network>> {
+    pub async fn networks(&self) -> anyhow::Result<Vec<models::Network>> {
         use schema::networks;
 
         let mut conn = self.conn().await?;
-        let rows = networks::table
-            .select((networks::name, networks::caip2))
-            .load::<(String, Option<String>)>(&mut conn)
-            .await?;
-
-        let networks = rows
-            .into_iter()
-            .map(|(name, caip2)| Network { name, caip2 })
-            .collect();
-
-        Ok(networks)
+        Ok(networks::table
+            .select((networks::id, networks::name, networks::caip2))
+            .load(&mut conn)
+            .await?)
     }
 
     /// Returns all indexers stored in the database.
@@ -339,7 +332,10 @@ impl Store {
             .await
     }
 
-    pub async fn write_indexers(&self, indexers: &[impl AsRef<dyn Indexer>]) -> anyhow::Result<()> {
+    pub async fn write_indexers(
+        &self,
+        indexers: &[impl AsRef<dyn IndexerClient>],
+    ) -> anyhow::Result<()> {
         let mut conn = self.conn().await?;
         diesel_queries::write_indexers(&mut conn, indexers).await?;
         Ok(())
@@ -419,7 +415,7 @@ impl Store {
     pub async fn write_graph_node_versions(
         &self,
         versions: HashMap<
-            Arc<dyn Indexer>,
+            Arc<dyn IndexerClient>,
             anyhow::Result<graphix_common_types::GraphNodeCollectedVersion>,
         >,
     ) -> anyhow::Result<()> {

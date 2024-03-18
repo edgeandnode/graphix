@@ -1,4 +1,4 @@
-mod api_types;
+pub mod api_types;
 mod server;
 
 use async_graphql::dataloader::DataLoader;
@@ -12,7 +12,7 @@ pub type ApiSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
 pub struct ApiSchemaContext {
     pub store: Store,
-    pub loader_network: DataLoader<StoreLoader<graphix_common_types::Network>>,
+    pub loader_network: DataLoader<StoreLoader<graphix_store::models::Network>>,
     pub loader_graph_node_collected_version:
         DataLoader<StoreLoader<graphix_store::models::GraphNodeCollectedVersion>>,
     pub loader_indexer_network_subgraph_metadata:

@@ -1,37 +1,70 @@
 use async_graphql::{ComplexObject, Context, Object, SimpleObject};
-use common::{PartialBlock, PoiBytes};
+use common::{IndexerAddress, PoiBytes};
 use graphix_common_types as common;
 use graphix_store::models::{self, IntId};
 use num_traits::cast::ToPrimitive;
 
-use super::ctx_data;
+use super::{ctx_data, ApiSchemaContext};
 
-#[derive(derive_more::From)]
+#[derive(Clone, derive_more::From)]
 pub struct SubgraphDeployment {
     model: models::SgDeployment,
+}
+
+impl SubgraphDeployment {
+    pub fn cid(&self) -> &str {
+        &self.model.cid
+    }
+
+    pub fn name(&self) -> Option<&str> {
+        self.model.name.as_deref()
+    }
 }
 
 #[Object]
 impl SubgraphDeployment {
     /// IPFS CID of the subgraph deployment.
-    pub async fn cid(&self) -> String {
+    #[graphql(name = "cid")]
+    async fn graphql_cid(&self) -> String {
         self.model.cid.clone()
     }
 
     /// Human-readable name of the subgraph deployment, if present.
-    async fn name(&self) -> Option<String> {
+    #[graphql(name = "name")]
+    async fn graphql_name(&self) -> Option<String> {
         self.model.name.clone()
     }
 
     /// Network of the subgraph deployment.
-    async fn network(&self, ctx: &Context<'_>) -> Result<common::Network, String> {
+    async fn network(&self, ctx: &Context<'_>) -> Result<Network, String> {
         let loader = &ctx_data(ctx).loader_network;
 
         loader
             .load_one(self.model.network_id)
             .await
+            .map(|opt| opt.map(Into::into))
             .map_err(Into::into)
-            .and_then(|opt| opt.ok_or_else(|| "Network not found".to_string()))
+            .and_then(|opt: Option<Network>| opt.ok_or_else(|| "Network not found".to_string()))
+    }
+}
+
+/// A network where subgraph deployments are indexed.
+#[derive(derive_more::From)]
+pub struct Network {
+    model: models::Network,
+}
+
+#[Object]
+impl Network {
+    /// Human-readable name of the network, following The Graph naming
+    /// standards.
+    pub async fn name(&self) -> &str {
+        self.model.name.as_str()
+    }
+
+    /// CAIP-2 chain ID of the network, if it exists.
+    pub async fn caip2(&self) -> Option<&str> {
+        self.model.caip2.as_deref()
     }
 }
 
@@ -41,9 +74,33 @@ pub struct Indexer {
     model: models::Indexer,
 }
 
+impl Indexer {
+    pub fn address(&self) -> IndexerAddress {
+        self.model.address
+    }
+
+    pub fn name(&self) -> Option<&str> {
+        self.model.name.as_deref()
+    }
+
+    pub async fn graph_node_version(
+        &self,
+        ctx: &ApiSchemaContext,
+    ) -> Result<Option<models::GraphNodeCollectedVersion>, String> {
+        let loader = &ctx.loader_graph_node_collected_version;
+
+        if let Some(id) = self.model.graph_node_version {
+            loader.load_one(id).await.map_err(Into::into)
+        } else {
+            Ok(None)
+        }
+    }
+}
+
 #[Object]
 impl Indexer {
-    async fn address(&self) -> String {
+    #[graphql(name = "address")]
+    async fn graphql_address(&self) -> String {
         self.model.address.to_string()
     }
 
@@ -52,17 +109,12 @@ impl Indexer {
     }
 
     /// The version of the indexer.
-    async fn graph_node_version(
+    #[graphql(name = "graphNodeVersion")]
+    async fn graphql_graph_node_version(
         &self,
         ctx: &Context<'_>,
     ) -> Result<Option<models::GraphNodeCollectedVersion>, String> {
-        let loader = &ctx_data(ctx).loader_graph_node_collected_version;
-
-        if let Some(id) = self.model.graph_node_version {
-            loader.load_one(id).await.map_err(Into::into)
-        } else {
-            Ok(None)
-        }
+        self.graph_node_version(ctx_data(ctx)).await
     }
 
     /// The network subgraph metadata of the indexer.
@@ -136,56 +188,68 @@ impl IndexerNetworkSubgraphMetadata {
     }
 }
 
+/// A block pointer for a specific network.
 #[derive(derive_more::From)]
 pub struct Block {
     model: models::Block,
 }
 
-#[Object]
 impl Block {
-    async fn number(&self) -> u64 {
+    pub fn number(&self) -> u64 {
         self.model.number.try_into().unwrap()
     }
 
-    async fn hash(&self) -> common::BlockHash {
+    pub fn number_i64(&self) -> i64 {
+        self.model.number
+    }
+
+    pub fn hash(&self) -> common::BlockHash {
+        self.model.hash.clone().into()
+    }
+}
+
+#[Object]
+impl Block {
+    /// The block number (a.k.a. height).
+    #[graphql(name = "number")]
+    async fn graphql_number(&self) -> u64 {
+        self.model.number.try_into().unwrap()
+    }
+
+    /// The block hash, expressed as a hex string with a '0x' prefix.
+    #[graphql(name = "hash")]
+    async fn graphql_hash(&self) -> common::BlockHash {
         self.model.hash.clone().into()
     }
 
-    async fn network(&self, ctx: &Context<'_>) -> Result<common::Network, String> {
+    /// The network that this block belongs to.
+    pub async fn network(&self, ctx: &Context<'_>) -> Result<Network, String> {
         let loader = &ctx_data(ctx).loader_network;
 
         loader
             .load_one(self.model.network_id)
             .await
+            .map(|opt| opt.map(Into::into))
             .map_err(Into::into)
             .and_then(|opt| opt.ok_or_else(|| "Network not found".to_string()))
     }
 }
 
+/// A PoI (proof of indexing) that was queried and collected by Graphix.
 #[derive(derive_more::From)]
 pub struct ProofOfIndexing {
     pub model: models::Poi,
 }
 
-#[Object]
 impl ProofOfIndexing {
-    pub async fn block(&self, ctx: &Context<'_>) -> Result<Block, String> {
-        let loader = &ctx_data(ctx).loader_block;
-
-        loader
-            .load_one(self.model.block_id)
-            .await
-            .map_err(Into::into)
-            .and_then(|opt| opt.ok_or_else(|| "Block not found".to_string()))
-            .map(Into::into)
-    }
-
-    pub async fn hash(&self) -> common::PoiBytes {
+    /// The PoI's hash.
+    pub fn hash(&self) -> common::PoiBytes {
         self.model.poi.clone().into()
     }
 
-    pub async fn deployment(&self, ctx: &Context<'_>) -> Result<SubgraphDeployment, String> {
-        let loader = &ctx_data(ctx).loader_subgraph_deployment;
+    /// The subgraph deployment that this PoI is for.
+    pub async fn deployment(&self, ctx: &ApiSchemaContext) -> Result<SubgraphDeployment, String> {
+        let loader = &ctx.loader_subgraph_deployment;
 
         loader
             .load_one(self.model.sg_deployment_id)
@@ -195,8 +259,21 @@ impl ProofOfIndexing {
             .map(Into::into)
     }
 
-    async fn indexer(&self, ctx: &Context<'_>) -> Result<Indexer, String> {
-        let loader = &ctx_data(ctx).loader_indexer;
+    /// The block height and hash for which this PoI is valid.
+    pub async fn block(&self, ctx: &ApiSchemaContext) -> Result<Block, String> {
+        let loader = &ctx.loader_block;
+
+        loader
+            .load_one(self.model.block_id)
+            .await
+            .map_err(Into::into)
+            .and_then(|opt| opt.ok_or_else(|| "Block not found".to_string()))
+            .map(Into::into)
+    }
+
+    /// The indexer that produced this PoI.
+    pub async fn indexer(&self, ctx: &ApiSchemaContext) -> Result<Indexer, String> {
+        let loader = &ctx.loader_indexer;
 
         loader
             .load_one(self.model.indexer_id)
@@ -204,6 +281,32 @@ impl ProofOfIndexing {
             .map_err(Into::into)
             .and_then(|opt| opt.ok_or_else(|| "Indexer not found".to_string()))
             .map(Into::into)
+    }
+}
+
+#[Object]
+impl ProofOfIndexing {
+    #[graphql(name = "block")]
+    pub async fn graphql_block(&self, ctx: &Context<'_>) -> Result<Block, String> {
+        self.block(ctx_data(ctx)).await
+    }
+
+    #[graphql(name = "hash")]
+    async fn graphql_hash(&self) -> common::PoiBytes {
+        self.hash()
+    }
+
+    #[graphql(name = "deployment")]
+    pub async fn graphql_deployment(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<SubgraphDeployment, String> {
+        self.deployment(ctx_data(ctx)).await
+    }
+
+    #[graphql(name = "indexer")]
+    pub async fn graphql_indexer(&self, ctx: &Context<'_>) -> Result<Indexer, String> {
+        self.indexer(ctx_data(ctx)).await
     }
 }
 

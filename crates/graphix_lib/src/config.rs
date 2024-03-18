@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use graphix_common_types::IndexerAddress;
-use graphix_indexer_client::{Indexer, IndexerId, IndexerInterceptor, RealIndexer};
+use graphix_indexer_client::{IndexerClient, IndexerId, IndexerInterceptor, RealIndexer};
 use graphix_network_sg_client::NetworkSubgraphClient;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -206,8 +206,8 @@ pub enum ConfigSource {
 pub async fn config_to_indexers(
     config: Config,
     metrics: &PrometheusMetrics,
-) -> anyhow::Result<Vec<Arc<dyn Indexer>>> {
-    let mut indexers: Vec<Arc<dyn Indexer>> = vec![];
+) -> anyhow::Result<Vec<Arc<dyn IndexerClient>>> {
+    let mut indexers: Vec<Arc<dyn IndexerClient>> = vec![];
 
     // First, configure all the real, static indexers.
     for config in config.indexers() {
