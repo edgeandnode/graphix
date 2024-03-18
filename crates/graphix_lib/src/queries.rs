@@ -82,6 +82,7 @@ pub async fn query_indexing_statuses(
 }
 
 /// Queries all `indexers` for their `graph-node` versions.
+#[instrument(skip_all)]
 pub async fn query_graph_node_versions(
     indexers: &[Arc<dyn IndexerClient>],
     _metrics: &PrometheusMetrics,

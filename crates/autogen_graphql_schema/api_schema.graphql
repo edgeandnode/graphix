@@ -59,6 +59,15 @@ type BisectionRunReport {
 
 type Block {
 	"""
+	Returns an estimate of the timestamp of the block, based on the
+	network's block speed and the block's number.
+	"""
+	estimatedTimestamp: DateTime
+	"""
+	Returns an URL to a block explorer page for the block, if configured.
+	"""
+	blockExplorerUrl: String
+	"""
 	The block number (a.k.a. height).
 	"""
 	number: Int!
@@ -86,6 +95,13 @@ input BlockRange {
 	end: Int
 }
 
+
+"""
+Implement the DateTime<Utc> scalar
+
+The input/output is a string in RFC3339 format.
+"""
+scalar DateTime
 
 type Deployment {
 	id: String!

@@ -105,11 +105,3 @@ impl RangeBounds<u64> for BlockRange {
         }
     }
 }
-
-#[derive(InputObject)]
-#[graphql(input_name = "PoiCrossCheckReportRequest")]
-struct PoiCrossCheckReportRequest {
-    deployments: Vec<String>,
-    indexer1: Option<String>,
-    indexer2: Option<String>,
-}

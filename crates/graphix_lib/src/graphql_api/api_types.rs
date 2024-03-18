@@ -19,6 +19,17 @@ impl SubgraphDeployment {
     pub fn name(&self) -> Option<&str> {
         self.model.name.as_deref()
     }
+
+    pub async fn network(&self, ctx: &ApiSchemaContext) -> Result<Network, String> {
+        let loader = &ctx.loader_network;
+
+        loader
+            .load_one(self.model.network_id)
+            .await
+            .map(|opt| opt.map(Into::into))
+            .map_err(Into::into)
+            .and_then(|opt: Option<Network>| opt.ok_or_else(|| "Network not found".to_string()))
+    }
 }
 
 #[Object]
@@ -36,15 +47,9 @@ impl SubgraphDeployment {
     }
 
     /// Network of the subgraph deployment.
-    async fn network(&self, ctx: &Context<'_>) -> Result<Network, String> {
-        let loader = &ctx_data(ctx).loader_network;
-
-        loader
-            .load_one(self.model.network_id)
-            .await
-            .map(|opt| opt.map(Into::into))
-            .map_err(Into::into)
-            .and_then(|opt: Option<Network>| opt.ok_or_else(|| "Network not found".to_string()))
+    #[graphql(name = "network")]
+    async fn graphql_network(&self, ctx: &Context<'_>) -> Result<Network, String> {
+        self.network(ctx_data(ctx)).await
     }
 }
 
@@ -54,17 +59,29 @@ pub struct Network {
     model: models::Network,
 }
 
+impl Network {
+    pub fn name(&self) -> &str {
+        self.model.name.as_str()
+    }
+
+    pub fn caip2(&self) -> Option<&str> {
+        self.model.caip2.as_deref()
+    }
+}
+
 #[Object]
 impl Network {
     /// Human-readable name of the network, following The Graph naming
     /// standards.
-    pub async fn name(&self) -> &str {
-        self.model.name.as_str()
+    #[graphql(name = "name")]
+    pub async fn graphql_name(&self) -> &str {
+        self.name()
     }
 
     /// CAIP-2 chain ID of the network, if it exists.
-    pub async fn caip2(&self) -> Option<&str> {
-        self.model.caip2.as_deref()
+    #[graphql(name = "caip2")]
+    pub async fn graphql_caip2(&self) -> Option<&str> {
+        self.caip2()
     }
 }
 
@@ -210,6 +227,36 @@ impl Block {
 
 #[Object]
 impl Block {
+    /// Returns an estimate of the timestamp of the block, based on the
+    /// network's block speed and the block's number.
+    #[graphql(name = "estimatedTimestamp")]
+    pub async fn graphql_estimated_timestamp(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<chrono::DateTime<chrono::Utc>> {
+        let network = self.network(ctx).await.ok()?;
+        let chain_config = ctx_data(ctx).config.chains.get(network.name())?;
+        let speed_config = chain_config.speed.as_ref()?;
+
+        let duration_per_block =
+            chrono::Duration::milliseconds(speed_config.avg_block_time_in_msecs.try_into().ok()?);
+
+        Some(speed_config.sample_timestamp + duration_per_block * self.number().try_into().ok()?)
+    }
+
+    /// Returns an URL to a block explorer page for the block, if configured.
+    #[graphql(name = "blockExplorerUrl")]
+    pub async fn graphql_block_explorer_url(&self, ctx: &Context<'_>) -> Option<String> {
+        let network = self.network(ctx).await.ok()?;
+        let chain_config = ctx_data(ctx).config.chains.get(network.name())?;
+
+        let block_explorer_url_template = chain_config
+            .block_explorer_url_template_for_block
+            .as_ref()?;
+
+        Some(block_explorer_url_template.url_for_block(self.number()))
+    }
+
     /// The block number (a.k.a. height).
     #[graphql(name = "number")]
     async fn graphql_number(&self) -> u64 {
