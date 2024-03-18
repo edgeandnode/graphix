@@ -42,6 +42,25 @@ impl async_graphql::dataloader::Loader<BigIntId> for StoreLoader<models::Block> 
 }
 
 #[async_trait]
+impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::Poi> {
+    type Value = models::Poi;
+    type Error = String;
+
+    async fn load(&self, keys: &[IntId]) -> Result<HashMap<IntId, Self::Value>, Self::Error> {
+        use schema::pois;
+
+        Ok(pois::table
+            .filter(pois::id.eq_any(keys))
+            .load::<models::Poi>(&mut self.store.conn_err_string().await?)
+            .await
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .map(|poi| (poi.id, poi))
+            .collect())
+    }
+}
+
+#[async_trait]
 impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::SgDeployment> {
     type Value = models::SgDeployment;
     type Error = String;

@@ -49,7 +49,7 @@ impl QueryRoot {
         let ctx_data = ctx_data(ctx);
         let indexers = ctx_data.store.indexers(filter).await?;
 
-        Ok(indexers.into_iter().map(|(i, _version)| i.into()).collect())
+        Ok(indexers.into_iter().map(Into::into).collect())
     }
 
     /// Filters through all PoIs ever collected by this Graphix
@@ -132,9 +132,6 @@ impl QueryRoot {
         let mut agreement_ratios: Vec<api_types::PoiAgreementRatio> = Vec::new();
 
         for poi in indexer_pois {
-            let deployment_id = poi.model.sg_deployment_id;
-            let block = poi.block(ctx_data).await?;
-
             let deployment_pois = deployment_to_pois
                 .get(&poi.deployment(ctx_data).await?.cid().to_string())
                 .context("inconsistent pois table, no pois for deployment")?;
@@ -164,9 +161,7 @@ impl QueryRoot {
             let in_consensus = has_consensus && max_poi == &poi.hash();
 
             let ratio = api_types::PoiAgreementRatio {
-                poi: poi.hash(),
-                deployment_id,
-                block,
+                poi_id: poi.model.id,
                 total_indexers,
                 n_agreeing_indexers,
                 n_disagreeing_indexers,

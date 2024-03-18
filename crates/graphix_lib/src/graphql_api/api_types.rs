@@ -1,5 +1,5 @@
 use async_graphql::{ComplexObject, Context, Object, SimpleObject};
-use common::{IndexerAddress, PoiBytes};
+use common::IndexerAddress;
 use graphix_common_types as common;
 use graphix_store::models::{self, IntId};
 use num_traits::cast::ToPrimitive;
@@ -238,16 +238,15 @@ impl Block {
 /// A PoI (proof of indexing) that was queried and collected by Graphix.
 #[derive(derive_more::From)]
 pub struct ProofOfIndexing {
+    // FIXME: shouldn't be public.
     pub model: models::Poi,
 }
 
 impl ProofOfIndexing {
-    /// The PoI's hash.
     pub fn hash(&self) -> common::PoiBytes {
         self.model.poi.clone().into()
     }
 
-    /// The subgraph deployment that this PoI is for.
     pub async fn deployment(&self, ctx: &ApiSchemaContext) -> Result<SubgraphDeployment, String> {
         let loader = &ctx.loader_subgraph_deployment;
 
@@ -259,7 +258,6 @@ impl ProofOfIndexing {
             .map(Into::into)
     }
 
-    /// The block height and hash for which this PoI is valid.
     pub async fn block(&self, ctx: &ApiSchemaContext) -> Result<Block, String> {
         let loader = &ctx.loader_block;
 
@@ -271,7 +269,6 @@ impl ProofOfIndexing {
             .map(Into::into)
     }
 
-    /// The indexer that produced this PoI.
     pub async fn indexer(&self, ctx: &ApiSchemaContext) -> Result<Indexer, String> {
         let loader = &ctx.loader_indexer;
 
@@ -286,26 +283,27 @@ impl ProofOfIndexing {
 
 #[Object]
 impl ProofOfIndexing {
+    /// The block height and hash for which this PoI is valid.
     #[graphql(name = "block")]
-    pub async fn graphql_block(&self, ctx: &Context<'_>) -> Result<Block, String> {
+    async fn graphql_block(&self, ctx: &Context<'_>) -> Result<Block, String> {
         self.block(ctx_data(ctx)).await
     }
 
+    /// The PoI's hash.
     #[graphql(name = "hash")]
     async fn graphql_hash(&self) -> common::PoiBytes {
         self.hash()
     }
 
+    /// The subgraph deployment that this PoI is for.
     #[graphql(name = "deployment")]
-    pub async fn graphql_deployment(
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<SubgraphDeployment, String> {
+    async fn graphql_deployment(&self, ctx: &Context<'_>) -> Result<SubgraphDeployment, String> {
         self.deployment(ctx_data(ctx)).await
     }
 
+    /// The indexer that produced this PoI.
     #[graphql(name = "indexer")]
-    pub async fn graphql_indexer(&self, ctx: &Context<'_>) -> Result<Indexer, String> {
+    async fn graphql_indexer(&self, ctx: &Context<'_>) -> Result<Indexer, String> {
         self.indexer(ctx_data(ctx)).await
     }
 }
@@ -313,13 +311,11 @@ impl ProofOfIndexing {
 /// A specific indexer can use `PoiAgreementRatio` to check in how much agreement it is with other
 /// indexers, given its own poi for each deployment. A consensus currently means a majority of
 /// indexers agreeing on a particular POI.
-#[derive(SimpleObject)]
+#[derive(SimpleObject, Debug)]
 #[graphql(complex)]
 pub struct PoiAgreementRatio {
-    pub poi: PoiBytes,
     #[graphql(skip)]
-    pub deployment_id: IntId,
-    pub block: Block,
+    pub poi_id: IntId,
 
     /// Total number of indexers that have live pois for the deployment.
     pub total_indexers: u32,
@@ -340,14 +336,16 @@ pub struct PoiAgreementRatio {
 
 #[ComplexObject]
 impl PoiAgreementRatio {
-    async fn deployment(&self, ctx: &Context<'_>) -> Result<SubgraphDeployment, String> {
-        let loader = &ctx_data(ctx).loader_subgraph_deployment;
+    /// The PoI in question.
+    #[graphql(name = "poi")]
+    async fn graphql_poi(&self, ctx: &Context<'_>) -> Result<ProofOfIndexing, String> {
+        let loader = &ctx_data(ctx).loader_poi;
 
         loader
-            .load_one(self.deployment_id)
+            .load_one(self.poi_id)
             .await
             .map_err(Into::into)
-            .and_then(|opt| opt.ok_or_else(|| "Subgraph deployment not found".to_string()))
+            .and_then(|opt| opt.ok_or_else(|| "PoI not found".to_string()))
             .map(Into::into)
     }
 }

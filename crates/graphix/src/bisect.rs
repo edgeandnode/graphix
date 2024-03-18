@@ -229,7 +229,6 @@ pub async fn handle_divergence_investigation_requests(
 /// Just a group of data related to a PoI, that is needed to perform a
 /// bisection.
 struct PoiWithRelatedData {
-    poi_bytes: PoiBytes,
     poi: api_types::ProofOfIndexing,
     deployment: api_types::SubgraphDeployment,
     block: api_types::Block,
@@ -272,7 +271,6 @@ impl PoiWithRelatedData {
             .ok_or_else(|| anyhow!("indexer not found"))?;
 
         Ok(Some(Self {
-            poi_bytes: poi_bytes.clone(),
             poi,
             deployment,
             block,
