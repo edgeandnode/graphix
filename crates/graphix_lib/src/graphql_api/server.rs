@@ -17,26 +17,28 @@ impl QueryRoot {
     async fn deployments(
         &self,
         ctx: &Context<'_>,
+        #[graphql(desc = "The network name of the subgraph deployments to fetch")]
         network_name: Option<String>,
         name: Option<String>,
         ipfs_cid: Option<String>,
-        limit: Option<u16>,
+        #[graphql(
+            default = 100,
+            validator(maximum = 250),
+            desc = "Upper limit on the number of shown results."
+        )]
+        limit: u16,
     ) -> Result<Vec<api_types::SubgraphDeployment>> {
+        let ctx_data = ctx_data(ctx);
+
         let filter = inputs::SgDeploymentsQuery {
             network_name,
             name,
             ipfs_cid,
-            limit,
+            limit: Some(limit),
         };
+        let deployments = ctx_data.store.sg_deployments(filter).await?;
 
-        let ctx_data = ctx_data(ctx);
-        Ok(ctx_data
-            .store
-            .sg_deployments(filter)
-            .await?
-            .into_iter()
-            .map(Into::into)
-            .collect())
+        Ok(deployments.into_iter().map(Into::into).collect())
     }
 
     /// Fetches all tracked indexers in this Graphix instance and filters them
@@ -44,9 +46,21 @@ impl QueryRoot {
     async fn indexers(
         &self,
         ctx: &Context<'_>,
-        filter: inputs::IndexersQuery,
+        #[graphql(desc = "The address of the indexer, encoded as a hex string with a '0x' prefix")]
+        address: Option<IndexerAddress>,
+        #[graphql(
+            default = 100,
+            validator(maximum = 250),
+            desc = "Upper limit on the number of shown results."
+        )]
+        limit: u16,
     ) -> Result<Vec<api_types::Indexer>> {
         let ctx_data = ctx_data(ctx);
+
+        let filter = inputs::IndexersQuery {
+            address,
+            limit: Some(limit),
+        };
         let indexers = ctx_data.store.indexers(filter).await?;
 
         Ok(indexers.into_iter().map(Into::into).collect())
@@ -57,9 +71,34 @@ impl QueryRoot {
     async fn proofs_of_indexing(
         &self,
         ctx: &Context<'_>,
-        filter: inputs::PoisQuery,
+        #[graphql(
+            desc = "Restricts the query to PoIs for subgraph deployments that index the given chain name."
+        )]
+        network: Option<String>,
+        #[graphql(
+            default,
+            desc = "Restricts the query to PoIs for these given subgraph deployments (by hex-encoded IPFS CID with '0x' prefix)."
+        )]
+        deployments: Vec<String>,
+        #[graphql(
+            desc = "Restricts the query to PoIs that were collected in the given block range."
+        )]
+        block_range: Option<inputs::BlockRange>,
+        #[graphql(
+            default = 100,
+            validator(maximum = 250),
+            desc = "Upper limit on the number of shown results."
+        )]
+        limit: u16,
     ) -> Result<Vec<api_types::ProofOfIndexing>> {
         let ctx_data = ctx_data(ctx);
+
+        let filter = inputs::PoisQuery {
+            network,
+            deployments,
+            block_range,
+            limit: Some(limit),
+        };
         let pois = ctx_data
             .store
             .pois(&filter.deployments, filter.block_range, filter.limit)
@@ -178,6 +217,9 @@ impl QueryRoot {
     async fn divergence_investigation_report(
         &self,
         ctx: &Context<'_>,
+        #[graphql(
+            desc = "The UUID of the divergence investigation report to fetch. This is the UUID that was returned by the `launchDivergenceInvestigation` mutation."
+        )]
         uuid: Uuid,
     ) -> Result<Option<DivergenceInvestigationReport>> {
         let ctx_data = ctx_data(ctx);
@@ -207,6 +249,8 @@ impl QueryRoot {
         }
     }
 
+    /// Returns all networks known to Graphix. Subgraphs indexing other networks
+    /// won't be available in this Graphix database.
     async fn networks(&self, ctx: &Context<'_>) -> Result<Vec<api_types::Network>> {
         let ctx_data = ctx_data(ctx);
         let networks = ctx_data.store.networks().await?;
@@ -233,14 +277,42 @@ pub struct MutationRoot;
 
 #[Object]
 impl MutationRoot {
+    /// Launches a divergence investigation, which is a process of comparing
+    /// two or more PoIs (up to four) and running a binary search to find the first
+    /// diverging block.
     async fn launch_divergence_investigation(
         &self,
         ctx: &Context<'_>,
-        req: inputs::DivergenceInvestigationRequest,
+        #[graphql(
+            validator(min_items = 2, max_items = 4),
+            desc = "A list of PoI hashes that should be investigated for divergence. If this list contains more than two PoIs, a new bisection run will be performed for each unordered pair of PoIs."
+        )]
+        pois: Vec<PoiBytes>,
+        #[graphql(
+            default = true,
+            desc = "Indicates whether to collect `graph-node`'s block cache contents during bisection runs to include in the report."
+        )]
+        query_block_caches: bool,
+        #[graphql(
+            default = true,
+            desc = "Indicates whether to collect `graph-node`'s eth call cache contents during bisection runs to include in the report."
+        )]
+        query_eth_call_caches: bool,
+        #[graphql(
+            default = true,
+            desc = "Indicates whether to collect `graph-node`'s entity changes during bisection runs to include in the report."
+        )]
+        query_entity_changes: bool,
     ) -> Result<DivergenceInvestigationReport> {
         let ctx_data = ctx_data(ctx);
         let store = &ctx_data.store;
 
+        let req = inputs::DivergenceInvestigationRequest {
+            pois,
+            query_block_caches,
+            query_eth_call_caches,
+            query_entity_changes,
+        };
         let request_serialized = serde_json::to_value(req).unwrap();
         let uuid = store
             .create_divergence_investigation_request(request_serialized)
@@ -274,6 +346,7 @@ impl MutationRoot {
         })
     }
 
+    /// Completely deletes a network and all related data (PoIs, indexers, subgraphs, etc.).
     async fn delete_network(&self, ctx: &Context<'_>, network: String) -> Result<String> {
         let ctx_data = ctx_data(ctx);
         ctx_data.store.delete_network(&network).await?;

@@ -1,3 +1,8 @@
+//! Logic related to the main indexing loop performed by Graphix:
+//!  1. Query `indexingStatuses` for all indexers.
+//!  2. Query PoIs for recent common blocks across all indexers.
+//!  3. Store the PoIs in the database.
+
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -15,26 +20,30 @@ use crate::PrometheusMetrics;
 /// Queries all `indexingStatuses` for all the given indexers.
 #[instrument(skip_all)]
 pub async fn query_indexing_statuses(
-    indexers: Vec<Arc<dyn IndexerClient>>,
+    indexers: &[Arc<dyn IndexerClient>],
     metrics: &PrometheusMetrics,
 ) -> Vec<IndexingStatus> {
-    let indexer_count = indexers.len();
-    debug!(indexers = indexer_count, "Querying indexing statuses...");
+    let indexers_count = indexers.len();
+    debug!(
+        indexers_count = indexers_count,
+        "Querying indexing statuses..."
+    );
 
-    let span = span!(Level::TRACE, "query_indexing_statuses");
-    let enter_span = span.enter();
+    let indexing_statuses_results = indexers
+        .iter()
+        .map(|indexer| async move { (indexer.clone(), indexer.clone().indexing_statuses().await) })
+        .collect::<FuturesUnordered<_>>()
+        .collect::<Vec<_>>()
+        .await;
 
-    let mut futures = FuturesUnordered::new();
-    for indexer in indexers {
-        futures.push(async move { (indexer.clone(), indexer.indexing_statuses().await) });
-    }
+    assert_eq!(indexing_statuses_results.len(), indexers.len());
 
     let mut indexing_statuses = vec![];
     let mut query_successes = 0;
     let mut query_failures = 0;
 
-    while let Some((indexer, query_res)) = futures.next().await {
-        match query_res {
+    for (indexer, query_result) in indexing_statuses_results {
+        match query_result {
             Ok(statuses) => {
                 query_successes += 1;
                 metrics
@@ -68,10 +77,10 @@ pub async fn query_indexing_statuses(
         }
     }
 
-    std::mem::drop(enter_span);
+    assert_eq!(query_failures + query_successes, indexers.len());
 
     info!(
-        indexers = indexer_count,
+        indexers_count,
         indexing_statuses = indexing_statuses.len(),
         %query_successes,
         %query_failures,
@@ -92,13 +101,18 @@ pub async fn query_graph_node_versions(
 
     info!("Querying graph-node versions...");
 
-    let mut futures = FuturesUnordered::new();
-    for indexer in indexers {
-        futures.push(async move { (indexer.clone(), indexer.clone().version().await) });
-    }
+    let graph_node_versions_results = indexers
+        .iter()
+        .map(|indexer| async move { (indexer.clone(), indexer.clone().version().await) })
+        .collect::<FuturesUnordered<_>>()
+        .collect::<Vec<_>>()
+        .await;
+
+    assert_eq!(graph_node_versions_results.len(), indexers.len());
 
     let mut versions = HashMap::new();
-    while let Some((indexer, version_result)) = futures.next().await {
+
+    for (indexer, version_result) in graph_node_versions_results {
         match &version_result {
             Ok(version) => {
                 trace!(
@@ -116,6 +130,7 @@ pub async fn query_graph_node_versions(
                 );
             }
         }
+
         versions.insert(indexer, version_result);
     }
 
@@ -127,14 +142,12 @@ pub async fn query_graph_node_versions(
     versions
 }
 
+#[instrument(skip_all)]
 pub async fn query_proofs_of_indexing(
     indexing_statuses: Vec<IndexingStatus>,
     block_choice_policy: BlockChoicePolicy,
 ) -> Vec<ProofOfIndexing> {
     info!("Query POIs for recent common blocks across indexers");
-
-    let span = span!(Level::TRACE, "query_proofs_of_indexing");
-    let _enter_span = span.enter();
 
     // Identify all indexers
     let indexers = indexing_statuses

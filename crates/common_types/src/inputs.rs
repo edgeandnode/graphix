@@ -16,30 +16,20 @@ pub struct DivergenceInvestigationRequest {
     /// A list of PoI hashes that should be investigated for divergence.
     /// If this list contains more than two PoIs, a new bisection run will be performed
     /// for each unordered pair of PoIs.
+    #[graphql(validator(max_items = 4))]
     pub pois: Vec<PoiBytes>,
     /// Indicates whether to collect `graph-node`'s block cache contents
     /// during bisection runs to include in the report.
-    pub query_block_caches: Option<bool>,
+    #[graphql(default = true)]
+    pub query_block_caches: bool,
     /// Indicates whether to collect `graph-node`'s eth call cache contents
     /// during bisection runs to include in the report.
-    pub query_eth_call_caches: Option<bool>,
+    #[graphql(default = true)]
+    pub query_eth_call_caches: bool,
     /// Indicates whether to collect `graph-node`'s entity changes during
     /// bisection runs to include in the report.
-    pub query_entity_changes: Option<bool>,
-}
-
-impl DivergenceInvestigationRequest {
-    pub fn query_block_caches(&self) -> bool {
-        self.query_block_caches.unwrap_or(true)
-    }
-
-    pub fn query_eth_call_caches(&self) -> bool {
-        self.query_eth_call_caches.unwrap_or(true)
-    }
-
-    pub fn query_entity_changes(&self) -> bool {
-        self.query_entity_changes.unwrap_or(true)
-    }
+    #[graphql(default = true)]
+    pub query_entity_changes: bool,
 }
 
 /// A filter for subgraph deployments.

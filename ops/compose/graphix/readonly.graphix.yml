@@ -4,16 +4,19 @@ graphql:
 
 chains:
   mainnet:
+    caip2: "eip155:1"
     blockExplorerUrlTemplateForBlock: "https://etherscan.io/block/{block}"
     sampleBlockNumber: 19280735
     sampleTimestamp: "2024-02-22T05:19:11+01:00"
     avgBlockTimeInMsecs: 12060 # https://etherscan.io/chart/blocktime
   arbitrum-one:
+    caip2: "eip155:42161"
     blockExplorerUrlTemplateForBlock: "https://arbiscan.io/block/{block}"
     sampleBlockHeight: 159776355
     sampleTimestamp: "2023-12-13T18:24:48+01:00"
     avgBlockTimeInMsecs: 260 # https://arbiscan.io/chart/blocktime
   optimism:
+    caip2: "eip155:10"
     blockExplorerUrlTemplateForBlock: "https://optimistic.etherscan.io/block/{block}"
     sampleBlockHeight: 116513382
     sampleTimestamp: "2024-02-22T19:12:21+01:00"

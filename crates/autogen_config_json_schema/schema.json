@@ -87,6 +87,12 @@
             }
           ]
         },
+        "caip2": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "sampleBlockHeight": {
           "type": "integer",
           "format": "uint64",

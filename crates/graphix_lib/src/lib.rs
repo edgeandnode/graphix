@@ -1,8 +1,8 @@
 pub mod block_choice;
 pub mod config;
 pub mod graphql_api;
+pub mod indexing_loop;
 mod prometheus_metrics;
-pub mod queries;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;

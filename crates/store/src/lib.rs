@@ -47,10 +47,13 @@ impl Store {
     /// Connects to the database and runs all pending migrations.
     pub async fn new(db_url: &str) -> anyhow::Result<Self> {
         info!("Initializing database connection pool");
+
         let manager = AsyncDieselConnectionManager::new(db_url);
         let pool = Pool::builder(manager).build()?;
         let store = Self { pool };
+
         store.run_migrations().await?;
+
         Ok(store)
     }
 
@@ -120,6 +123,21 @@ impl Store {
         }
 
         Ok(query.load::<SgDeployment>(&mut self.conn().await?).await?)
+    }
+
+    pub async fn create_networks_if_missing(&self, networks: &[NewNetwork]) -> anyhow::Result<()> {
+        use schema::networks;
+
+        let mut conn = self.conn().await?;
+
+        // batch insert
+        diesel::insert_into(networks::table)
+            .values(networks)
+            .on_conflict_do_nothing()
+            .execute(&mut conn)
+            .await?;
+
+        Ok(())
     }
 
     pub async fn create_sg_deployment(
@@ -410,16 +428,13 @@ impl Store {
         >,
     ) -> anyhow::Result<()> {
         use schema::graph_node_collected_versions;
-        for (indexer, version) in versions {
+        for version in versions.values() {
             let conn = &mut self.conn().await?;
-
-            let indexer_id =
-                diesel_queries::get_indexer_id(conn, indexer.name(), &indexer.address()).await?;
 
             let new_version = match version {
                 Ok(v) => models::NewGraphNodeCollectedVersion {
-                    version_string: v.version,
-                    version_commit: v.commit,
+                    version_string: v.version.clone(),
+                    version_commit: v.commit.clone(),
                     error_response: None,
                 },
                 Err(err) => models::NewGraphNodeCollectedVersion {

@@ -1,3 +1,5 @@
+//! Graphix configuration parsing and validation.
+
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fs::File;
@@ -26,7 +28,7 @@ pub struct GraphQlConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct BlockExplorerUrlTemplateForBlock(pub String);
+pub struct BlockExplorerUrlTemplateForBlock(String);
 
 impl BlockExplorerUrlTemplateForBlock {
     pub fn url_for_block(&self, block_height: u64) -> String {
@@ -46,6 +48,7 @@ pub struct ChainSpeedConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ChainConfig {
+    pub caip2: Option<String>,
     #[serde(flatten, default)]
     pub speed: Option<ChainSpeedConfig>,
     #[serde(default)]

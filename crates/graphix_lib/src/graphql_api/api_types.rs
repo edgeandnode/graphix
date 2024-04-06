@@ -223,6 +223,19 @@ impl Block {
     pub fn hash(&self) -> common::BlockHash {
         self.model.hash.clone().into()
     }
+
+    pub async fn network(&self, ctx: &ApiSchemaContext) -> Result<Network, String> {
+        let loader = &ctx.loader_network;
+
+        loader
+            .load_one(self.model.network_id)
+            .await
+            .map_err(Into::into)
+            .and_then(|opt| {
+                opt.ok_or_else(|| "Network not found".to_string())
+                    .map(Into::into)
+            })
+    }
 }
 
 #[Object]
@@ -234,7 +247,7 @@ impl Block {
         &self,
         ctx: &Context<'_>,
     ) -> Option<chrono::DateTime<chrono::Utc>> {
-        let network = self.network(ctx).await.ok()?;
+        let network = self.network(ctx_data(ctx)).await.ok()?;
         let chain_config = ctx_data(ctx).config.chains.get(network.name())?;
         let speed_config = chain_config.speed.as_ref()?;
 
@@ -247,7 +260,7 @@ impl Block {
     /// Returns an URL to a block explorer page for the block, if configured.
     #[graphql(name = "blockExplorerUrl")]
     pub async fn graphql_block_explorer_url(&self, ctx: &Context<'_>) -> Option<String> {
-        let network = self.network(ctx).await.ok()?;
+        let network = self.network(ctx_data(ctx)).await.ok()?;
         let chain_config = ctx_data(ctx).config.chains.get(network.name())?;
 
         let block_explorer_url_template = chain_config
@@ -270,22 +283,16 @@ impl Block {
     }
 
     /// The network that this block belongs to.
-    pub async fn network(&self, ctx: &Context<'_>) -> Result<Network, String> {
-        let loader = &ctx_data(ctx).loader_network;
-
-        loader
-            .load_one(self.model.network_id)
-            .await
-            .map(|opt| opt.map(Into::into))
-            .map_err(Into::into)
-            .and_then(|opt| opt.ok_or_else(|| "Network not found".to_string()))
+    #[graphql(name = "network")]
+    pub async fn graphql_network(&self, ctx: &Context<'_>) -> Result<Network, String> {
+        self.network(ctx_data(ctx)).await
     }
 }
 
 /// A PoI (proof of indexing) that was queried and collected by Graphix.
 #[derive(derive_more::From)]
 pub struct ProofOfIndexing {
-    // FIXME: shouldn't be public.
+    // FIXME: ideally shouldn't be public.
     pub model: models::Poi,
 }
 

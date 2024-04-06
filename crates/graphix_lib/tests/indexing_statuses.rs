@@ -1,8 +1,8 @@
 use futures::stream::FuturesUnordered;
 use futures::{future, StreamExt};
 use graphix_indexer_client::IndexingStatus;
+use graphix_lib::indexing_loop::query_indexing_statuses;
 use graphix_lib::metrics;
-use graphix_lib::queries::query_indexing_statuses;
 use graphix_lib::test_utils::fast_rng;
 use graphix_lib::test_utils::gen::*;
 
@@ -29,7 +29,7 @@ async fn indexing_statuses() {
             .flatten()
             .collect::<Vec<_>>();
 
-        let queried_statuses: Vec<IndexingStatus> = query_indexing_statuses(indexers, metrics())
+        let queried_statuses: Vec<IndexingStatus> = query_indexing_statuses(&indexers, metrics())
             .await
             .into_iter()
             .collect();

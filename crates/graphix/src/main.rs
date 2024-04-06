@@ -17,9 +17,9 @@ use clap::Parser;
 use graphix_indexer_client::{IndexerClient, IndexerId};
 use graphix_lib::config::Config;
 use graphix_lib::graphql_api::{self, ApiSchemaContext};
-use graphix_lib::queries::{query_indexing_statuses, query_proofs_of_indexing};
+use graphix_lib::indexing_loop::{query_indexing_statuses, query_proofs_of_indexing};
 use graphix_lib::{config, metrics, PrometheusExporter, GRAPHIX_VERSION};
-use graphix_store::{PoiLiveness, Store};
+use graphix_store::{models, PoiLiveness, Store};
 use prometheus_exporter::prometheus;
 use tokio::net::TcpListener;
 use tokio::sync::watch;
@@ -72,6 +72,18 @@ async fn main() -> anyhow::Result<()> {
     let (tx_indexers, rx_indexers) = watch::channel(vec![]);
     let ctx = ApiSchemaContext::new(store_clone.clone(), config.clone());
 
+    {
+        let networks: Vec<models::NewNetwork> = config
+            .chains
+            .iter()
+            .map(|(name, config)| models::NewNetwork {
+                name: name.clone(),
+                caip2: config.caip2.clone(),
+            })
+            .collect();
+        store_clone.create_networks_if_missing(&networks).await?;
+    }
+
     tokio::spawn(async move {
         handle_divergence_investigation_requests(&store_clone, rx_indexers, &ctx)
             .await
@@ -92,10 +104,10 @@ async fn main() -> anyhow::Result<()> {
         tx_indexers.send(indexers.clone())?;
 
         let graph_node_versions =
-            graphix_lib::queries::query_graph_node_versions(&indexers, metrics()).await;
+            graphix_lib::indexing_loop::query_graph_node_versions(&indexers, metrics()).await;
         store.write_graph_node_versions(graph_node_versions).await?;
 
-        let indexing_statuses = query_indexing_statuses(indexers, metrics()).await;
+        let indexing_statuses = query_indexing_statuses(&indexers, metrics()).await;
 
         info!("Monitor proofs of indexing");
         let pois = query_proofs_of_indexing(indexing_statuses, config.block_choice_policy).await;

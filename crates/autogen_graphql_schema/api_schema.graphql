@@ -143,34 +143,6 @@ type DivergenceInvestigationReport {
 }
 
 """
-The type of a new divergence investigation request that the API user
-can submit.
-"""
-input DivergenceInvestigationRequest {
-	"""
-	A list of PoI hashes that should be investigated for divergence.
-	If this list contains more than two PoIs, a new bisection run will be performed
-	for each unordered pair of PoIs.
-	"""
-	pois: [HexString!]!
-	"""
-	Indicates whether to collect `graph-node`'s block cache contents
-	during bisection runs to include in the report.
-	"""
-	queryBlockCaches: Boolean
-	"""
-	Indicates whether to collect `graph-node`'s eth call cache contents
-	during bisection runs to include in the report.
-	"""
-	queryEthCallCaches: Boolean
-	"""
-	Indicates whether to collect `graph-node`'s entity changes during
-	bisection runs to include in the report.
-	"""
-	queryEntityChanges: Boolean
-}
-
-"""
 Once Graphix launches a PoI divergence investigation, its status value
 can be one of these.
 """
@@ -231,25 +203,35 @@ type IndexerNetworkSubgraphMetadata {
 	lastUpdatedAt: NaiveDateTime!
 }
 
-"""
-A filter for indexers.
-"""
-input IndexersQuery {
-	"""
-	The address of the indexer, encoded as a hex string with a '0x'
-	prefix.
-	"""
-	address: HexString
-	"""
-	Upper limit on the number of shown results.
-	"""
-	limit: Int
-}
-
 
 type MutationRoot {
-	launchDivergenceInvestigation(req: DivergenceInvestigationRequest!): DivergenceInvestigationReport!
+	"""
+	Launches a divergence investigation, which is a process of comparing
+	two or more PoIs (up to four) and running a binary search to find the first
+	diverging block.
+	"""
+	launchDivergenceInvestigation(
+		"""
+		A list of PoI hashes that should be investigated for divergence. If this list contains more than two PoIs, a new bisection run will be performed for each unordered pair of PoIs.
+		"""
+		pois: [HexString!]!,
+		"""
+		Indicates whether to collect `graph-node`'s block cache contents during bisection runs to include in the report.
+		"""
+		queryBlockCaches: Boolean! = true,
+		"""
+		Indicates whether to collect `graph-node`'s eth call cache contents during bisection runs to include in the report.
+		"""
+		queryEthCallCaches: Boolean! = true,
+		"""
+		Indicates whether to collect `graph-node`'s entity changes during bisection runs to include in the report.
+		"""
+		queryEntityChanges: Boolean! = true
+	): DivergenceInvestigationReport!
 	setDeploymentName(deploymentIpfsCid: String!, name: String!): Deployment!
+	"""
+	Completely deletes a network and all related data (PoIs, indexers, subgraphs, etc.).
+	"""
 	deleteNetwork(network: String!): String!
 }
 
@@ -370,17 +352,52 @@ type QueryRoot {
 	Fetches all tracked subgraph deploymens in this Graphix instance and
 	filters them according to some filtering rules.
 	"""
-	deployments(networkName: String, name: String, ipfsCid: String, limit: Int): [SubgraphDeployment!]!
+	deployments(
+		"""
+		The network name of the subgraph deployments to fetch
+		"""
+		networkName: String,		name: String,		ipfsCid: String,
+		"""
+		Upper limit on the number of shown results.
+		"""
+		limit: Int! = 100
+	): [SubgraphDeployment!]!
 	"""
 	Fetches all tracked indexers in this Graphix instance and filters them
 	according to some filtering rules.
 	"""
-	indexers(filter: IndexersQuery!): [Indexer!]!
+	indexers(
+		"""
+		The address of the indexer, encoded as a hex string with a '0x' prefix
+		"""
+		address: HexString,
+		"""
+		Upper limit on the number of shown results.
+		"""
+		limit: Int! = 100
+	): [Indexer!]!
 	"""
 	Filters through all PoIs ever collected by this Graphix
 	instance, according to some filtering rules specified in `filter`.
 	"""
-	proofsOfIndexing(filter: PoisQuery!): [ProofOfIndexing!]!
+	proofsOfIndexing(
+		"""
+		Restricts the query to PoIs for subgraph deployments that index the given chain name.
+		"""
+		network: String,
+		"""
+		Restricts the query to PoIs for these given subgraph deployments (by hex-encoded IPFS CID with '0x' prefix).
+		"""
+		deployments: [String!]! = [],
+		"""
+		Restricts the query to PoIs that were collected in the given block range.
+		"""
+		blockRange: BlockRange,
+		"""
+		Upper limit on the number of shown results.
+		"""
+		limit: Int! = 100
+	): [ProofOfIndexing!]!
 	"""
 	Same as [`QueryRoot::proofs_of_indexing`], but only returns PoIs that
 	are "live" i.e. they are the most recent PoI collected for their
@@ -388,8 +405,18 @@ type QueryRoot {
 	"""
 	liveProofsOfIndexing(filter: PoisQuery!): [ProofOfIndexing!]!
 	poiAgreementRatios(indexerAddress: HexString!): [PoiAgreementRatio!]!
-	divergenceInvestigationReport(uuid: UUID!): DivergenceInvestigationReport
+	divergenceInvestigationReport(
+		"""
+		The UUID of the divergence investigation report to fetch. This is the UUID that was returned by the `launchDivergenceInvestigation` mutation.
+		"""
+		uuid: UUID!
+	): DivergenceInvestigationReport
+	"""
+	Returns all networks known to Graphix. Subgraphs indexing other networks
+	won't be available in this Graphix database.
+	"""
 	networks: [Network!]!
+	_service: _Service!
 }
 
 
@@ -419,6 +446,16 @@ entities without requiring a central allocating authority.
 * [RFC4122: A Universally Unique IDentifier (UUID) URN Namespace](http://tools.ietf.org/html/rfc4122)
 """
 scalar UUID
+
+"""
+The `_Any` scalar is used to pass representations of entities from external
+services into the root `_entities` field for execution.
+"""
+scalar _Any
+
+type _Service {
+	sdl: String
+}
 
 directive @include(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
 directive @skip(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT

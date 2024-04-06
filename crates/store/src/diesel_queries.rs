@@ -232,7 +232,7 @@ async fn get_or_insert_block(
         let new_block = models::NewBlock {
             number: block.number as i64,
             hash: block.hash.clone().unwrap(),
-            network_id: 1, // Network assumed to be mainnet, see also: hardcoded-mainnet
+            network_id: 1, // FIXME: network assumed to be mainnet, see also: hardcoded-mainnet
         };
         let block_id = diesel::insert_into(blocks::table)
             .values(&new_block)
