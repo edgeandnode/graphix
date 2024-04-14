@@ -5,11 +5,13 @@
 
 mod hex_string;
 pub mod inputs;
+mod ipfs_cid;
 
 use async_graphql::*;
 use chrono::NaiveDateTime;
 pub use divergence_investigation::*;
 pub use hex_string::HexString;
+pub use ipfs_cid::IpfsCid;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 

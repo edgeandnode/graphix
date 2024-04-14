@@ -3,15 +3,16 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 use graphix_common_types::{
-    inputs, BisectionReport, BisectionRunReport, DivergenceBlockBounds,
-    DivergenceInvestigationReport, DivergenceInvestigationStatus, DivergingBlock as DivergentBlock,
-    HexString, PartialBlock, PoiBytes,
+    BisectionReport, BisectionRunReport, DivergenceBlockBounds, DivergenceInvestigationReport,
+    DivergenceInvestigationStatus, DivergingBlock as DivergentBlock, HexString, PartialBlock,
+    PoiBytes,
 };
 use graphix_indexer_client::{
     IndexerClient, IndexerId, PoiRequest, ProofOfIndexing, SubgraphDeployment,
 };
 use graphix_lib::graphql_api::api_types::{self, Indexer};
 use graphix_lib::graphql_api::ApiSchemaContext;
+use graphix_store::models::DivergenceInvestigationRequest;
 use graphix_store::Store;
 use thiserror::Error;
 use tokio::sync::watch;
@@ -85,7 +86,7 @@ impl PoiBisectingContext {
 
         info!(
             bisection_id = %self.bisection_id,
-            deployment = deployment.cid(),
+            deployment = ?deployment.cid(),
             "Starting Poi bisecting"
         );
 
@@ -100,7 +101,7 @@ impl PoiBisectingContext {
 
             debug!(
                 bisection_id = %self.bisection_id,
-                deployment = deployment.cid(),
+                deployment = ?deployment.cid(),
                 lower_bound = ?bounds.start(),
                 upper_bound = ?bounds.end(),
                 block_number,
@@ -377,7 +378,7 @@ async fn handle_divergence_investigation_request_pair(
 async fn handle_divergence_investigation_request(
     store: &Store,
     req_uuid: &Uuid,
-    req_contents: inputs::DivergenceInvestigationRequest,
+    req_contents: DivergenceInvestigationRequest,
     indexers: watch::Receiver<Vec<Arc<dyn IndexerClient>>>,
     ctx: &ApiSchemaContext,
 ) -> DivergenceInvestigationReport {

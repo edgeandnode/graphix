@@ -11,7 +11,7 @@ use diesel::{AsChangeset, AsExpression, FromSqlRow, Insertable, Queryable, Selec
 use graphix_common_types as types;
 use graphix_indexer_client::IndexerId;
 use serde::{Deserialize, Serialize};
-use types::{BlockHash, IndexerAddress, PoiBytes};
+use types::{BlockHash, IndexerAddress, IpfsCid, PoiBytes};
 
 use super::schema::*;
 
@@ -92,6 +92,14 @@ pub struct NewBlock {
     pub network_id: IntId,
     pub number: i64,
     pub hash: BlockHash,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DivergenceInvestigationRequest {
+    pub pois: Vec<PoiBytes>,
+    pub query_block_caches: bool,
+    pub query_eth_call_caches: bool,
+    pub query_entity_changes: bool,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize)]
@@ -177,7 +185,7 @@ pub struct NewIndexer {
 #[derive(Debug, Clone, Queryable, Serialize)]
 pub struct SgDeployment {
     pub id: IntId,
-    pub cid: String,
+    pub cid: IpfsCid,
     pub name: Option<String>,
     pub network_id: IntId,
     #[serde(skip)]

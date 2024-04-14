@@ -73,7 +73,7 @@ async fn deployments_with_name() {
         store.sg_deployments(filter).await.unwrap()
     };
     assert!(deployments.len() == 1);
-    assert_eq!(deployments[0].cid, ipfs_cid1);
+    assert_eq!(deployments[0].cid.to_string(), ipfs_cid1);
     // FIXME:
     //assert_eq!(deployments[0].name, Some("foo".to_string()));
 }

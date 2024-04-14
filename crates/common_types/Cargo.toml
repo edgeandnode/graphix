@@ -4,16 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1"
-async-graphql = { version = "7", features = ["chrono", "uuid"] }
-chrono = "0.4"
-diesel = "2"
-hex = "0.4"
-quickcheck = "1"
-schemars = "0.8"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-uuid = "1"
+anyhow = { workspace = true }
+async-graphql = { workspace = true, features = ["chrono", "uuid"] }
+chrono = { workspace = true }
+cid = { workspace = true, features = ["serde", "arb"] }
+diesel = { workspace = true }
+hex = { workspace = true }
+quickcheck = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+uuid = { workspace = true }
 
 [dev-dependencies]
-quickcheck_macros = "1"
+quickcheck_macros = { workspace = true }

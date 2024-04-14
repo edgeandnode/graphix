@@ -8,6 +8,7 @@ use chrono::Utc;
 use diesel::prelude::*;
 use diesel::sql_types;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use graphix_common_types::IpfsCid;
 use graphix_common_types::{inputs, IndexerAddress};
 use graphix_indexer_client::{BlockPointer, IndexerClient, IndexerId, WritablePoi};
 use tracing::info;
@@ -22,7 +23,7 @@ use crate::schema::{self, live_pois, sg_names};
 pub(super) async fn pois(
     conn: &mut AsyncPgConnection,
     indexer_address: Option<&IndexerAddress>,
-    sg_deployments: Option<&[String]>,
+    sg_deployments: Option<&[IpfsCid]>,
     block_range: Option<inputs::BlockRange>,
     limit: Option<u16>,
     live_only: bool,

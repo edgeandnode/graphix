@@ -1,5 +1,5 @@
 use async_graphql::{ComplexObject, Context, Object, SimpleObject};
-use common::IndexerAddress;
+use common::{IndexerAddress, IpfsCid};
 use graphix_common_types as common;
 use graphix_store::models::{self, IntId};
 use num_traits::cast::ToPrimitive;
@@ -12,7 +12,7 @@ pub struct SubgraphDeployment {
 }
 
 impl SubgraphDeployment {
-    pub fn cid(&self) -> &str {
+    pub fn cid(&self) -> &IpfsCid {
         &self.model.cid
     }
 
@@ -36,7 +36,7 @@ impl SubgraphDeployment {
 impl SubgraphDeployment {
     /// IPFS CID of the subgraph deployment.
     #[graphql(name = "cid")]
-    async fn graphql_cid(&self) -> String {
+    async fn graphql_cid(&self) -> IpfsCid {
         self.model.cid.clone()
     }
 

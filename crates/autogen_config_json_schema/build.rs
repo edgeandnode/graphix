@@ -11,13 +11,11 @@ fn main() -> std::io::Result<()> {
     // See <https://doc.rust-lang.org/cargo/reference/build-scripts.html#change-detection>.
     println!("cargo:rerun-if-changed=build.rs");
 
-    let path = env::current_dir()?.join("schema.json");
-
-    let mut f = File::create(&path)?;
+    let out_path = env::current_dir()?.join("schema.json");
+    let mut f = File::create(&out_path)?;
 
     let schema = schema_for!(Config);
     f.write_all(serde_json::to_string_pretty(&schema).unwrap().as_bytes())?;
 
-    println!("Updated: {}", path.display());
     Ok(())
 }

@@ -204,6 +204,8 @@ type IndexerNetworkSubgraphMetadata {
 }
 
 
+scalar IpfsCid
+
 type MutationRoot {
 	"""
 	Launches a divergence investigation, which is a process of comparing
@@ -313,10 +315,9 @@ input PoisQuery {
 	"""
 	network: String
 	"""
-	Restricts the query to PoIs for these given subgraph deployments (by
-	hex-encoded IPFS CID with '0x' prefix).
+	Restricts the query to PoIs for these given subgraph deployment IDs.
 	"""
-	deployments: [String!]!
+	deployments: [IpfsCid!]!
 	"""
 	Restricts the query to PoIs that were collected in the given block
 	range.
@@ -356,7 +357,7 @@ type QueryRoot {
 		"""
 		The network name of the subgraph deployments to fetch
 		"""
-		networkName: String,		name: String,		ipfsCid: String,
+		networkName: String,		name: String,		ipfsCid: IpfsCid,
 		"""
 		Upper limit on the number of shown results.
 		"""
@@ -388,7 +389,7 @@ type QueryRoot {
 		"""
 		Restricts the query to PoIs for these given subgraph deployments (by hex-encoded IPFS CID with '0x' prefix).
 		"""
-		deployments: [String!]! = [],
+		deployments: [IpfsCid!]! = [],
 		"""
 		Restricts the query to PoIs that were collected in the given block range.
 		"""
@@ -424,7 +425,7 @@ type SubgraphDeployment {
 	"""
 	IPFS CID of the subgraph deployment.
 	"""
-	cid: String!
+	cid: IpfsCid!
 	"""
 	Human-readable name of the subgraph deployment, if present.
 	"""

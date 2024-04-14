@@ -5,6 +5,7 @@ use std::str::FromStr;
 use diesel::backend::Backend;
 use diesel::deserialize::{FromSql, FromSqlRow};
 use diesel::expression::AsExpression;
+use diesel::pg::Pg;
 use diesel::serialize::ToSql;
 use diesel::sql_types;
 use hex::FromHex;
@@ -24,7 +25,7 @@ use serde::{Deserialize, Serialize};
 // TODO: The fact that we SQL-encode all kinds of hex strings, even fixed-length
 // ones, as variable-length byte sequences is a bit of a wart. Not that big of a
 // deal, but maybe there's a better way to do this.
-#[diesel(sql_type = ::diesel::sql_types::Binary)]
+#[diesel(sql_type = sql_types::Binary)]
 pub struct HexString<T>(pub T);
 
 impl<T: ToOwned> HexString<T> {
@@ -102,29 +103,25 @@ impl<T> schemars::JsonSchema for HexString<T> {
     }
 }
 
-impl<T, Db> ToSql<sql_types::Binary, Db> for HexString<T>
+impl<T> ToSql<sql_types::Binary, Pg> for HexString<T>
 where
     T: AsRef<[u8]> + Debug,
-    Db: Backend,
-    [u8]: ToSql<sql_types::Binary, Db>,
 {
     fn to_sql<'b>(
         &'b self,
-        out: &mut diesel::serialize::Output<'b, '_, Db>,
+        out: &mut diesel::serialize::Output<'b, '_, Pg>,
     ) -> diesel::serialize::Result {
-        ToSql::<sql_types::Binary, Db>::to_sql(self.0.as_ref(), out)
+        ToSql::<sql_types::Binary, Pg>::to_sql(self.0.as_ref(), out)
     }
 }
 
-impl<T, Db> FromSql<sql_types::Binary, Db> for HexString<T>
+impl<T> FromSql<sql_types::Binary, Pg> for HexString<T>
 where
     T: TryFrom<Vec<u8>>,
     T::Error: Debug,
-    Db: Backend,
-    Vec<u8>: FromSql<sql_types::Binary, Db>,
 {
-    fn from_sql(bytes: <Db as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        T::try_from(Vec::from_sql(bytes)?)
+    fn from_sql(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+        T::try_from(FromSql::<sql_types::Binary, Pg>::from_sql(bytes)?)
             .map(HexString)
             .map_err(|e| anyhow::anyhow!("{:?}", e).into())
     }

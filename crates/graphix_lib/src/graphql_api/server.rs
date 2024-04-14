@@ -4,6 +4,7 @@ use anyhow::Context as _;
 use async_graphql::{Context, Object, Result};
 use futures::future::try_join_all;
 use graphix_common_types::*;
+use graphix_store::models::DivergenceInvestigationRequest;
 use uuid::Uuid;
 
 use super::{api_types, ctx_data};
@@ -20,7 +21,7 @@ impl QueryRoot {
         #[graphql(desc = "The network name of the subgraph deployments to fetch")]
         network_name: Option<String>,
         name: Option<String>,
-        ipfs_cid: Option<String>,
+        ipfs_cid: Option<IpfsCid>,
         #[graphql(
             default = 100,
             validator(maximum = 250),
@@ -79,7 +80,7 @@ impl QueryRoot {
             default,
             desc = "Restricts the query to PoIs for these given subgraph deployments (by hex-encoded IPFS CID with '0x' prefix)."
         )]
-        deployments: Vec<String>,
+        deployments: Vec<IpfsCid>,
         #[graphql(
             desc = "Restricts the query to PoIs that were collected in the given block range."
         )]
@@ -142,8 +143,7 @@ impl QueryRoot {
         let deployments =
             try_join_all(indexer_pois.iter().map(|poi| poi.deployment(ctx_data))).await?;
 
-        let deployment_cids: Vec<String> =
-            deployments.iter().map(|d| d.cid().to_string()).collect();
+        let deployment_cids: Vec<IpfsCid> = deployments.iter().map(|d| d.cid().clone()).collect();
 
         // Query all live POIs for the specific deployments.
         let all_deployment_pois = ctx_data
@@ -307,7 +307,7 @@ impl MutationRoot {
         let ctx_data = ctx_data(ctx);
         let store = &ctx_data.store;
 
-        let req = inputs::DivergenceInvestigationRequest {
+        let req = DivergenceInvestigationRequest {
             pois,
             query_block_caches,
             query_eth_call_caches,

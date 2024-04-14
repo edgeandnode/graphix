@@ -9,7 +9,7 @@ use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 #[cfg(tests)]
 pub use diesel_queries;
-use graphix_common_types::{inputs, IndexerAddress, PoiBytes};
+use graphix_common_types::{inputs, IndexerAddress, IpfsCid, PoiBytes};
 use models::{FailedQueryRow, NewIndexerNetworkSubgraphMetadata, SgDeployment};
 use uuid::Uuid;
 pub mod models;
@@ -116,7 +116,7 @@ impl Store {
             query = query.filter(schema::sg_names::name.eq(name));
         }
         if let Some(ipfs_cid) = filter.ipfs_cid {
-            query = query.filter(sgd::ipfs_cid.eq(ipfs_cid));
+            query = query.filter(sgd::ipfs_cid.eq(ipfs_cid.to_string()));
         }
         if let Some(limit) = filter.limit {
             query = query.limit(limit.into());
@@ -287,7 +287,7 @@ impl Store {
     /// subgraph deployments and in the given [`inputs::BlockRange`], if given.
     pub async fn pois(
         &self,
-        sg_deployments: &[String],
+        sg_deployments: &[IpfsCid],
         block_range: Option<inputs::BlockRange>,
         limit: Option<u16>,
     ) -> anyhow::Result<Vec<Poi>> {
@@ -307,7 +307,7 @@ impl Store {
     pub async fn live_pois(
         &self,
         indexer_address: Option<&IndexerAddress>,
-        sg_deployments_cids: Option<&[String]>,
+        sg_deployments_cids: Option<&[IpfsCid]>,
         block_range: Option<inputs::BlockRange>,
         limit: Option<u16>,
     ) -> anyhow::Result<Vec<Poi>> {
