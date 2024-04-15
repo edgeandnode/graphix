@@ -20,7 +20,18 @@ use serde::{Deserialize, Serialize};
 /// alias it to something more descriptive for its intended use case, possibly
 /// by enforcing a specific length.
 #[derive(
-    Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, AsExpression, FromSqlRow,
+    Copy,
+    Clone,
+    Default,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    AsExpression,
+    FromSqlRow,
+    derive_more::From,
 )]
 // TODO: The fact that we SQL-encode all kinds of hex strings, even fixed-length
 // ones, as variable-length byte sequences is a bit of a wart. Not that big of a
@@ -34,12 +45,6 @@ impl<T: ToOwned> HexString<T> {
         T: ToOwned,
     {
         HexString(self.0.to_owned())
-    }
-}
-
-impl<T> From<T> for HexString<T> {
-    fn from(t: T) -> Self {
-        HexString(t)
     }
 }
 
@@ -136,9 +141,19 @@ impl<T: Arbitrary> Arbitrary for HexString<T> {
 
 #[cfg(test)]
 mod tests {
+    use async_graphql::ScalarType;
     use quickcheck_macros::quickcheck;
 
     use super::*;
+
+    #[quickcheck]
+    fn async_graphql_roundtrip(hex_string: HexString<Vec<u8>>) -> bool {
+        let async_graphql_value = hex_string.to_value();
+        let hex_string2: HexString<Vec<u8>> =
+            async_graphql::ScalarType::parse(async_graphql_value).unwrap();
+
+        hex_string == hex_string2
+    }
 
     #[quickcheck]
     fn serde_roundtrip(hex_string: HexString<Vec<u8>>) -> bool {
