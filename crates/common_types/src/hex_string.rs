@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 )]
 // TODO: The fact that we SQL-encode all kinds of hex strings, even fixed-length
 // ones, as variable-length byte sequences is a bit of a wart. Not that big of a
-// deal, but maybe there's a better way to do this.
+// deal though.
 #[diesel(sql_type = sql_types::Binary)]
 pub struct HexString<T>(pub T);
 

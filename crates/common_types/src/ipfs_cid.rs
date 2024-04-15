@@ -30,7 +30,12 @@ pub struct IpfsCid(cid::Cid);
 #[async_graphql::Scalar]
 impl async_graphql::ScalarType for IpfsCid {
     fn parse(value: async_graphql::Value) -> async_graphql::InputValueResult<Self> {
-        Ok(Deserialize::deserialize(value.into_json()?)?)
+        let async_graphql::Value::String(string) = value else {
+            return Err(async_graphql::InputValueError::expected_type(value));
+        };
+
+        let cid = cid::Cid::from_str(&string)?;
+        Ok(IpfsCid(cid))
     }
 
     fn to_value(&self) -> async_graphql::Value {
@@ -62,9 +67,18 @@ impl Arbitrary for IpfsCid {
 
 #[cfg(test)]
 mod tests {
+    use async_graphql::ScalarType;
     use quickcheck_macros::quickcheck;
 
     use super::*;
+
+    #[quickcheck]
+    fn async_graphql_roundtrip(ipfs_cid: IpfsCid) -> bool {
+        let async_graphql_value = ipfs_cid.to_value();
+        let ipfs_cid2: IpfsCid = ScalarType::parse(async_graphql_value).unwrap();
+
+        ipfs_cid == ipfs_cid2
+    }
 
     #[quickcheck]
     fn serde_roundtrip(ipfs_cid: IpfsCid) -> bool {
@@ -74,8 +88,16 @@ mod tests {
         ipfs_cid == ipfs_cid2
     }
 
+    #[quickcheck]
+    fn from_str_roundtrip_quickcheck(ipfs_cid: IpfsCid) -> bool {
+        let string = ipfs_cid.to_string();
+        let ipfs_cid2 = IpfsCid::from_str(&string).unwrap();
+
+        ipfs_cid == ipfs_cid2
+    }
+
     #[test]
-    fn deployment_id_from_str_roundtrip() {
+    fn from_str_roundtrip() {
         let deployment_id = "QmNY7gDNXHECV8SXoEY7hbfg4BX1aDMxTBDiFuG4huaSGA";
         let ipfs_id = IpfsCid::from_str(deployment_id).unwrap();
 
