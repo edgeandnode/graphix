@@ -417,6 +417,7 @@ type QueryRoot {
 	won't be available in this Graphix database.
 	"""
 	networks: [Network!]!
+	newApiKey: String!
 	_service: _Service!
 }
 

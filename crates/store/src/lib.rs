@@ -10,7 +10,10 @@ use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 #[cfg(tests)]
 pub use diesel_queries;
 use graphix_common_types::{inputs, IndexerAddress, IpfsCid, PoiBytes};
-use models::{FailedQueryRow, NewIndexerNetworkSubgraphMetadata, SgDeployment};
+use models::{
+    FailedQueryRow, NewIndexerNetworkSubgraphMetadata, NewlyCreatedApiKey, PermissionLevel,
+    SgDeployment,
+};
 use uuid::Uuid;
 pub mod models;
 mod schema;
@@ -418,6 +421,37 @@ impl Store {
             .await?;
 
         Ok(indexer_id)
+    }
+
+    pub async fn create_api_key(
+        &self,
+        salt: &[u8],
+        permission_level: PermissionLevel,
+    ) -> anyhow::Result<NewlyCreatedApiKey> {
+        use schema::graphix_api_tokens;
+
+        let hash = Sha256::digest(salt);
+
+        let api_key = format!("graphix-api-key-{}", hex::encode(hash));
+
+        let permission_level = NewApiKey::PERMISSION_LEVEL_ADMIN;
+
+        let salt = hex::encode(salt);
+
+        diesel::insert_into(graphix_api_tokens::table)
+            .values((
+                graphix_api_tokens::salt.eq(salt),
+                graphix_api_tokens::sha256_api_key_hash.eq(hex::encode(hash)),
+                graphix_api_tokens::permission_level.eq(permission_level),
+            ))
+            .execute(&mut self.conn().await?)
+            .await?;
+
+        Ok(NewlyCreatedApiKey {
+            id: 0,
+            api_key,
+            permission_level: permission_level.to_string(),
+        })
     }
 
     pub async fn write_graph_node_versions(

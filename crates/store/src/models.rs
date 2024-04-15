@@ -182,6 +182,25 @@ pub struct NewIndexer {
     pub name: Option<String>,
 }
 
+#[derive(Debug, Insertable)]
+#[diesel(table_name = graphix_api_tokens)]
+pub struct NewApiKey {
+    pub salt: Vec<u8>,
+    pub sha256_api_key_hash: String,
+    pub permission_level: PermissionLevel,
+}
+
+#[derive(Debug)]
+pub enum PermissionLevel {
+    Admin,
+}
+
+pub struct NewlyCreatedApiKey {
+    pub id: IntId,
+    pub api_key: String,
+    pub permission_level: String,
+}
+
 #[derive(Debug, Clone, Queryable, Serialize)]
 pub struct SgDeployment {
     pub id: IntId,

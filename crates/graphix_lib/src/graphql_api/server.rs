@@ -5,6 +5,7 @@ use async_graphql::{Context, Object, Result};
 use futures::future::try_join_all;
 use graphix_common_types::*;
 use graphix_store::models::DivergenceInvestigationRequest;
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use super::{api_types, ctx_data};
@@ -256,6 +257,22 @@ impl QueryRoot {
         let networks = ctx_data.store.networks().await?;
 
         Ok(networks.into_iter().map(Into::into).collect())
+    }
+
+    async fn new_api_key(&self, ctx: &Context<'_>) -> Result<String> {
+        let ctx_data = ctx_data(ctx);
+
+        // 36 characters is plenty to give us enough security.
+        let random_string = nanoid::nanoid!(36);
+        let api_key = format!("graphix-api-key-{}", random_string);
+
+        let salt = nanoid::nanoid!();
+        let salted_api_key = format!("{}-{}", api_key, salt);
+        let hash = Sha256::digest(salted_api_key.as_bytes());
+
+        ctx_data.store.create_api_key(&hash).await?;
+
+        Ok(api_key)
     }
 }
 

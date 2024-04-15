@@ -16,6 +16,7 @@ graphix_indexer_client = { path = "../indexer_client" }
 graphix_network_sg_client = { path = "../network_sg_client" }
 graphix_store = { path = "../store" }
 hex = { workspace = true }
+nanoid = "0.4"
 num-traits = { workspace = true }
 once_cell = { workspace = true, optional = true }
 #prometheus = { version = "0.13", optional = true }
@@ -25,6 +26,7 @@ schemars = { workspace = true, features = ["chrono", "url"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
+sha2 = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }

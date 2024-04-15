@@ -137,3 +137,11 @@ CREATE TABLE failed_queries (
 );
 
 CREATE INDEX ON failed_queries (indexer_id, query_name);
+
+-- API key management.
+CREATE TABLE graphix_api_tokens (
+  id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  salt BINARY NOT NULL,
+  sha256_api_key_hash BINARY NOT NULL UNIQUE,
+  permission_level TEXT NOT NULL
+);
