@@ -8,6 +8,7 @@ anyhow = { workspace = true }
 async-graphql = { workspace = true, features = ["chrono", "uuid"] }
 chrono = { workspace = true }
 cid = { workspace = true, features = ["serde", "arb"] }
+derive_more = { workspace = true }
 diesel = { workspace = true }
 hex = { workspace = true }
 quickcheck = { workspace = true }

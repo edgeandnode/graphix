@@ -76,6 +76,7 @@ impl<T: FromHex> FromStr for HexString<T> {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // The `0x` prefix is optional.
         let stripped = s.strip_prefix("0x").unwrap_or(s);
         FromHex::from_hex(stripped)
             .map(Self)

@@ -1107,6 +1107,7 @@ dependencies = [
  "async-graphql",
  "chrono",
  "cid",
+ "derive_more",
  "diesel",
  "hex",
  "quickcheck",

@@ -1,34 +1,31 @@
-use std::fmt::Display;
 use std::str::FromStr;
 
-use diesel::deserialize::FromSql;
+use diesel::backend::Backend;
+use diesel::deserialize::{FromSql, FromSqlRow};
 use diesel::expression::AsExpression;
 use diesel::pg::Pg;
 use diesel::serialize::ToSql;
 use diesel::sql_types;
-use diesel::{backend::Backend, deserialize::FromSqlRow};
 use quickcheck::Arbitrary;
 use serde::{Deserialize, Serialize};
 
 /// A [`serde`], [`diesel`], and [`async_graphql`]-compatible type definition
 /// for IPFS CIDs and subgraph deployment IDs.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, AsExpression, FromSqlRow)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    AsExpression,
+    FromSqlRow,
+    derive_more::Display,
+    derive_more::FromStr,
+)]
 #[diesel(sql_type = sql_types::Text)]
 pub struct IpfsCid(cid::Cid);
-
-impl Display for IpfsCid {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl FromStr for IpfsCid {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(cid::Cid::from_str(s)?))
-    }
-}
 
 #[async_graphql::Scalar]
 impl async_graphql::ScalarType for IpfsCid {
