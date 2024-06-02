@@ -222,7 +222,7 @@ type MutationRoot {
 		"""
 		queryBlockCaches: Boolean! = true,
 		"""
-		Indicates whether to collect `graph-node`'s eth call cache contents during bisection runs to include in the report.
+		Indicates whether to collect `graph-node`'s ETH call cache contents during bisection runs to include in the report.
 		"""
 		queryEthCallCaches: Boolean! = true,
 		"""
@@ -230,6 +230,28 @@ type MutationRoot {
 		"""
 		queryEntityChanges: Boolean! = true
 	): DivergenceInvestigationReport!
+	"""
+	Create a new API key with the given permission level. You'll need to
+	authenticate with another API key with the `admin` permission level to
+	do this.
+	"""
+	createApiKey(
+		"""
+		Permission level of the API key. Use `admin` for full access.
+		"""
+		permissionLevel: String!,
+		"""
+		Not-encrypted notes to store in the database alongside the API key, to be used for debugging or identification purposes.
+		"""
+		notes: String = null
+	): NewlyCreatedApiKey!
+	deleteApiKey(apiKey: String!): Boolean!
+	modifyApiKey(		apiKey: String!,
+		"""
+		Not-encrypted notes to store in the database alongside the API key, to be used for debugging or identification purposes.
+		"""
+		notes: String,		permissionLevel: String!
+	): Boolean!
 	setDeploymentName(deploymentIpfsCid: String!, name: String!): Deployment!
 	"""
 	Completely deletes a network and all related data (PoIs, indexers, subgraphs, etc.).
@@ -256,6 +278,12 @@ type Network {
 	CAIP-2 chain ID of the network, if it exists.
 	"""
 	caip2: String
+}
+
+type NewlyCreatedApiKey {
+	apiKey: String!
+	notes: String
+	permissionLevel: String!
 }
 
 """
@@ -423,7 +451,7 @@ type QueryRoot {
 
 type SubgraphDeployment {
 	"""
-	IPFS CID of the subgraph deployment.
+	IPFS CID of the subgraph deployment manifest e.g. `Qm...`.
 	"""
 	cid: IpfsCid!
 	"""

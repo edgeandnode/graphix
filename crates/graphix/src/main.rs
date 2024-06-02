@@ -9,16 +9,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_graphql::http::GraphiQLSource;
-use async_graphql_axum::GraphQL;
-use axum::response::IntoResponse;
-use axum::Router;
 use clap::Parser;
 use graphix_indexer_client::{IndexerClient, IndexerId};
 use graphix_lib::config::Config;
-use graphix_lib::graphql_api::{self, ApiSchemaContext};
+use graphix_lib::graphql_api::{axum_router, ServerState};
 use graphix_lib::indexing_loop::{query_indexing_statuses, query_proofs_of_indexing};
-use graphix_lib::{config, metrics, PrometheusExporter, GRAPHIX_VERSION};
+use graphix_lib::{config, metrics, PrometheusExporter};
 use graphix_store::{models, PoiLiveness, Store};
 use prometheus_exporter::prometheus;
 use tokio::net::TcpListener;
@@ -53,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
             // Listen to requests forever.
             axum::serve(
                 TcpListener::bind((Ipv4Addr::UNSPECIFIED, config.graphql.port)).await?,
-                axum_server(config).await?,
+                axum_router(config).await?,
             )
             .await?;
 
@@ -70,7 +66,7 @@ async fn main() -> anyhow::Result<()> {
     info!("Initializing bisect request handler");
     let store_clone = store.clone();
     let (tx_indexers, rx_indexers) = watch::channel(vec![]);
-    let ctx = ApiSchemaContext::new(store_clone.clone(), config.clone());
+    let ctx = ServerState::new(store_clone.clone(), config.clone());
 
     {
         let networks: Vec<models::NewNetwork> = config
@@ -147,31 +143,4 @@ fn deduplicate_indexers(indexers: &[Arc<dyn IndexerClient>]) -> Vec<Arc<dyn Inde
         "Successfully deduplicated indexers"
     );
     deduplicated
-}
-
-async fn axum_server(config: Config) -> anyhow::Result<Router<()>> {
-    use axum::routing::get;
-
-    let store = Store::new(config.database_url.as_str()).await?;
-    let api_schema_ctx = graphql_api::ApiSchemaContext::new(store.clone(), config.clone());
-    let api_schema = graphql_api::api_schema(api_schema_ctx);
-
-    Ok(axum::Router::new()
-        .route(
-            "/",
-            get(|| async {
-                format!(
-                    "Welcome to Graphix v{}. Go to /graphql to use the playground.",
-                    GRAPHIX_VERSION
-                )
-            }),
-        )
-        .route(
-            "/graphql",
-            get(graphiql_route).post_service(GraphQL::new(api_schema)),
-        ))
-}
-
-async fn graphiql_route() -> impl IntoResponse {
-    axum::response::Html(GraphiQLSource::build().endpoint("/graphql").finish())
 }

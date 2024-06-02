@@ -1,10 +1,13 @@
 use std::collections::BTreeMap;
+use std::str::FromStr;
 
 use anyhow::Context as _;
 use async_graphql::{Context, Object, Result};
 use futures::future::try_join_all;
 use graphix_common_types::*;
-use graphix_store::models::DivergenceInvestigationRequest;
+use graphix_store::models::{
+    ApiKeyPermissionLevel, DivergenceInvestigationRequest, NewlyCreatedApiKey,
+};
 use uuid::Uuid;
 
 use super::{api_types, ctx_data};
@@ -295,7 +298,7 @@ impl MutationRoot {
         query_block_caches: bool,
         #[graphql(
             default = true,
-            desc = "Indicates whether to collect `graph-node`'s eth call cache contents during bisection runs to include in the report."
+            desc = "Indicates whether to collect `graph-node`'s ETH call cache contents during bisection runs to include in the report."
         )]
         query_eth_call_caches: bool,
         #[graphql(
@@ -326,6 +329,60 @@ impl MutationRoot {
         };
 
         Ok(report)
+    }
+
+    /// Create a new API key with the given permission level. You'll need to
+    /// authenticate with another API key with the `admin` permission level to
+    /// do this.
+    async fn create_api_key(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "Permission level of the API key. Use `admin` for full access.")]
+        permission_level: String,
+        #[graphql(
+            default,
+            desc = "Not-encrypted notes to store in the database alongside the API key, to be used for debugging or identification purposes."
+        )]
+        notes: Option<String>,
+    ) -> Result<NewlyCreatedApiKey> {
+        let ctx_data = ctx_data(ctx);
+
+        let permission_level = ApiKeyPermissionLevel::from_str(&permission_level)?;
+        let api_key = ctx_data
+            .store
+            .create_api_key(notes.as_deref(), permission_level)
+            .await?;
+
+        Ok(api_key)
+    }
+
+    async fn delete_api_key(&self, ctx: &Context<'_>, api_key: String) -> Result<bool> {
+        let ctx_data = ctx_data(ctx);
+
+        ctx_data.store.delete_api_key(&api_key).await?;
+
+        Ok(true)
+    }
+
+    async fn modify_api_key(
+        &self,
+        ctx: &Context<'_>,
+        api_key: String,
+        #[graphql(
+            desc = "Not-encrypted notes to store in the database alongside the API key, to be used for debugging or identification purposes."
+        )]
+        notes: Option<String>,
+        permission_level: String,
+    ) -> Result<bool> {
+        let ctx_data = ctx_data(ctx);
+
+        let permission_level = ApiKeyPermissionLevel::from_str(&permission_level)?;
+        ctx_data
+            .store
+            .modify_api_key(&api_key, notes.as_deref(), permission_level)
+            .await?;
+
+        Ok(true)
     }
 
     async fn set_deployment_name(

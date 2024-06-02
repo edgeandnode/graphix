@@ -39,6 +39,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    graphix_api_tokens (public_prefix) {
+        public_prefix -> Text,
+        sha256_api_key_hash -> Bytea,
+        notes -> Nullable<Text>,
+        permission_level -> Text,
+    }
+}
+
+diesel::table! {
     indexer_network_subgraph_metadata (id) {
         id -> Int4,
         geohash -> Nullable<Text>,
@@ -150,6 +159,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     divergence_investigation_reports,
     failed_queries,
     graph_node_collected_versions,
+    graphix_api_tokens,
     indexer_network_subgraph_metadata,
     indexers,
     live_pois,

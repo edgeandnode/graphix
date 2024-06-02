@@ -137,3 +137,12 @@ CREATE TABLE failed_queries (
 );
 
 CREATE INDEX ON failed_queries (indexer_id, query_name);
+
+-- API key management.
+CREATE TABLE graphix_api_tokens (
+  public_prefix TEXT PRIMARY KEY,
+  sha256_api_key_hash BYTEA NOT NULL UNIQUE,
+  notes TEXT,
+  -- We shouldn't really store permission levels as `TEXT` but... it works.
+  permission_level TEXT NOT NULL
+);

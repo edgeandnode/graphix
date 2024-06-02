@@ -69,6 +69,7 @@
       "type": "string"
     },
     "ChainConfig": {
+      "description": "Chain-specific configuration.",
       "type": "object",
       "properties": {
         "avgBlockTimeInMsecs": {
@@ -77,6 +78,7 @@
           "minimum": 0.0
         },
         "blockExplorerUrlTemplateForBlock": {
+          "description": "URL to a block explorer for this chain, with `{block}` as a placeholder for the block number.",
           "default": null,
           "anyOf": [
             {

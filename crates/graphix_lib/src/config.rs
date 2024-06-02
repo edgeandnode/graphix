@@ -45,12 +45,17 @@ pub struct ChainSpeedConfig {
     pub avg_block_time_in_msecs: u64,
 }
 
+/// Chain-specific configuration.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ChainConfig {
     pub caip2: Option<String>,
+    /// Specifies an approximation of the standard block time for this chain, to
+    /// approximate block timestamps.
     #[serde(flatten, default)]
     pub speed: Option<ChainSpeedConfig>,
+    /// URL to a block explorer for this chain, with `{block}` as a placeholder
+    /// for the block number.
     #[serde(default)]
     pub block_explorer_url_template_for_block: Option<BlockExplorerUrlTemplateForBlock>,
 }

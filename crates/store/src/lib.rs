@@ -3,20 +3,23 @@
 mod diesel_queries;
 mod loader;
 
+use anyhow::anyhow;
 use diesel_async::pooled_connection::deadpool::{Object, Pool};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
-#[cfg(tests)]
-pub use diesel_queries;
 use graphix_common_types::{inputs, IndexerAddress, IpfsCid, PoiBytes};
-use models::{FailedQueryRow, NewIndexerNetworkSubgraphMetadata, SgDeployment};
+use models::{
+    ApiKey, ApiKeyPermissionLevel, FailedQueryRow, NewIndexerNetworkSubgraphMetadata,
+    NewlyCreatedApiKey, SgDeployment,
+};
 use uuid::Uuid;
 pub mod models;
 mod schema;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Error;
@@ -37,6 +40,7 @@ pub struct Store {
 
 impl Debug for Store {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // It might contain sensitive data, so don't print it.
         f.debug_struct("Store").finish()
     }
 }
@@ -60,12 +64,6 @@ impl Store {
     async fn run_migrations(&self) -> anyhow::Result<()> {
         let mut conn = self.pool.get().await?;
 
-        // Get a lock for running migrations. Blocks until we get the lock.
-        // We need this because different Graphix instances may attempt
-        // to run migrations concurrently (that's a big no-no).
-        diesel::sql_query("select pg_advisory_lock(1)")
-            .execute(&mut conn)
-            .await?;
         info!("Run database migrations");
 
         Self::MIGRATIONS
@@ -73,10 +71,6 @@ impl Store {
             .await
             .map_err(|e| anyhow::anyhow!(e))?;
 
-        // Release the migration lock.
-        diesel::sql_query("select pg_advisory_unlock(1)")
-            .execute(&mut conn)
-            .await?;
         Ok(())
     }
 
@@ -418,6 +412,67 @@ impl Store {
             .await?;
 
         Ok(indexer_id)
+    }
+
+    pub async fn create_api_key(
+        &self,
+        notes: Option<&str>,
+        permission_level: ApiKeyPermissionLevel,
+    ) -> anyhow::Result<NewlyCreatedApiKey> {
+        use schema::graphix_api_tokens;
+
+        let api_key = ApiKey::generate();
+
+        diesel::insert_into(graphix_api_tokens::table)
+            .values((
+                graphix_api_tokens::public_prefix.eq(api_key.public_part_as_string()),
+                graphix_api_tokens::sha256_api_key_hash.eq(api_key.hash()),
+                graphix_api_tokens::notes.eq(notes),
+                graphix_api_tokens::permission_level.eq(permission_level.to_string()),
+            ))
+            .execute(&mut self.conn().await?)
+            .await?;
+
+        Ok(NewlyCreatedApiKey {
+            api_key: api_key.to_string(),
+            notes: notes.map(|s| s.to_string()),
+            permission_level: permission_level.to_string(),
+        })
+    }
+
+    pub async fn modify_api_key(
+        &self,
+        api_key_s: &str,
+        notes: Option<&str>,
+        permission_level: ApiKeyPermissionLevel,
+    ) -> anyhow::Result<()> {
+        use schema::graphix_api_tokens;
+
+        let api_key = ApiKey::from_str(api_key_s).map_err(|e| anyhow!("invalid api key: {}", e))?;
+
+        diesel::update(graphix_api_tokens::table)
+            .filter(graphix_api_tokens::sha256_api_key_hash.eq(api_key.hash()))
+            .set((
+                graphix_api_tokens::notes.eq(notes),
+                graphix_api_tokens::permission_level.eq(permission_level.to_string()),
+            ))
+            .execute(&mut self.conn().await?)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn delete_api_key(&self, api_key_s: &str) -> anyhow::Result<()> {
+        use schema::graphix_api_tokens;
+
+        let api_key = ApiKey::from_str(api_key_s).map_err(|e| anyhow!("invalid api key: {}", e))?;
+
+        diesel::delete(graphix_api_tokens::table)
+            .filter(graphix_api_tokens::sha256_api_key_hash.eq(api_key.hash()))
+            .execute(&mut self.conn().await?)
+            .await?;
+
+        Ok(())
     }
 
     pub async fn write_graph_node_versions(

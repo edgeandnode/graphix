@@ -11,7 +11,9 @@ use diesel::{AsChangeset, AsExpression, FromSqlRow, Insertable, Queryable, Selec
 use graphix_common_types as types;
 use graphix_indexer_client::IndexerId;
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 use types::{BlockHash, IndexerAddress, IpfsCid, PoiBytes};
+use uuid::Uuid;
 
 use super::schema::*;
 
@@ -127,6 +129,61 @@ impl IndexerId for Indexer {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ApiKey {
+    public_part: Uuid,
+    private_part: Uuid,
+}
+
+impl ApiKey {
+    pub fn generate() -> Self {
+        Self {
+            public_part: Uuid::new_v4(),
+            private_part: Uuid::new_v4(),
+        }
+    }
+
+    pub fn public_part_as_string(&self) -> String {
+        self.public_part.to_string()
+    }
+
+    pub fn hash(&self) -> Vec<u8> {
+        sha2::Sha256::digest(self.to_string().as_bytes()).to_vec()
+    }
+}
+
+impl std::str::FromStr for ApiKey {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.split('-').collect();
+        let parts: [&str; 3] = parts.try_into().map_err(|_| "invalid api key format")?;
+
+        if parts[0] != "graphix_api_key" {
+            return Err("invalid api key format".to_string());
+        }
+
+        let public_part = Uuid::try_parse(parts[1]).map_err(|e| e.to_string())?;
+        let private_part = Uuid::try_parse(parts[2]).map_err(|e| e.to_string())?;
+
+        Ok(Self {
+            public_part,
+            private_part,
+        })
+    }
+}
+
+impl std::fmt::Display for ApiKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "graphix_api_key-{}-{}",
+            self.public_part.as_simple(),
+            self.private_part.as_simple()
+        )
+    }
+}
+
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, PartialEq, Eq)]
 #[diesel(table_name = networks)]
 pub struct Network {
@@ -180,6 +237,18 @@ pub struct NewNetwork {
 pub struct NewIndexer {
     pub address: IndexerAddress,
     pub name: Option<String>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, strum::Display, strum::EnumString)]
+pub enum ApiKeyPermissionLevel {
+    Admin,
+}
+
+#[derive(Debug, Clone, async_graphql::SimpleObject)]
+pub struct NewlyCreatedApiKey {
+    pub api_key: String,
+    pub notes: Option<String>,
+    pub permission_level: String,
 }
 
 #[derive(Debug, Clone, Queryable, Serialize)]
@@ -255,3 +324,18 @@ impl FromSql<Jsonb, Pg> for DivergingBlock {
 //        }
 //    }
 //}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn api_key_from_str() {
+        let api_key = ApiKey::generate();
+        let parsed = ApiKey::from_str(&format!("{}", api_key)).unwrap();
+
+        assert_eq!(api_key, parsed);
+    }
+}

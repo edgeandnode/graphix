@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
-use async_trait::async_trait;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 
@@ -22,7 +21,6 @@ impl<T> StoreLoader<T> {
     }
 }
 
-#[async_trait]
 impl async_graphql::dataloader::Loader<BigIntId> for StoreLoader<models::Block> {
     type Value = models::Block;
     type Error = String;
@@ -41,7 +39,6 @@ impl async_graphql::dataloader::Loader<BigIntId> for StoreLoader<models::Block> 
     }
 }
 
-#[async_trait]
 impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::Poi> {
     type Value = models::Poi;
     type Error = String;
@@ -60,7 +57,6 @@ impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::Poi> {
     }
 }
 
-#[async_trait]
 impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::SgDeployment> {
     type Value = models::SgDeployment;
     type Error = String;
@@ -87,7 +83,6 @@ impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::SgDeployme
     }
 }
 
-#[async_trait]
 impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::Network> {
     type Value = models::Network;
     type Error = String;
@@ -110,7 +105,6 @@ impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::Network> {
     }
 }
 
-#[async_trait]
 impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::Indexer> {
     type Value = models::Indexer;
     type Error = String;
@@ -129,7 +123,6 @@ impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::Indexer> {
     }
 }
 
-#[async_trait]
 impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::GraphNodeCollectedVersion> {
     type Value = models::GraphNodeCollectedVersion;
     type Error = String;
@@ -148,7 +141,6 @@ impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::GraphNodeC
     }
 }
 
-#[async_trait]
 impl async_graphql::dataloader::Loader<IntId>
     for StoreLoader<models::IndexerNetworkSubgraphMetadata>
 {

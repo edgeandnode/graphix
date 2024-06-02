@@ -4,7 +4,7 @@ use graphix_common_types as common;
 use graphix_store::models::{self, IntId};
 use num_traits::cast::ToPrimitive;
 
-use super::{ctx_data, ApiSchemaContext};
+use super::{ctx_data, ServerState};
 
 #[derive(Clone, derive_more::From)]
 pub struct SubgraphDeployment {
@@ -20,7 +20,7 @@ impl SubgraphDeployment {
         self.model.name.as_deref()
     }
 
-    pub async fn network(&self, ctx: &ApiSchemaContext) -> Result<Network, String> {
+    pub async fn network(&self, ctx: &ServerState) -> Result<Network, String> {
         let loader = &ctx.loader_network;
 
         loader
@@ -34,7 +34,7 @@ impl SubgraphDeployment {
 
 #[Object]
 impl SubgraphDeployment {
-    /// IPFS CID of the subgraph deployment.
+    /// IPFS CID of the subgraph deployment manifest e.g. `Qm...`.
     #[graphql(name = "cid")]
     async fn graphql_cid(&self) -> IpfsCid {
         self.model.cid.clone()
@@ -50,6 +50,28 @@ impl SubgraphDeployment {
     #[graphql(name = "network")]
     async fn graphql_network(&self, ctx: &Context<'_>) -> Result<Network, String> {
         self.network(ctx_data(ctx)).await
+    }
+}
+
+pub struct ApiKey {
+    model: models::NewlyCreatedApiKey,
+}
+
+#[Object]
+impl ApiKey {
+    #[graphql(name = "apiKey")]
+    async fn graphql_api_key(&self) -> String {
+        self.model.api_key.clone()
+    }
+
+    #[graphql(name = "permissionLevel")]
+    async fn graphql_permission_level(&self) -> String {
+        self.model.permission_level.clone()
+    }
+
+    #[graphql(name = "notes")]
+    async fn graphql_notes(&self) -> Option<String> {
+        self.model.notes.clone()
     }
 }
 
@@ -102,7 +124,7 @@ impl Indexer {
 
     pub async fn graph_node_version(
         &self,
-        ctx: &ApiSchemaContext,
+        ctx: &ServerState,
     ) -> Result<Option<models::GraphNodeCollectedVersion>, String> {
         let loader = &ctx.loader_graph_node_collected_version;
 
@@ -224,7 +246,7 @@ impl Block {
         self.model.hash.clone().into()
     }
 
-    pub async fn network(&self, ctx: &ApiSchemaContext) -> Result<Network, String> {
+    pub async fn network(&self, ctx: &ServerState) -> Result<Network, String> {
         let loader = &ctx.loader_network;
 
         loader
@@ -301,7 +323,7 @@ impl ProofOfIndexing {
         self.model.poi.clone().into()
     }
 
-    pub async fn deployment(&self, ctx: &ApiSchemaContext) -> Result<SubgraphDeployment, String> {
+    pub async fn deployment(&self, ctx: &ServerState) -> Result<SubgraphDeployment, String> {
         let loader = &ctx.loader_subgraph_deployment;
 
         loader
@@ -312,7 +334,7 @@ impl ProofOfIndexing {
             .map(Into::into)
     }
 
-    pub async fn block(&self, ctx: &ApiSchemaContext) -> Result<Block, String> {
+    pub async fn block(&self, ctx: &ServerState) -> Result<Block, String> {
         let loader = &ctx.loader_block;
 
         loader
@@ -323,7 +345,7 @@ impl ProofOfIndexing {
             .map(Into::into)
     }
 
-    pub async fn indexer(&self, ctx: &ApiSchemaContext) -> Result<Indexer, String> {
+    pub async fn indexer(&self, ctx: &ServerState) -> Result<Indexer, String> {
         let loader = &ctx.loader_indexer;
 
         loader

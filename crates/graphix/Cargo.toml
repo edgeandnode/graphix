@@ -15,7 +15,6 @@ graphix_indexer_client = { path = "../indexer_client" }
 graphix_lib = { path = "../graphix_lib" }
 graphix_network_sg_client = { path = "../network_sg_client" }
 graphix_store = { path = "../store" }
-nanoid = { workspace = true }
 prometheus_exporter = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
