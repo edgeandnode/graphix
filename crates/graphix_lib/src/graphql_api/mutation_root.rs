@@ -2,9 +2,7 @@ use std::str::FromStr;
 
 use async_graphql::{Context, Object, Result};
 use graphix_common_types::*;
-use graphix_store::models::{
-    ApiKeyPermissionLevel, DivergenceInvestigationRequest, NewlyCreatedApiKey,
-};
+use graphix_store::models::{DivergenceInvestigationRequest, NewlyCreatedApiKey};
 
 use super::ctx_data;
 
@@ -70,7 +68,7 @@ impl MutationRoot {
         &self,
         ctx: &Context<'_>,
         #[graphql(desc = "Permission level of the API key. Use `admin` for full access.")]
-        permission_level: String,
+        permission_level: ApiKeyPermissionLevel,
         #[graphql(
             default,
             desc = "Not-encrypted notes to store in the database alongside the API key, to be used for debugging or identification purposes."
@@ -79,7 +77,6 @@ impl MutationRoot {
     ) -> Result<NewlyCreatedApiKey> {
         let ctx_data = ctx_data(ctx);
 
-        let permission_level = ApiKeyPermissionLevel::from_str(&permission_level)?;
         let api_key = ctx_data
             .store
             .create_api_key(notes.as_deref(), permission_level)
@@ -104,11 +101,10 @@ impl MutationRoot {
             desc = "Not-encrypted notes to store in the database alongside the API key, to be used for debugging or identification purposes."
         )]
         notes: Option<String>,
-        permission_level: String,
+        permission_level: ApiKeyPermissionLevel,
     ) -> Result<bool> {
         let ctx_data = ctx_data(ctx);
 
-        let permission_level = ApiKeyPermissionLevel::from_str(&permission_level)?;
         ctx_data
             .store
             .modify_api_key(&api_key, notes.as_deref(), permission_level)

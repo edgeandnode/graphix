@@ -170,3 +170,18 @@ pub struct PoiCrossCheckReport {
     proof_of_indexing2: PoiBytes,
     diverging_block: Option<DivergingBlock>,
 }
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    async_graphql::Enum,
+    // strum is used for (de)serialization in the database.
+    strum::Display,
+    strum::EnumString,
+)]
+pub enum ApiKeyPermissionLevel {
+    Admin,
+}

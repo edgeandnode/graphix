@@ -8,10 +8,9 @@ use diesel_async::pooled_connection::deadpool::{Object, Pool};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
-use graphix_common_types::{inputs, IndexerAddress, IpfsCid, PoiBytes};
+use graphix_common_types::{inputs, ApiKeyPermissionLevel, IndexerAddress, IpfsCid, PoiBytes};
 use models::{
-    ApiKey, ApiKeyPermissionLevel, FailedQueryRow, NewIndexerNetworkSubgraphMetadata,
-    NewlyCreatedApiKey, SgDeployment,
+    ApiKey, FailedQueryRow, NewIndexerNetworkSubgraphMetadata, NewlyCreatedApiKey, SgDeployment,
 };
 use uuid::Uuid;
 pub mod models;
@@ -436,7 +435,7 @@ impl Store {
         Ok(NewlyCreatedApiKey {
             api_key: api_key.to_string(),
             notes: notes.map(|s| s.to_string()),
-            permission_level: permission_level.to_string(),
+            permission_level,
         })
     }
 

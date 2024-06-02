@@ -15,6 +15,7 @@ quickcheck = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+strum = { workspace = true }
 uuid = { workspace = true }
 
 [dev-dependencies]

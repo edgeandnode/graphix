@@ -8,7 +8,7 @@ use diesel::deserialize::FromSql;
 use diesel::pg::Pg;
 use diesel::sql_types::Jsonb;
 use diesel::{AsChangeset, AsExpression, FromSqlRow, Insertable, Queryable, Selectable};
-use graphix_common_types as types;
+use graphix_common_types::{self as types, ApiKeyPermissionLevel};
 use graphix_indexer_client::IndexerId;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
@@ -239,16 +239,11 @@ pub struct NewIndexer {
     pub name: Option<String>,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, strum::Display, strum::EnumString)]
-pub enum ApiKeyPermissionLevel {
-    Admin,
-}
-
 #[derive(Debug, Clone, async_graphql::SimpleObject)]
 pub struct NewlyCreatedApiKey {
     pub api_key: String,
     pub notes: Option<String>,
-    pub permission_level: String,
+    pub permission_level: ApiKeyPermissionLevel,
 }
 
 #[derive(Debug, Clone, Queryable, Serialize)]
