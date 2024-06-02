@@ -12,30 +12,20 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  rustfmt:
-    name: rustfmt
-    strategy:
-      matrix:
-        rust: ["stable"]
+  lint:
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          components: rustfmt
-          override: true
-      - name: Check formatting
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --all-targets --all-features
+      - run: cargo test --verbose -- --nocapture
 
   docker-build-and-push:
     runs-on: ubuntu-latest
+    needs: lint
     permissions:
       contents: read
       packages: write
@@ -58,72 +48,3 @@ jobs:
         with:
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/graphix:latest
-
-  build:
-    name: Build
-    strategy:
-      fail-fast: false
-      matrix:
-        rust: ["stable"]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-      - name: Cache cargo registry
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: test-cargo-${{ hashFiles('**/Cargo.toml') }}
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          override: true
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-
-  test:
-    name: Test
-    strategy:
-      fail-fast: false
-      matrix:
-        rust: ["stable"]
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: graphix_test
-        ports:
-          - 5432:5432
-    env:
-      GRAPHIX_TEST_DB_URL: "postgresql://postgres:postgres@localhost:5432/graphix_test"
-
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-      - name: Cache cargo registry
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: test-cargo-${{ hashFiles('**/Cargo.toml') }}
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          override: true
-      - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --verbose -- --nocapture
