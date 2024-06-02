@@ -1,5 +1,6 @@
 pub mod api_types;
-mod server;
+mod mutation_root;
+mod query_root;
 
 use std::str::FromStr;
 use std::sync::Arc;
@@ -17,7 +18,8 @@ use graphix_store::models::ApiKey;
 use graphix_store::{Store, StoreLoader};
 use tower_service::Service;
 
-use self::server::{MutationRoot, QueryRoot};
+use self::mutation_root::MutationRoot;
+use self::query_root::QueryRoot;
 use crate::config::Config;
 use crate::GRAPHIX_VERSION;
 
@@ -108,16 +110,6 @@ pub async fn axum_router(config: Config) -> anyhow::Result<axum::Router<()>> {
         .with_state(Arc::new(server_state)))
 }
 
-fn api_key_error(err: impl ToString) -> (StatusCode, Json<serde_json::Value>) {
-    (
-        StatusCode::UNAUTHORIZED,
-        Json(serde_json::json!({
-            "message": "Invalid API key",
-            "error": err.to_string(),
-        })),
-    )
-}
-
 async fn graphql_handler(
     State(state): State<Arc<ServerState>>,
     request: axum::extract::Request,
@@ -144,6 +136,16 @@ async fn graphql_handler(
         .call(request)
         .await
         .map_err(|_| api_key_error("Internal server error"))?)
+}
+
+fn api_key_error(err: impl ToString) -> (StatusCode, Json<serde_json::Value>) {
+    (
+        StatusCode::UNAUTHORIZED,
+        Json(serde_json::json!({
+            "message": "Invalid API key",
+            "error": err.to_string(),
+        })),
+    )
 }
 
 async fn graphiql_route() -> impl axum::response::IntoResponse {
