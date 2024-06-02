@@ -12,3 +12,5 @@ rustc-ice*
 
 ### Project specific
 ops/compose/data/*
+ops/compose/grafana/*
+!ops/compose/grafana/data/grafana.db
