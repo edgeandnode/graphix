@@ -12,5 +12,3 @@ rustc-ice*
 
 ### Project specific
 ops/compose/data/*
-/frontend/dist
-frontend/graphql/api_schema.graphql

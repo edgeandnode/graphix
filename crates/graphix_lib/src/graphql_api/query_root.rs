@@ -4,6 +4,7 @@ use anyhow::Context as _;
 use async_graphql::{Context, Object, Result};
 use futures::future::try_join_all;
 use graphix_common_types::*;
+use graphix_store::models::ApiKeyPublicMetadata;
 use uuid::Uuid;
 
 use super::{api_types, ctx_data};
@@ -127,6 +128,13 @@ impl QueryRoot {
             .await?;
 
         Ok(pois.into_iter().map(Into::into).collect())
+    }
+
+    async fn api_keys(&self, ctx: &Context<'_>) -> Result<Vec<ApiKeyPublicMetadata>> {
+        let ctx_data = ctx_data(ctx);
+        let api_keys = ctx_data.store.api_keys().await?;
+
+        Ok(api_keys)
     }
 
     async fn poi_agreement_ratios(

@@ -10,7 +10,8 @@ use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use graphix_common_types::{inputs, ApiKeyPermissionLevel, IndexerAddress, IpfsCid, PoiBytes};
 use models::{
-    ApiKey, FailedQueryRow, NewIndexerNetworkSubgraphMetadata, NewlyCreatedApiKey, SgDeployment,
+    ApiKey, ApiKeyDbRow, ApiKeyPublicMetadata, FailedQueryRow, NewIndexerNetworkSubgraphMetadata,
+    NewlyCreatedApiKey, SgDeployment,
 };
 use uuid::Uuid;
 pub mod models;
@@ -57,6 +58,11 @@ impl Store {
 
         store.run_migrations().await?;
 
+        if store.api_keys().await?.is_empty() {
+            info!("No API keys found in database, creating master API key");
+            store.create_master_api_key().await?;
+        }
+
         Ok(store)
     }
 
@@ -69,6 +75,24 @@ impl Store {
             .run_pending_migrations(&mut conn)
             .await
             .map_err(|e| anyhow::anyhow!(e))?;
+
+        Ok(())
+    }
+
+    async fn create_master_api_key(&self) -> anyhow::Result<()> {
+        let api_key = self
+            .create_api_key(None, ApiKeyPermissionLevel::Admin)
+            .await?;
+
+        let description = format!("Master API key created during database initialization. Use it to create a new private API key and then delete it for security reasons. `{}`", api_key.api_key.to_string());
+        self.modify_api_key(
+            &api_key.api_key,
+            Some(&description),
+            ApiKeyPermissionLevel::Admin,
+        )
+        .await?;
+
+        info!(api_key = ?api_key.api_key, "Created master API key");
 
         Ok(())
     }
@@ -421,14 +445,15 @@ impl Store {
         use schema::graphix_api_tokens;
 
         let api_key = ApiKey::generate();
+        let stored_api_key = ApiKeyDbRow {
+            public_prefix: api_key.public_part_as_string(),
+            sha256_api_key_hash: api_key.hash(),
+            notes: notes.map(|s| s.to_string()),
+            permission_level,
+        };
 
         diesel::insert_into(graphix_api_tokens::table)
-            .values((
-                graphix_api_tokens::public_prefix.eq(api_key.public_part_as_string()),
-                graphix_api_tokens::sha256_api_key_hash.eq(api_key.hash()),
-                graphix_api_tokens::notes.eq(notes),
-                graphix_api_tokens::permission_level.eq(permission_level.to_string()),
-            ))
+            .values(&[stored_api_key])
             .execute(&mut self.conn().await?)
             .await?;
 
@@ -453,7 +478,7 @@ impl Store {
             .filter(graphix_api_tokens::sha256_api_key_hash.eq(api_key.hash()))
             .set((
                 graphix_api_tokens::notes.eq(notes),
-                graphix_api_tokens::permission_level.eq(permission_level.to_string()),
+                graphix_api_tokens::permission_level.eq(permission_level),
             ))
             .execute(&mut self.conn().await?)
             .await?;
@@ -472,6 +497,31 @@ impl Store {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn api_keys(&self) -> anyhow::Result<Vec<ApiKeyPublicMetadata>> {
+        use schema::graphix_api_tokens;
+
+        Ok(graphix_api_tokens::table
+            .load::<ApiKeyDbRow>(&mut self.conn().await?)
+            .await?
+            .into_iter()
+            .map(ApiKeyPublicMetadata::from)
+            .collect())
+    }
+
+    pub async fn permission_level(
+        &self,
+        api_key: &ApiKey,
+    ) -> anyhow::Result<Option<ApiKeyPermissionLevel>> {
+        use schema::graphix_api_tokens;
+
+        Ok(graphix_api_tokens::table
+            .select(graphix_api_tokens::permission_level)
+            .filter(graphix_api_tokens::sha256_api_key_hash.eq(api_key.hash()))
+            .get_result(&mut self.conn().await?)
+            .await
+            .optional()?)
     }
 
     pub async fn write_graph_node_versions(

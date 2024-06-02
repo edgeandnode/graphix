@@ -4,6 +4,12 @@ enum ApiKeyPermissionLevel {
 	ADMIN
 }
 
+type ApiKeyPublicMetadata {
+	publicPrefix: String!
+	notes: String
+	permissionLevel: ApiKeyPermissionLevel!
+}
+
 """
 Metadata that was collected during a bisection run.
 """
@@ -437,6 +443,7 @@ type QueryRoot {
 	subgraph deployment.
 	"""
 	liveProofsOfIndexing(filter: PoisQuery!): [ProofOfIndexing!]!
+	apiKeys: [ApiKeyPublicMetadata!]!
 	poiAgreementRatios(indexerAddress: HexString!): [PoiAgreementRatio!]!
 	divergenceInvestigationReport(
 		"""

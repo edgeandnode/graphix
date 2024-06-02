@@ -2,7 +2,7 @@ version: "3"
 
 services:
   grafana:
-    image: grafana/grafana-oss
+    image: grafana/grafana-oss:9.3.16
     restart: unless-stopped
     # https://community.grafana.com/t/new-docker-install-with-persistent-storage-permission-problem/10896/16
     user: ":"
@@ -12,8 +12,6 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Plugins:
-      # - https://github.com/fifemon/graphql-datasource for GraphQL data sources.
       - GF_INSTALL_PLUGINS=fifemon-graphql-datasource,yesoreyeram-infinity-datasource
     volumes:
       - ./grafana/config/:/etc/grafana/

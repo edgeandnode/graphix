@@ -43,7 +43,7 @@ diesel::table! {
         public_prefix -> Text,
         sha256_api_key_hash -> Bytea,
         notes -> Nullable<Text>,
-        permission_level -> Text,
+        permission_level -> Int4,
     }
 }
 

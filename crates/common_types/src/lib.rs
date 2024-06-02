@@ -3,10 +3,12 @@
 //! A few of these are shared with database models as well. Should we keep them
 //! separate? It would be cleaner, but at the cost of some code duplication.
 
+mod api_key_permission_level;
 mod hex_string;
 pub mod inputs;
 mod ipfs_cid;
 
+pub use api_key_permission_level::ApiKeyPermissionLevel;
 use async_graphql::*;
 use chrono::NaiveDateTime;
 pub use divergence_investigation::*;
@@ -169,19 +171,4 @@ pub struct PoiCrossCheckReport {
     proof_of_indexing1: PoiBytes,
     proof_of_indexing2: PoiBytes,
     diverging_block: Option<DivergingBlock>,
-}
-
-#[derive(
-    Debug,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    async_graphql::Enum,
-    // strum is used for (de)serialization in the database.
-    strum::Display,
-    strum::EnumString,
-)]
-pub enum ApiKeyPermissionLevel {
-    Admin,
 }
