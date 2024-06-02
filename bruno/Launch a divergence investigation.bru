@@ -1,0 +1,42 @@
+meta {
+  name: Launch a divergence investigation
+  type: graphql
+  seq: 7
+}
+
+post {
+  url: {{ _.url }}
+  body: graphql
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:graphql {
+  mutation {
+  	launchDivergenceInvestigation(
+  		req: {
+  			pois: ["foo", "bar"]
+  			queryBlockCaches: true
+  			queryEthCallCaches: false
+  			queryEntityChanges: true
+  		}
+  	) {
+  		uuid
+  		status
+  		bisectionRuns {
+  			divergenceBlockBounds {
+  				lowerBound {
+  					number
+  				}
+  				upperBound {
+  					number
+  				}
+  			}
+  		}
+  	}
+  }
+  
+}

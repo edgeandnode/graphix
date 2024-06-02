@@ -1,0 +1,28 @@
+meta {
+  name: Assign a human-readable name to a deployment
+  type: graphql
+  seq: 5
+}
+
+post {
+  url: {{ _.url }}
+  body: graphql
+  auth: none
+}
+
+headers {
+  User-Agent: Insomnia/2023.5.7
+  Content-Type: application/json
+}
+
+body:graphql {
+  mutation {
+  	setDeploymentName(
+  		deploymentIpfsCid: "Qmadj8x9km1YEyKmRnJ6EkC2zpJZFCfTyTZpuqC3j6e1QH"
+  		name: "premia.eth/premia-mainnet"
+  	) {
+  		id
+  	}
+  }
+  
+}
