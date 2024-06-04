@@ -1,6 +1,6 @@
 use async_graphql::{ComplexObject, Context, Object, SimpleObject};
 use common::{IndexerAddress, IpfsCid};
-use graphix_common_types as common;
+use graphix_common_types::{self as common, ApiKeyPermissionLevel};
 use graphix_store::models::{self, IntId};
 use num_traits::cast::ToPrimitive;
 
@@ -65,7 +65,7 @@ impl ApiKey {
     }
 
     #[graphql(name = "permissionLevel")]
-    async fn graphql_permission_level(&self) -> String {
+    async fn graphql_permission_level(&self) -> ApiKeyPermissionLevel {
         self.model.permission_level.clone()
     }
 

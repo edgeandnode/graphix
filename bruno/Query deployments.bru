@@ -1,0 +1,33 @@
+meta {
+  name: Query deployments
+  type: graphql
+  seq: 1
+}
+
+post {
+  url: {{ _.url }}
+  body: graphql
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:graphql {
+  {
+  	deployments(
+  		filter: {
+  			network: "mainnet"
+  			ipfsCid: "Qmadj8x9km1YEyKmRnJ6EkC2zpJZFCfTyTZpuqC3j6e1QH"
+  			#name: "premia.eth/premia-mainnet"
+  			limit: 100
+  		}
+  	) {
+  		id
+  		name
+  		networkName
+  	}
+  }
+  
+}

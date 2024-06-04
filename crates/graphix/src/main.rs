@@ -1,55 +1,49 @@
 #![allow(clippy::type_complexity)]
 
-mod bisect;
-mod utils;
-
 use std::collections::HashSet;
+use std::env;
 use std::net::Ipv4Addr;
-use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
 use clap::Parser;
 use graphix_indexer_client::{IndexerClient, IndexerId};
+use graphix_lib::bisect::handle_divergence_investigation_requests;
 use graphix_lib::config::Config;
 use graphix_lib::graphql_api::{axum_router, ServerState};
 use graphix_lib::indexing_loop::{query_indexing_statuses, query_proofs_of_indexing};
-use graphix_lib::{config, metrics, PrometheusExporter};
+use graphix_lib::{config, metrics, CliOptions, PrometheusExporter};
 use graphix_store::{models, PoiLiveness, Store};
 use prometheus_exporter::prometheus;
 use tokio::net::TcpListener;
 use tokio::sync::watch;
 use tracing::*;
 
-use crate::bisect::handle_divergence_investigation_requests;
-
-#[derive(Parser, Debug)]
-struct CliOptions {
-    #[clap(long)]
-    config: PathBuf,
-}
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     init_tracing();
 
-    info!("Parse options");
     let cli_options = CliOptions::parse();
 
-    info!("Loading configuration file");
-    let config = Config::read(&cli_options.config)?;
+    let config = if let Some(path) = cli_options.base_config {
+        info!("Loading configuration file");
+        Config::read(&path)?
+    } else {
+        warn!("No base configuration file provided; using empty configuration");
+        Config::default()
+    };
 
     info!("Initialize store and running migrations");
-    let store = Store::new(&config.database_url).await?;
+    let store = Store::new(&cli_options.database_url).await?;
     info!("Store initialization successful");
 
-    if config.graphql.port != 0 {
+    {
         let config = config.clone();
         tokio::spawn(async move {
-            // Listen to requests forever.
             axum::serve(
-                TcpListener::bind((Ipv4Addr::UNSPECIFIED, config.graphql.port)).await?,
-                axum_router(config).await?,
+                TcpListener::bind((Ipv4Addr::UNSPECIFIED, cli_options.port)).await?,
+                axum_router(&cli_options.database_url, config).await?,
             )
             .await?;
 
@@ -60,15 +54,17 @@ async fn main() -> anyhow::Result<()> {
     let sleep_duration = Duration::from_secs(config.polling_period_in_seconds);
 
     // Prometheus metrics.
-    let registry = prometheus::default_registry().clone();
-    let _exporter = PrometheusExporter::start(config.prometheus_port, registry.clone()).unwrap();
+    let _exporter = PrometheusExporter::start(
+        cli_options.prometheus_port,
+        prometheus::default_registry().clone(),
+    )?;
 
     info!("Initializing bisect request handler");
-    let store_clone = store.clone();
     let (tx_indexers, rx_indexers) = watch::channel(vec![]);
-    let ctx = ServerState::new(store_clone.clone(), config.clone());
-
     {
+        let store_clone = store.clone();
+        let ctx = ServerState::new(store_clone.clone(), config.clone());
+
         let networks: Vec<models::NewNetwork> = config
             .chains
             .iter()
@@ -78,13 +74,13 @@ async fn main() -> anyhow::Result<()> {
             })
             .collect();
         store_clone.create_networks_if_missing(&networks).await?;
-    }
 
-    tokio::spawn(async move {
-        handle_divergence_investigation_requests(&store_clone, rx_indexers, &ctx)
-            .await
-            .unwrap()
-    });
+        tokio::spawn(async move {
+            handle_divergence_investigation_requests(&store_clone, rx_indexers, &ctx)
+                .await
+                .unwrap()
+        });
+    }
 
     loop {
         info!("New main loop iteration");
@@ -124,7 +120,18 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn init_tracing() {
-    tracing_subscriber::fmt::init();
+    use tracing_subscriber::prelude::*;
+    use tracing_subscriber::{fmt, EnvFilter};
+
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(
+            EnvFilter::from_str(
+                &env::var("RUST_LOG").unwrap_or_else(|_| "graphix=debug".to_string()),
+            )
+            .unwrap(),
+        )
+        .init();
 }
 
 fn deduplicate_indexers(indexers: &[Arc<dyn IndexerClient>]) -> Vec<Arc<dyn IndexerClient>> {

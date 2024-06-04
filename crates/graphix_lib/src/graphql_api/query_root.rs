@@ -4,9 +4,10 @@ use anyhow::Context as _;
 use async_graphql::{Context, Object, Result};
 use futures::future::try_join_all;
 use graphix_common_types::*;
+use graphix_store::models::ApiKeyPublicMetadata;
 use uuid::Uuid;
 
-use super::{api_types, ctx_data};
+use super::{api_types, ctx_data, require_permission_level};
 
 pub struct QueryRoot;
 
@@ -107,6 +108,16 @@ impl QueryRoot {
         Ok(pois.into_iter().map(Into::into).collect())
     }
 
+    /// A copy of the configuration file used to run Graphix.
+    async fn configuration(&self, ctx: &Context<'_>) -> Result<Option<serde_json::Value>> {
+        require_permission_level(ctx, ApiKeyPermissionLevel::Admin).await?;
+
+        let ctx_data = ctx_data(ctx);
+        let config = ctx_data.store.config().await?;
+
+        Ok(config)
+    }
+
     /// Same as [`QueryRoot::proofs_of_indexing`], but only returns PoIs that
     /// are "live" i.e. they are the most recent PoI collected for their
     /// subgraph deployment.
@@ -127,6 +138,13 @@ impl QueryRoot {
             .await?;
 
         Ok(pois.into_iter().map(Into::into).collect())
+    }
+
+    async fn api_keys(&self, ctx: &Context<'_>) -> Result<Vec<ApiKeyPublicMetadata>> {
+        let ctx_data = ctx_data(ctx);
+        let api_keys = ctx_data.store.api_keys().await?;
+
+        Ok(api_keys)
     }
 
     async fn poi_agreement_ratios(

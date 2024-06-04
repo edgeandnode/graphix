@@ -2,7 +2,6 @@
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -17,15 +16,6 @@ use url::Url;
 
 use crate::block_choice::BlockChoicePolicy;
 use crate::PrometheusMetrics;
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct GraphQlConfig {
-    /// The port on which the GraphQL API server should listen. Set it to 0 to
-    /// disable the API server entirely.
-    #[serde(default = "Config::default_graphql_api_port")]
-    pub port: u16,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct BlockExplorerUrlTemplateForBlock(String);
@@ -64,19 +54,13 @@ pub struct ChainConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    /// GraphQL API configuration.
-    pub graphql: GraphQlConfig,
-    /// The URL of the PostgreSQL database to use.
-    pub database_url: String,
-    /// The port on which the Prometheus exporter should listen.
-    #[serde(default = "Config::default_prometheus_port")]
-    pub prometheus_port: u16,
     /// Chain-specific configuration.
     #[serde(default)]
     pub chains: HashMap<String, ChainConfig>,
 
     // Indexing options
     // ----------------
+    #[serde(default)]
     pub sources: Vec<ConfigSource>,
     #[serde(default)]
     pub block_choice_policy: BlockChoicePolicy,
@@ -84,10 +68,25 @@ pub struct Config {
     pub polling_period_in_seconds: u64,
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            chains: Default::default(),
+            sources: Default::default(),
+            block_choice_policy: Default::default(),
+            polling_period_in_seconds: Self::default_polling_period_in_seconds(),
+        }
+    }
+}
+
 impl Config {
     pub fn read(path: &Path) -> anyhow::Result<Self> {
-        let file = File::open(path)?;
-        serde_yaml::from_reader(file).context("invalid config file")
+        let file_contents = std::fs::read_to_string(path)?;
+        Self::from_str(&file_contents)
+    }
+
+    pub fn from_str(s: &str) -> anyhow::Result<Self> {
+        serde_yaml::from_str(s).context("invalid config file")
     }
 
     pub fn indexers(&self) -> Vec<IndexerConfig> {
@@ -136,14 +135,6 @@ impl Config {
 
     fn default_polling_period_in_seconds() -> u64 {
         120
-    }
-
-    fn default_prometheus_port() -> u16 {
-        9184
-    }
-
-    fn default_graphql_api_port() -> u16 {
-        3030
     }
 }
 
@@ -300,4 +291,16 @@ pub async fn config_to_indexers(
     }
 
     Ok(indexers)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_example_configs() {
+        Config::from_str(include_str!("../../../configs/testnet.graphix.yml")).unwrap();
+        Config::from_str(include_str!("../../../configs/network.graphix.yml")).unwrap();
+        Config::from_str(include_str!("../../../configs/readonly.graphix.yml")).unwrap();
+    }
 }

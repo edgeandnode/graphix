@@ -1,0 +1,30 @@
+meta {
+  name: Poll indexer-s PoIs popularity -a-k-a- -PoI agreement ratios--
+  type: graphql
+  seq: 4
+}
+
+post {
+  url: {{ _.url }}
+  body: graphql
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:graphql {
+  {
+  	poiAgreementRatios(indexerName: "testnet-indexer-03") {
+  		poi
+  		deployment {
+  			id
+  		}
+  		nAgreeingIndexers
+  		nDisagreeingIndexers
+  		hasConsensus
+  		inConsensus
+  	}
+  }
+}

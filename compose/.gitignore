@@ -1,0 +1,4 @@
+data/*
+
+grafana/data/*
+!grafana/data/grafana.db

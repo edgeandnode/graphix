@@ -8,7 +8,7 @@ use diesel::deserialize::FromSql;
 use diesel::pg::Pg;
 use diesel::sql_types::Jsonb;
 use diesel::{AsChangeset, AsExpression, FromSqlRow, Insertable, Queryable, Selectable};
-use graphix_common_types as types;
+use graphix_common_types::{self as types, ApiKeyPermissionLevel};
 use graphix_indexer_client::IndexerId;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
@@ -129,6 +129,32 @@ impl IndexerId for Indexer {
     }
 }
 
+#[derive(Debug, Clone, Insertable, Queryable, Selectable)]
+#[diesel(table_name = graphix_api_tokens)]
+pub struct ApiKeyDbRow {
+    pub public_prefix: String,
+    pub sha256_api_key_hash: Vec<u8>,
+    pub notes: Option<String>,
+    pub permission_level: ApiKeyPermissionLevel,
+}
+
+#[derive(Debug, Clone, SimpleObject)]
+pub struct ApiKeyPublicMetadata {
+    pub public_prefix: String,
+    pub notes: Option<String>,
+    pub permission_level: ApiKeyPermissionLevel,
+}
+
+impl From<ApiKeyDbRow> for ApiKeyPublicMetadata {
+    fn from(sak: ApiKeyDbRow) -> Self {
+        Self {
+            public_prefix: sak.public_prefix,
+            notes: sak.notes,
+            permission_level: sak.permission_level,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ApiKey {
     public_part: Uuid,
@@ -144,7 +170,7 @@ impl ApiKey {
     }
 
     pub fn public_part_as_string(&self) -> String {
-        self.public_part.to_string()
+        self.public_part.as_simple().to_string()
     }
 
     pub fn hash(&self) -> Vec<u8> {
@@ -159,7 +185,7 @@ impl std::str::FromStr for ApiKey {
         let parts: Vec<&str> = s.split('-').collect();
         let parts: [&str; 3] = parts.try_into().map_err(|_| "invalid api key format")?;
 
-        if parts[0] != "graphix_api_key" {
+        if parts[0] != "graphix" {
             return Err("invalid api key format".to_string());
         }
 
@@ -177,7 +203,7 @@ impl std::fmt::Display for ApiKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "graphix_api_key-{}-{}",
+            "graphix-{}-{}",
             self.public_part.as_simple(),
             self.private_part.as_simple()
         )
@@ -239,16 +265,11 @@ pub struct NewIndexer {
     pub name: Option<String>,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, strum::Display, strum::EnumString)]
-pub enum ApiKeyPermissionLevel {
-    Admin,
-}
-
 #[derive(Debug, Clone, async_graphql::SimpleObject)]
 pub struct NewlyCreatedApiKey {
     pub api_key: String,
     pub notes: Option<String>,
-    pub permission_level: String,
+    pub permission_level: ApiKeyPermissionLevel,
 }
 
 #[derive(Debug, Clone, Queryable, Serialize)]

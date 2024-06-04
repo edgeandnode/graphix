@@ -1,12 +1,8 @@
-use std::str::FromStr;
-
 use async_graphql::{Context, Object, Result};
 use graphix_common_types::*;
-use graphix_store::models::{
-    ApiKeyPermissionLevel, DivergenceInvestigationRequest, NewlyCreatedApiKey,
-};
+use graphix_store::models::{DivergenceInvestigationRequest, NewlyCreatedApiKey};
 
-use super::ctx_data;
+use super::{ctx_data, require_permission_level};
 
 pub struct MutationRoot;
 
@@ -63,6 +59,21 @@ impl MutationRoot {
         Ok(report)
     }
 
+    async fn set_configuration(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "The configuration file to use")] config: serde_json::Value,
+    ) -> Result<bool> {
+        require_permission_level(ctx, ApiKeyPermissionLevel::Admin).await?;
+
+        let ctx_data = ctx_data(ctx);
+        let store = &ctx_data.store;
+
+        store.set_config(config).await?;
+
+        Ok(true)
+    }
+
     /// Create a new API key with the given permission level. You'll need to
     /// authenticate with another API key with the `admin` permission level to
     /// do this.
@@ -70,16 +81,19 @@ impl MutationRoot {
         &self,
         ctx: &Context<'_>,
         #[graphql(desc = "Permission level of the API key. Use `admin` for full access.")]
-        permission_level: String,
+        permission_level: ApiKeyPermissionLevel,
         #[graphql(
             default,
             desc = "Not-encrypted notes to store in the database alongside the API key, to be used for debugging or identification purposes."
         )]
         notes: Option<String>,
     ) -> Result<NewlyCreatedApiKey> {
+        // In order to create an API key with a certain permission level, you
+        // need to have that permission level yourself.
+        require_permission_level(ctx, permission_level).await?;
+
         let ctx_data = ctx_data(ctx);
 
-        let permission_level = ApiKeyPermissionLevel::from_str(&permission_level)?;
         let api_key = ctx_data
             .store
             .create_api_key(notes.as_deref(), permission_level)
@@ -104,11 +118,12 @@ impl MutationRoot {
             desc = "Not-encrypted notes to store in the database alongside the API key, to be used for debugging or identification purposes."
         )]
         notes: Option<String>,
-        permission_level: String,
+        permission_level: ApiKeyPermissionLevel,
     ) -> Result<bool> {
+        require_permission_level(ctx, permission_level).await?;
+
         let ctx_data = ctx_data(ctx);
 
-        let permission_level = ApiKeyPermissionLevel::from_str(&permission_level)?;
         ctx_data
             .store
             .modify_api_key(&api_key, notes.as_deref(), permission_level)

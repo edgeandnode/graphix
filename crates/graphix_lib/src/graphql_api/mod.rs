@@ -14,6 +14,7 @@ use axum::extract::State;
 use axum::http::header::AUTHORIZATION;
 use axum::http::StatusCode;
 use axum::Json;
+use graphix_common_types::ApiKeyPermissionLevel;
 use graphix_store::models::ApiKey;
 use graphix_store::{Store, StoreLoader};
 use tower_service::Service;
@@ -90,10 +91,10 @@ pub fn ctx_data<'a>(ctx: &'a Context) -> &'a RequestState {
         .expect("Failed to get API context")
 }
 
-pub async fn axum_router(config: Config) -> anyhow::Result<axum::Router<()>> {
+pub async fn axum_router(database_url: &str, config: Config) -> anyhow::Result<axum::Router<()>> {
     use axum::routing::get;
 
-    let store = Store::new(config.database_url.as_str()).await?;
+    let store = Store::new(database_url).await?;
     let server_state = ServerState::new(store.clone(), config.clone());
 
     Ok(axum::Router::new()
@@ -150,4 +151,30 @@ fn api_key_error(err: impl ToString) -> (StatusCode, Json<serde_json::Value>) {
 
 async fn graphiql_route() -> impl axum::response::IntoResponse {
     axum::response::Html(GraphiQLSource::build().endpoint("/graphql").finish())
+}
+
+async fn require_permission_level(
+    ctx: &Context<'_>,
+    required_permission_level: ApiKeyPermissionLevel,
+) -> async_graphql::Result<()> {
+    let ctx_data = ctx_data(ctx);
+    let api_key = ctx_data
+        .api_key
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("No API key provided"))?;
+
+    let Some(actual_permission_level) = ctx_data.store.permission_level(&api_key).await? else {
+        return Err(anyhow::anyhow!("No permission level for API key").into());
+    };
+
+    if actual_permission_level < required_permission_level {
+        return Err(anyhow::anyhow!(
+            "Insufficient permission level for API key: expected {:?}, got {:?}",
+            required_permission_level,
+            actual_permission_level
+        )
+        .into());
+    }
+
+    Ok(())
 }

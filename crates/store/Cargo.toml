@@ -22,6 +22,7 @@ tracing = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]
+derive_more = { workspace = true }
 graphix_common_types = { path = "../common_types" }
 graphix_lib = { path = "../graphix_lib" }
 testcontainers = { workspace = true }

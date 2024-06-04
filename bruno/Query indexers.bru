@@ -1,0 +1,30 @@
+meta {
+  name: Query indexers
+  type: graphql
+  seq: 2
+}
+
+post {
+  url: {{ _.url }}
+  body: graphql
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:graphql {
+  {
+  	indexers(
+  		filter: {
+  			address: "0x87eba079059b75504c734820d6cf828476754b83"
+  			limit: 100
+  		}
+  	) {
+  		id
+  		allocatedTokens
+  	}
+  }
+  
+}

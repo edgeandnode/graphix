@@ -8,7 +8,7 @@ edition = "2021"
 anyhow = { workspace = true }
 async-graphql = { workspace = true }
 async-trait = { workspace = true }
-clap = { workspace = true, features = ["derive", "env"] }
+clap = { workspace = true }
 futures = { workspace = true }
 graphix_common_types = { path = "../common_types" }
 graphix_indexer_client = { path = "../indexer_client" }

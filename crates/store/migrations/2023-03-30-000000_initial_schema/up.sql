@@ -143,6 +143,10 @@ CREATE TABLE graphix_api_tokens (
   public_prefix TEXT PRIMARY KEY,
   sha256_api_key_hash BYTEA NOT NULL UNIQUE,
   notes TEXT,
-  -- We shouldn't really store permission levels as `TEXT` but... it works.
-  permission_level TEXT NOT NULL
+  permission_level INTEGER NOT NULL
+);
+
+CREATE TABLE configs (
+  id INTEGER PRIMARY KEY,
+  config JSONB NOT NULL
 );

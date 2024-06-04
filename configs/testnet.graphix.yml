@@ -1,13 +1,9 @@
-graphql:
-  port: 3030
-
-databaseUrl: postgres://postgres:password@postgres:5432/graphix
 sources:
- # - type: networkSubgraph
- #   endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-goerli
- #   query: byAllocations
- #   stakeThreshold: 0.0
- #   limit: 1000
+  # - type: networkSubgraph
+  #   endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-goerli
+  #   query: byAllocations
+  #   stakeThreshold: 0.0
+  #   limit: 1000
   - type: networkSubgraph
     endpoint: https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-mainnet
     query: byAllocations

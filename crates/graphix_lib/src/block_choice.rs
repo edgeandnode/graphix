@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub enum BlockChoicePolicy {
     // Use the earliest block that all indexers have in common
+    #[default]
     Earliest,
     // Use the block that maximizes the total number of blocks synced across all indexers
-    #[default]
     MaxSyncedBlocks,
 }
 

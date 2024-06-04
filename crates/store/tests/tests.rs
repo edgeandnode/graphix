@@ -2,14 +2,12 @@ mod common;
 
 use graphix_common_types::inputs::SgDeploymentsQuery;
 use graphix_store::models::{Network, NewNetwork};
-use testcontainers::clients::Cli;
 
 use crate::common::EmptyStoreForTesting;
 
 #[tokio::test]
 async fn empty_store_has_no_deployments() {
-    let docker_cli = Cli::default();
-    let store = EmptyStoreForTesting::new(&docker_cli).await.unwrap();
+    let store = EmptyStoreForTesting::new().await.unwrap();
     let initial_deployments = store
         .sg_deployments(SgDeploymentsQuery::default())
         .await
@@ -19,8 +17,7 @@ async fn empty_store_has_no_deployments() {
 
 #[tokio::test]
 async fn create_then_delete_network() {
-    let docker_cli = Cli::default();
-    let store = EmptyStoreForTesting::new(&docker_cli).await.unwrap();
+    let store = EmptyStoreForTesting::new().await.unwrap();
 
     assert_eq!(store.networks().await.unwrap(), vec![]);
 
@@ -49,8 +46,7 @@ async fn create_then_delete_network() {
 #[tokio::test]
 #[should_panic] // FIXME
 async fn deployments_with_name() {
-    let docker_cli = Cli::default();
-    let store = EmptyStoreForTesting::new(&docker_cli).await.unwrap();
+    let store = EmptyStoreForTesting::new().await.unwrap();
 
     let ipfs_cid1 = "QmNY7gDNXHECV8SXoEY7hbfg4BX1aDMxTBDiFuG4huaSGA";
     let ipfs_cid2 = "QmYzsCjrVwwXtdsNm3PZVNziLGmb9o513GUzkq5wwhgXDT";
@@ -80,8 +76,7 @@ async fn deployments_with_name() {
 
 #[tokio::test]
 async fn create_divergence_investigation_request() {
-    let docker_cli = Cli::default();
-    let store = EmptyStoreForTesting::new(&docker_cli).await.unwrap();
+    let store = EmptyStoreForTesting::new().await.unwrap();
 
     let uuid = store
         .create_divergence_investigation_request(serde_json::json!({}))

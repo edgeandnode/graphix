@@ -1,0 +1,23 @@
+meta {
+  name: Delete a network and all related data
+  type: graphql
+  seq: 6
+}
+
+post {
+  url: {{ _.url }}
+  body: graphql
+  auth: none
+}
+
+headers {
+  User-Agent: Insomnia/2023.5.7
+  Content-Type: application/json
+}
+
+body:graphql {
+  mutation {
+  	deleteNetwork(network: "testnet")
+  }
+  
+}

@@ -13,6 +13,9 @@ use serde::{Deserialize, Serialize};
 use tracing::warn;
 use url::Url;
 
+const PAGINATION_SIZE: usize = 100;
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
+
 /// A GraphQL client that can query the network subgraph and extract useful
 /// data.
 ///
@@ -30,13 +33,11 @@ pub struct NetworkSubgraphClient {
 }
 
 impl NetworkSubgraphClient {
-    const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
-
     /// Creates a new [`NetworkSubgraphClient`] with the given endpoint.
     pub fn new(endpoint: Url, public_poi_requests: IntCounterVec) -> Self {
         Self {
             endpoint,
-            timeout: Self::DEFAULT_TIMEOUT,
+            timeout: DEFAULT_TIMEOUT,
             client: reqwest::Client::new(),
             public_poi_requests,
         }
@@ -84,50 +85,32 @@ impl NetworkSubgraphClient {
         &self,
         limit: Option<u32>,
     ) -> anyhow::Result<Vec<Arc<dyn IndexerTrait>>> {
-        let page_size = 100;
+        let indexers = self
+            .paginate::<GraphqlResponseTopIndexers, _>(
+                queries::INDEXERS_BY_ALLOCATIONS_QUERY,
+                vec![],
+                "error(s) querying indexers by allocations from the network subgraph",
+                |response_data| response_data.indexers,
+                limit,
+            )
+            .await?;
 
-        let mut indexers = Vec::<Arc<dyn IndexerTrait>>::new();
-        loop {
-            let response_data: GraphqlResponseTopIndexers = self
-                .graphql_query_no_errors(
-                    queries::INDEXERS_BY_ALLOCATIONS_QUERY,
-                    vec![
-                        ("first".to_string(), page_size.into()),
-                        ("skip".to_string(), indexers.len().into()),
-                    ],
-                    "error(s) querying indexers by allocations from the network subgraph",
-                )
-                .await?;
-
-            // If we got less than the page size, we're done.
-            let no_more_results = response_data.indexers.len() < page_size;
-
-            for indexer in response_data.indexers {
-                if let Some(url) = indexer.url {
-                    let address = str::parse::<IndexerAddress>(&indexer.id)
-                        .map_err(|e| anyhow!("invalid indexer address: {}", e))?;
-                    let real_indexer = RealIndexer::new(
-                        indexer.default_display_name,
-                        address,
-                        Url::parse(&format!("{}/status", url))?.to_string(),
-                        self.public_poi_requests.clone(),
-                    );
-                    indexers.push(Arc::new(real_indexer));
-                }
-            }
-
-            if no_more_results {
-                break;
-            }
-            if let Some(limit) = limit {
-                if indexers.len() > limit as usize {
-                    indexers.truncate(limit as usize);
-                    break;
-                }
+        let mut indexer_clients: Vec<Arc<dyn IndexerTrait>> = vec![];
+        for indexer in indexers {
+            if let Some(url) = indexer.url {
+                let address = str::parse::<IndexerAddress>(&indexer.id)
+                    .map_err(|e| anyhow!("invalid indexer address: {}", e))?;
+                let real_indexer = RealIndexer::new(
+                    indexer.default_display_name,
+                    address,
+                    Url::parse(&format!("{}/status", url))?.to_string(),
+                    self.public_poi_requests.clone(),
+                );
+                indexer_clients.push(Arc::new(real_indexer));
             }
         }
 
-        Ok(indexers)
+        Ok(indexer_clients)
     }
 
     /// Instantiates a [`RealIndexer`] from the indexer with the given address,
@@ -178,36 +161,15 @@ impl NetworkSubgraphClient {
         &self,
         limit: Option<u32>,
     ) -> anyhow::Result<Vec<SubgraphDeploymentWithAllocations>> {
-        let page_size = 100;
-
-        let mut subgraph_deployments = vec![];
-        loop {
-            let response_data: GraphqlResponseSgDeployments = self
-                .graphql_query_no_errors(
-                    queries::DEPLOYMENTS_QUERY,
-                    vec![
-                        ("first".to_string(), page_size.into()),
-                        ("skip".to_string(), subgraph_deployments.len().into()),
-                    ],
-                    "error(s) querying deployments from the network subgraph",
-                )
-                .await?;
-
-            // If we got less than the page size, we're done.
-            let no_more_results = response_data.subgraph_deployments.len() < page_size;
-
-            subgraph_deployments.extend(response_data.subgraph_deployments);
-
-            if no_more_results {
-                break;
-            }
-            if let Some(limit) = limit {
-                if subgraph_deployments.len() > limit as usize {
-                    subgraph_deployments.truncate(limit as usize);
-                    break;
-                }
-            }
-        }
+        let subgraph_deployments = self
+            .paginate::<GraphqlResponseSgDeployments, _>(
+                queries::DEPLOYMENTS_QUERY,
+                vec![],
+                "error(s) querying deployments from the network subgraph",
+                |response_data| response_data.subgraph_deployments,
+                limit,
+            )
+            .await?;
 
         Ok(subgraph_deployments)
     }
@@ -257,6 +219,46 @@ impl NetworkSubgraphClient {
             .error_for_status()?
             .json()
             .await?)
+    }
+
+    async fn paginate<R: DeserializeOwned, T>(
+        &self,
+        query: impl ToString,
+        variables: Vec<(String, serde_json::Value)>,
+        error_msg: &str,
+        response_items: impl Fn(R) -> Vec<T>,
+        limit: Option<u32>,
+    ) -> anyhow::Result<Vec<T>> {
+        let page_size = PAGINATION_SIZE;
+
+        let mut items = vec![];
+        loop {
+            let mut variables = variables.clone();
+            variables.push(("first".to_string(), page_size.into()));
+            variables.push(("skip".to_string(), items.len().into()));
+
+            let response_data: R = self
+                .graphql_query_no_errors(query.to_string(), variables, error_msg)
+                .await?;
+
+            // If we got less than the page size, we're done.
+            let page_items = response_items(response_data);
+            let no_more_results = page_items.len() < page_size;
+
+            items.extend(page_items);
+
+            if no_more_results {
+                break;
+            }
+            if let Some(limit) = limit {
+                if items.len() > limit as usize {
+                    items.truncate(limit as usize);
+                    break;
+                }
+            }
+        }
+
+        Ok(items)
     }
 }
 

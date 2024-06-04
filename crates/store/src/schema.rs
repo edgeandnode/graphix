@@ -10,6 +10,13 @@ diesel::table! {
 }
 
 diesel::table! {
+    configs (id) {
+        id -> Int4,
+        config -> Jsonb,
+    }
+}
+
+diesel::table! {
     divergence_investigation_reports (uuid) {
         uuid -> Uuid,
         report -> Jsonb,
@@ -43,7 +50,7 @@ diesel::table! {
         public_prefix -> Text,
         sha256_api_key_hash -> Bytea,
         notes -> Nullable<Text>,
-        permission_level -> Text,
+        permission_level -> Int4,
     }
 }
 
@@ -156,6 +163,7 @@ diesel::joinable!(sg_names -> sg_deployments (sg_deployment_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     blocks,
+    configs,
     divergence_investigation_reports,
     failed_queries,
     graph_node_collected_versions,

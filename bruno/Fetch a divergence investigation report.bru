@@ -1,0 +1,21 @@
+meta {
+  name: Fetch a divergence investigation report
+  type: graphql
+  seq: 8
+}
+
+post {
+  url: {{ _.url }}
+  body: graphql
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:graphql {
+  {
+  	poiCrossCheckReport(requestId: "9b587618-9f25-4f96-b435-a3b9f94dc9f2")
+  }
+}

@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+use std::hash::Hash;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -10,8 +12,6 @@ use graphix_common_types::{
 use graphix_indexer_client::{
     IndexerClient, IndexerId, PoiRequest, ProofOfIndexing, SubgraphDeployment,
 };
-use graphix_lib::graphql_api::api_types::{self, Indexer};
-use graphix_lib::graphql_api::ServerState;
 use graphix_store::models::DivergenceInvestigationRequest;
 use graphix_store::Store;
 use thiserror::Error;
@@ -19,7 +19,8 @@ use tokio::sync::watch;
 use tracing::{debug, error, info};
 use uuid::Uuid;
 
-use crate::utils::unordered_pairs_combinations;
+use crate::graphql_api::api_types::{self, Indexer};
+use crate::graphql_api::ServerState;
 
 pub struct DivergingBlock {
     pub poi1: ProofOfIndexing,
@@ -426,4 +427,39 @@ async fn handle_divergence_investigation_request(
     info!(?req_uuid, "Finished bisecting Pois");
 
     report
+}
+
+/// Creates all combinations of elements in the iterator, without duplicates.
+/// Elements are never paired with themselves.
+pub fn unordered_pairs_combinations<T>(iter: impl Iterator<Item = T> + Clone) -> HashSet<(T, T)>
+where
+    T: Hash + Eq + Clone,
+{
+    let mut pairs = HashSet::new();
+    for (i, x) in iter.clone().enumerate() {
+        for y in iter.clone().skip(i + 1) {
+            pairs.insert((x.clone(), y));
+        }
+    }
+    pairs
+}
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+
+    fn test_unordered_pairs_combinations(original: Vec<u32>, combinations: Vec<(u32, u32)>) {
+        assert_eq!(
+            unordered_pairs_combinations(original.into_iter()),
+            HashSet::from_iter(combinations.into_iter())
+        );
+    }
+
+    #[test]
+    fn unordered_pairs_combinations_test_cases() {
+        test_unordered_pairs_combinations(vec![], vec![]);
+        test_unordered_pairs_combinations(vec![1], vec![]);
+        test_unordered_pairs_combinations(vec![1, 2], vec![(1, 2)]);
+        test_unordered_pairs_combinations(vec![1, 2, 3], vec![(1, 2), (2, 3), (1, 3)]);
+    }
 }

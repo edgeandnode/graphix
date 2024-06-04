@@ -1,7 +1,3 @@
-databaseUrl: postgres://postgres:password@localhost:5433/graphix
-graphql:
-  port: 3030
-
 chains:
   mainnet:
     caip2: "eip155:1"

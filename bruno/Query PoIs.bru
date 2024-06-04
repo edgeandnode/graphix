@@ -1,0 +1,38 @@
+meta {
+  name: Query PoIs
+  type: graphql
+  seq: 3
+}
+
+post {
+  url: {{ _.url }}
+  body: graphql
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:graphql {
+  {
+  	proofsOfIndexing(request: {
+  		deployments: ["Qmadj8x9km1YEyKmRnJ6EkC2zpJZFCfTyTZpuqC3j6e1QH"],
+  		blockRange: {start: 1000},
+  		limit: 100
+  	}) {
+  		hash
+  		block {
+  			hash
+  			number
+  		}
+  		allocatedTokens
+  		deployment {
+  			id
+  		}
+  		indexer {
+  			id
+  		}
+  	}
+  }
+}

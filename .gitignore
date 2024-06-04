@@ -1,7 +1,7 @@
 rustc-ice*
 
 ### IDEs
-.vscode/
+.vscode/settings.json
 .idea/
 
 ### OS
@@ -9,8 +9,3 @@ rustc-ice*
 
 ### Rust
 /target
-
-### Project specific
-ops/compose/data/*
-/frontend/dist
-frontend/graphql/api_schema.graphql

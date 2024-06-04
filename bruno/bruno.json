@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Graphix",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

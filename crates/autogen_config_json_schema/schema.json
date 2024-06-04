@@ -3,14 +3,9 @@
   "title": "Config",
   "description": "A [`serde`]-compatible representation of Graphix's YAML configuration file.",
   "type": "object",
-  "required": [
-    "databaseUrl",
-    "graphql",
-    "sources"
-  ],
   "properties": {
     "blockChoicePolicy": {
-      "default": "maxSyncedBlocks",
+      "default": "earliest",
       "allOf": [
         {
           "$ref": "#/definitions/BlockChoicePolicy"
@@ -25,32 +20,14 @@
         "$ref": "#/definitions/ChainConfig"
       }
     },
-    "databaseUrl": {
-      "description": "The URL of the PostgreSQL database to use.",
-      "type": "string"
-    },
-    "graphql": {
-      "description": "GraphQL API configuration.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/GraphQlConfig"
-        }
-      ]
-    },
     "pollingPeriodInSeconds": {
       "default": 120,
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
     },
-    "prometheusPort": {
-      "description": "The port on which the Prometheus exporter should listen.",
-      "default": 9184,
-      "type": "integer",
-      "format": "uint16",
-      "minimum": 0.0
-    },
     "sources": {
+      "default": [],
       "type": "array",
       "items": {
         "$ref": "#/definitions/ConfigSource"
@@ -225,18 +202,6 @@
           }
         }
       ]
-    },
-    "GraphQlConfig": {
-      "type": "object",
-      "properties": {
-        "port": {
-          "description": "The port on which the GraphQL API server should listen. Set it to 0 to disable the API server entirely.",
-          "default": 3030,
-          "type": "integer",
-          "format": "uint16",
-          "minimum": 0.0
-        }
-      }
     },
     "HexString": {
       "type": "string"
