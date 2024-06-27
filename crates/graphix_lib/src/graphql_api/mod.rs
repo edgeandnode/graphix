@@ -1,6 +1,6 @@
 pub mod api_types;
-mod mutation_root;
-mod query_root;
+mod mutations;
+mod queries;
 
 use std::str::FromStr;
 use std::sync::Arc;
@@ -15,71 +15,63 @@ use axum::http::header::AUTHORIZATION;
 use axum::http::StatusCode;
 use axum::Json;
 use graphix_common_types::ApiKeyPermissionLevel;
-use graphix_store::models::ApiKey;
+use graphix_store::models::{self, ApiKey};
 use graphix_store::{Store, StoreLoader};
 use tower_service::Service;
 
-use self::mutation_root::MutationRoot;
-use self::query_root::QueryRoot;
+use self::mutations::MutationRoot;
+use self::queries::QueryRoot;
 use crate::config::Config;
 use crate::GRAPHIX_VERSION;
 
 pub type ApiSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
+/// A [`GraphixState`] paired with an [`ApiKey`] that was supplied with a GraphQL
+/// request.
 #[derive(derive_more::Deref)]
 pub struct RequestState {
     api_key: Option<ApiKey>,
     #[deref]
-    data: Arc<ServerState>,
+    data: Arc<GraphixState>,
 }
 
-pub struct ServerState {
+/// Global Graphix state.
+pub struct GraphixState {
     pub store: Store,
     pub config: Config,
-    pub loader_poi: DataLoader<StoreLoader<graphix_store::models::Poi>>,
-    pub loader_network: DataLoader<StoreLoader<graphix_store::models::Network>>,
+    pub loader_poi: DataLoader<StoreLoader<models::Poi>>,
+    pub loader_network: DataLoader<StoreLoader<models::Network>>,
     pub loader_graph_node_collected_version:
-        DataLoader<StoreLoader<graphix_store::models::GraphNodeCollectedVersion>>,
+        DataLoader<StoreLoader<models::GraphNodeCollectedVersion>>,
     pub loader_indexer_network_subgraph_metadata:
-        DataLoader<StoreLoader<graphix_store::models::IndexerNetworkSubgraphMetadata>>,
-    pub loader_block: DataLoader<StoreLoader<graphix_store::models::Block>>,
-    pub loader_indexer: DataLoader<StoreLoader<graphix_store::models::Indexer>>,
-    pub loader_subgraph_deployment: DataLoader<StoreLoader<graphix_store::models::SgDeployment>>,
+        DataLoader<StoreLoader<models::IndexerNetworkSubgraphMetadata>>,
+    pub loader_block: DataLoader<StoreLoader<models::Block>>,
+    pub loader_indexer: DataLoader<StoreLoader<models::Indexer>>,
+    pub loader_subgraph_deployment: DataLoader<StoreLoader<models::SgDeployment>>,
 }
 
-impl ServerState {
+impl GraphixState {
     pub fn new(store: Store, config: Config) -> Self {
-        // The default delay is 1ms, but we're happy to wait a bit longer to reduce load on the
-        // database.
-        let delay = Duration::from_millis(3);
-
-        let loader_poi =
-            DataLoader::new(StoreLoader::new(store.clone()), tokio::task::spawn).delay(delay);
-        let loader_network =
-            DataLoader::new(StoreLoader::new(store.clone()), tokio::task::spawn).delay(delay);
-        let loader_graph_node_collected_version =
-            DataLoader::new(StoreLoader::new(store.clone()), tokio::task::spawn).delay(delay);
-        let loader_indexer_network_subgraph_metadata =
-            DataLoader::new(StoreLoader::new(store.clone()), tokio::task::spawn).delay(delay);
-        let loader_block =
-            DataLoader::new(StoreLoader::new(store.clone()), tokio::task::spawn).delay(delay);
-        let loader_indexer =
-            DataLoader::new(StoreLoader::new(store.clone()), tokio::task::spawn).delay(delay);
-        let loader_subgraph_deployment =
-            DataLoader::new(StoreLoader::new(store.clone()), tokio::task::spawn).delay(delay);
-
         Self {
+            loader_poi: new_data_loader(&store),
+            loader_network: new_data_loader(&store),
+            loader_graph_node_collected_version: new_data_loader(&store),
+            loader_indexer_network_subgraph_metadata: new_data_loader(&store),
+            loader_block: new_data_loader(&store),
+            loader_indexer: new_data_loader(&store),
+            loader_subgraph_deployment: new_data_loader(&store),
             store,
             config,
-            loader_poi,
-            loader_network,
-            loader_graph_node_collected_version,
-            loader_indexer_network_subgraph_metadata,
-            loader_block,
-            loader_indexer,
-            loader_subgraph_deployment,
         }
     }
+}
+
+fn new_data_loader<T>(store: &Store) -> DataLoader<StoreLoader<T>> {
+    // The default delay used by `DataLoader` is 1ms, but we're happy to
+    // wait a bit longer to reduce load on the database.
+    let delay = Duration::from_millis(3);
+
+    DataLoader::new(StoreLoader::new(store.clone()), tokio::task::spawn).delay(delay)
 }
 
 pub fn api_schema_builder() -> SchemaBuilder<QueryRoot, MutationRoot, EmptySubscription> {
@@ -95,7 +87,7 @@ pub async fn axum_router(database_url: &str, config: Config) -> anyhow::Result<a
     use axum::routing::get;
 
     let store = Store::new(database_url).await?;
-    let server_state = ServerState::new(store.clone(), config.clone());
+    let server_state = GraphixState::new(store.clone(), config.clone());
 
     Ok(axum::Router::new()
         .route(
@@ -112,7 +104,7 @@ pub async fn axum_router(database_url: &str, config: Config) -> anyhow::Result<a
 }
 
 async fn graphql_handler(
-    State(state): State<Arc<ServerState>>,
+    State(state): State<Arc<GraphixState>>,
     request: axum::extract::Request,
 ) -> Result<axum::response::Response, (StatusCode, Json<serde_json::Value>)> {
     let api_key = match request.headers().get(AUTHORIZATION) {

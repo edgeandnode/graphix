@@ -2,9 +2,11 @@ pub mod gen;
 pub mod mocks;
 
 use std::env;
+use std::str::FromStr;
 use std::sync::Arc;
 
-use graphix_indexer_client::{IndexerClient, RealIndexer, SubgraphDeployment};
+use graphix_common_types::IpfsCid;
+use graphix_indexer_client::{IndexerClient, RealIndexer};
 use once_cell::sync::Lazy;
 use prometheus_exporter::prometheus::IntCounterVec;
 use rand::rngs::{OsRng, SmallRng};
@@ -53,8 +55,8 @@ pub fn test_indexer_from_url(url: impl Into<String>) -> Arc<impl IndexerClient> 
 
 /// Test utility function to create a valid `SubgraphDeployment` with an arbitrary deployment
 /// id/ipfs hash.
-pub fn test_deployment_id(deployment: impl Into<String>) -> SubgraphDeployment {
-    SubgraphDeployment(deployment.into())
+pub fn test_deployment_id(deployment: impl Into<String>) -> IpfsCid {
+    IpfsCid::from_str(&deployment.into()).unwrap()
 }
 
 pub fn fast_rng(seed_extra: u64) -> SmallRng {

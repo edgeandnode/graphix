@@ -3,10 +3,13 @@ use std::path::PathBuf;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
+#[clap(author, about, version)]
 pub struct CliOptions {
-    /// The URL of the PostgreSQL database to use.
+    /// The URL of the PostgreSQL database to use. Can also be set via env.
+    /// var..
     #[clap(long, env = "GRAPHIX_DB_URL")]
     pub database_url: String,
+    /// Path to the initial Graphix YAML configuration file.
     #[clap(long)]
     pub base_config: Option<PathBuf>,
     /// The port on which the GraphQL API server should listen.

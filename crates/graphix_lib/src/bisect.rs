@@ -9,9 +9,7 @@ use graphix_common_types::{
     DivergenceInvestigationStatus, DivergingBlock as DivergentBlock, HexString, PartialBlock,
     PoiBytes,
 };
-use graphix_indexer_client::{
-    IndexerClient, IndexerId, PoiRequest, ProofOfIndexing, SubgraphDeployment,
-};
+use graphix_indexer_client::{IndexerClient, IndexerId, PoiRequest, ProofOfIndexing};
 use graphix_store::models::DivergenceInvestigationRequest;
 use graphix_store::Store;
 use thiserror::Error;
@@ -20,7 +18,7 @@ use tracing::{debug, error, info};
 use uuid::Uuid;
 
 use crate::graphql_api::api_types::{self, Indexer};
-use crate::graphql_api::ServerState;
+use crate::graphql_api::GraphixState;
 
 pub struct DivergingBlock {
     pub poi1: ProofOfIndexing,
@@ -112,14 +110,14 @@ impl PoiBisectingContext {
             let poi1 = indexer1
                 .clone()
                 .proof_of_indexing(PoiRequest {
-                    deployment: SubgraphDeployment(deployment.cid().to_string()),
+                    deployment: deployment.cid().clone(),
                     block_number,
                 })
                 .await;
             let poi2 = indexer2
                 .clone()
                 .proof_of_indexing(PoiRequest {
-                    deployment: SubgraphDeployment(deployment.cid().to_string()),
+                    deployment: deployment.cid().clone(),
                     block_number,
                 })
                 .await;
@@ -183,7 +181,7 @@ pub enum DivergenceInvestigationError {
 pub async fn handle_divergence_investigation_requests(
     store: &Store,
     indexers: watch::Receiver<Vec<Arc<dyn IndexerClient>>>,
-    ctx: &ServerState,
+    ctx: &GraphixState,
 ) -> anyhow::Result<()> {
     loop {
         debug!("Checking for new divergence investigation requests");
@@ -231,7 +229,6 @@ pub async fn handle_divergence_investigation_requests(
 /// Just a group of data related to a PoI, that is needed to perform a
 /// bisection.
 struct PoiWithRelatedData {
-    poi: api_types::ProofOfIndexing,
     deployment: api_types::SubgraphDeployment,
     block: api_types::Block,
     indexer: Indexer,
@@ -243,7 +240,7 @@ impl PoiWithRelatedData {
         poi_bytes: &PoiBytes,
         store: &Store,
         indexers: &[Arc<dyn IndexerClient>],
-        ctx: &ServerState,
+        ctx: &GraphixState,
     ) -> anyhow::Result<Option<Self>> {
         let Some(poi_model) = store.poi(poi_bytes).await? else {
             return Ok(None);
@@ -273,7 +270,6 @@ impl PoiWithRelatedData {
             .ok_or_else(|| anyhow!("indexer not found"))?;
 
         Ok(Some(Self {
-            poi,
             deployment,
             block,
             indexer,
@@ -288,7 +284,7 @@ async fn handle_divergence_investigation_request_pair(
     req_uuid: &Uuid,
     poi1_s: &PoiBytes,
     poi2_s: &PoiBytes,
-    ctx: &ServerState,
+    ctx: &GraphixState,
 ) -> BisectionRunReport {
     debug!(?req_uuid, poi1 = %poi1_s, poi2 = %poi2_s, "Bisecting Pois");
 
@@ -381,7 +377,7 @@ async fn handle_divergence_investigation_request(
     req_uuid: &Uuid,
     req_contents: DivergenceInvestigationRequest,
     indexers: watch::Receiver<Vec<Arc<dyn IndexerClient>>>,
-    ctx: &ServerState,
+    ctx: &GraphixState,
 ) -> DivergenceInvestigationReport {
     let mut report = DivergenceInvestigationReport {
         uuid: req_uuid.clone(),

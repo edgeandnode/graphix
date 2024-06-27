@@ -1,15 +1,16 @@
 use std::iter::repeat_with;
 use std::sync::Arc;
 
-use graphix_common_types::{BlockHash, PoiBytes};
-use graphix_indexer_client::{BlockPointer, IndexerClient, SubgraphDeployment};
+use graphix_common_types::{BlockHash, IpfsCid, PoiBytes};
+use graphix_indexer_client::{BlockPointer, IndexerClient};
 use rand::distributions::Alphanumeric;
 use rand::seq::IteratorRandom;
 use rand::Rng;
+use std::str::FromStr;
 
 use super::mocks::{DeploymentDetails, MockIndexer, PartialProofOfIndexing};
 
-pub fn gen_deployments() -> Vec<SubgraphDeployment> {
+pub fn gen_deployments() -> Vec<IpfsCid> {
     vec![
         "QmAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
         "QmBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
@@ -17,7 +18,7 @@ pub fn gen_deployments() -> Vec<SubgraphDeployment> {
         "QmDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD",
     ]
     .into_iter()
-    .map(|s| SubgraphDeployment(s.to_owned()))
+    .map(|s| IpfsCid::from_str(s).unwrap())
     .collect()
 }
 

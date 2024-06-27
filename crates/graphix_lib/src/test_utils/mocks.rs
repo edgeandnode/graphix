@@ -3,15 +3,15 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use async_trait::async_trait;
-use graphix_common_types::{GraphNodeCollectedVersion, IndexerAddress, PoiBytes};
+use graphix_common_types::{GraphNodeCollectedVersion, IndexerAddress, IpfsCid, PoiBytes};
 use graphix_indexer_client::{
     BlockPointer, CachedEthereumCall, EntityChanges, IndexerClient, IndexingStatus, PoiRequest,
-    ProofOfIndexing, SubgraphDeployment,
+    ProofOfIndexing,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DeploymentDetails {
-    pub deployment: SubgraphDeployment,
+    pub deployment: IpfsCid,
     pub network: String,
     pub latest_block: BlockPointer,
     pub canonical_pois: Vec<PartialProofOfIndexing>,

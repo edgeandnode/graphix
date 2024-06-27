@@ -11,7 +11,7 @@ use clap::Parser;
 use graphix_indexer_client::{IndexerClient, IndexerId};
 use graphix_lib::bisect::handle_divergence_investigation_requests;
 use graphix_lib::config::Config;
-use graphix_lib::graphql_api::{axum_router, ServerState};
+use graphix_lib::graphql_api::{axum_router, GraphixState};
 use graphix_lib::indexing_loop::{query_indexing_statuses, query_proofs_of_indexing};
 use graphix_lib::{config, metrics, CliOptions, PrometheusExporter};
 use graphix_store::{models, PoiLiveness, Store};
@@ -63,7 +63,7 @@ async fn main() -> anyhow::Result<()> {
     let (tx_indexers, rx_indexers) = watch::channel(vec![]);
     {
         let store_clone = store.clone();
-        let ctx = ServerState::new(store_clone.clone(), config.clone());
+        let ctx = GraphixState::new(store_clone.clone(), config.clone());
 
         let networks: Vec<models::NewNetwork> = config
             .chains

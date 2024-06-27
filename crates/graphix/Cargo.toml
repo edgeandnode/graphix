@@ -1,8 +1,12 @@
 [package]
 name = "graphix"
-version = "0.1.0"
-authors = ["Jannis Pohlmann <jannis@edgeandnode.com>"]
-edition = "2021"
+
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }

@@ -11,6 +11,12 @@
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
         "type": "dashboard"
       }
     ]
@@ -24,8 +30,8 @@
   "panels": [
     {
       "datasource": {
-        "type": "fifemon-graphql-datasource",
-        "uid": "gYhzyBE4k"
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "cc061b34-ab8f-4ed4-8905-45ce2d70806f"
       },
       "fieldConfig": {
         "defaults": {
@@ -67,45 +73,47 @@
       },
       "id": 1,
       "options": {
-        "displayLabels": [],
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true,
-          "values": []
+          "showLegend": true
         },
         "pieType": "pie",
         "reduceOptions": {
           "calcs": [
-            "count"
+            "lastNotNull"
           ],
-          "fields": "/^indexer\\.id \\(distinctCount\\)$/",
-          "values": true
+          "fields": "",
+          "values": false
         },
         "tooltip": {
           "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "9.5.2",
+      "pluginVersion": "9.3.16",
       "targets": [
         {
-          "aliasBy": "",
-          "annotationTags": "",
-          "annotationText": "",
-          "annotationTitle": "",
-          "constant": 6.5,
-          "dataPath": "liveProofsOfIndexing",
+          "columns": [],
           "datasource": {
-            "type": "fifemon-graphql-datasource",
-            "uid": "gYhzyBE4k"
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "cc061b34-ab8f-4ed4-8905-45ce2d70806f"
           },
-          "endTimePath": "endTime",
-          "groupBy": "",
-          "hide": false,
-          "queryText": "{\n liveProofsOfIndexing(filter: { deployments: [\"$deployment\"] }) {\n hash\n indexer {\n id\n }\n }\n}",
+          "filters": [],
+          "format": "table",
+          "global_query_id": "",
           "refId": "A",
-          "timePath": ""
+          "root_selector": "data.liveProofsOfIndexing",
+          "source": "url",
+          "type": "graphql",
+          "url": "$graphix_baseurl",
+          "url_options": {
+            "body_content_type": "application/json",
+            "body_graphql_query": "{\n liveProofsOfIndexing(\n filter: {deployments: [\"$deployment\"]}\n ) {\n indexer {\n address\n }\n block {\n number\n }\n hash\n }\n}",
+            "body_type": "graphql",
+            "data": "",
+            "method": "POST"
+          }
         }
       ],
       "title": "PoI fragmentation",
@@ -118,11 +126,7 @@
                 "aggregations": [],
                 "operation": "groupby"
               },
-              "hash (firstNotNull)": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "indexer.id": {
+              "indexer": {
                 "aggregations": [
                   "distinctCount"
                 ],
@@ -146,9 +150,7 @@
           },
           "custom": {
             "align": "left",
-            "cellOptions": {
-              "type": "auto"
-            },
+            "displayMode": "auto",
             "inspect": false
           },
           "mappings": [],
@@ -187,7 +189,7 @@
         },
         "showHeader": true
       },
-      "pluginVersion": "9.5.2",
+      "pluginVersion": "9.3.16",
       "targets": [
         {
           "aliasBy": "",
@@ -202,7 +204,7 @@
           },
           "endTimePath": "endTime",
           "groupBy": "",
-          "queryText": "{\n liveProofsOfIndexing(filter: { deployments: [\"$deployment\"] }) {\n indexer {\n id\n }\n block {\n number\n }\n hash\n }\n}",
+          "queryText": "{\n liveProofsOfIndexing(filter: { deployments: [\"$deployment\"] }) {\n indexer {\n address\n }\n block {\n number\n }\n hash\n }\n}",
           "refId": "A",
           "timePath": ""
         }
@@ -212,7 +214,7 @@
     }
   ],
   "refresh": "",
-  "schemaVersion": 38,
+  "schemaVersion": 37,
   "style": "dark",
   "tags": [],
   "templating": {
@@ -229,7 +231,7 @@
         "name": "deployment",
         "options": [
           {
-            "selected": true,
+            "selected": false,
             "text": "",
             "value": ""
           }
@@ -237,6 +239,13 @@
         "query": "",
         "skipUrlSync": false,
         "type": "textbox"
+      },
+      {
+        "hide": 2,
+        "name": "graphix_baseurl",
+        "query": "http://localhost:8000/graphql",
+        "skipUrlSync": false,
+        "type": "constant"
       }
     ]
   },
@@ -248,6 +257,6 @@
   "timezone": "",
   "title": "Graphix – Deployment details",
   "uid": "c76a3ad9-175c-4ac7-874b-901cd316a2a3",
-  "version": 1,
+  "version": 9,
   "weekStart": ""
 }

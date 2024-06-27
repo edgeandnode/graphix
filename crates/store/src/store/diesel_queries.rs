@@ -142,7 +142,7 @@ where
     let len = pois.len();
 
     // Group PoIs by deployment
-    let mut grouped_pois: BTreeMap<_, Vec<_>> = BTreeMap::new();
+    let mut grouped_pois = BTreeMap::new();
     for poi in pois.iter() {
         grouped_pois
             .entry(poi.deployment_cid())
@@ -151,7 +151,7 @@ where
     }
 
     for (deployment, poi_group) in grouped_pois {
-        let sg_deployment_id = get_or_insert_deployment(conn, deployment).await?;
+        let sg_deployment_id = get_or_insert_deployment(conn, &deployment).await?;
         let block_ptr = poi_group[0].block();
 
         // Make sure all PoIs have the same block ptr
@@ -271,7 +271,7 @@ pub async fn get_indexer_id<'a>(
 
 async fn get_or_insert_deployment(
     conn: &mut AsyncPgConnection,
-    deployment_cid: &str,
+    deployment_cid: &IpfsCid,
 ) -> Result<i32, anyhow::Error> {
     use schema::sg_deployments;
 
@@ -295,7 +295,7 @@ async fn get_or_insert_deployment(
         } else {
             // If the sg_deployment doesn't exist, insert a new one and return its id
             let new_sg_deployment = NewSgDeployment {
-                ipfs_cid: deployment_cid.to_owned(),
+                ipfs_cid: deployment_cid.to_string(),
                 network: 1, // Network assumed to be mainnet, see also: hardcoded-mainnet
                 created_at: Utc::now().naive_utc(),
             };

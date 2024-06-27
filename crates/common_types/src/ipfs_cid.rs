@@ -17,6 +17,8 @@ use serde::{Deserialize, Serialize};
     PartialEq,
     Eq,
     Hash,
+    PartialOrd,
+    Ord,
     Serialize,
     Deserialize,
     AsExpression,

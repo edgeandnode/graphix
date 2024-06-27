@@ -1,7 +1,12 @@
 [package]
 name = "graphix_autogen_config_json_schema"
-version = "0.1.0"
-edition = "2021"
+
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
 
 [build-dependencies]
 graphix_lib = { path = "../graphix_lib" }

@@ -8,9 +8,9 @@ use std::sync::Arc;
 
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
-use graphix_common_types::GraphNodeCollectedVersion;
+use graphix_common_types::{GraphNodeCollectedVersion, IpfsCid};
 use graphix_indexer_client::{
-    IndexerClient, IndexerId, IndexingStatus, PoiRequest, ProofOfIndexing, SubgraphDeployment,
+    IndexerClient, IndexerId, IndexingStatus, PoiRequest, ProofOfIndexing,
 };
 use tracing::*;
 
@@ -156,14 +156,14 @@ pub async fn query_proofs_of_indexing(
         .collect::<HashSet<_>>();
 
     // Identify all deployments
-    let deployments: HashSet<SubgraphDeployment> = HashSet::from_iter(
+    let deployments: HashSet<IpfsCid> = HashSet::from_iter(
         indexing_statuses
             .iter()
             .map(|status| status.deployment.clone()),
     );
 
     // Group indexing statuses by deployment
-    let statuses_by_deployment: HashMap<SubgraphDeployment, Vec<&IndexingStatus>> =
+    let statuses_by_deployment: HashMap<IpfsCid, Vec<&IndexingStatus>> =
         HashMap::from_iter(deployments.iter().map(|deployment| {
             (
                 deployment.clone(),
@@ -175,7 +175,7 @@ pub async fn query_proofs_of_indexing(
         }));
 
     // For each deployment, chooose a block on which to query the Poi
-    let latest_blocks: HashMap<SubgraphDeployment, Option<u64>> =
+    let latest_blocks: HashMap<IpfsCid, Option<u64>> =
         HashMap::from_iter(deployments.iter().map(|deployment| {
             (
                 deployment.clone(),

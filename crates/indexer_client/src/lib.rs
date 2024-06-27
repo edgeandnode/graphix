@@ -5,12 +5,13 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::{self, Debug};
 use std::hash::Hash;
-use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::anyhow;
 use async_trait::async_trait;
-use graphix_common_types::{BlockHash, GraphNodeCollectedVersion, IndexerAddress, PoiBytes};
+use graphix_common_types::{
+    BlockHash, GraphNodeCollectedVersion, IndexerAddress, IpfsCid, PoiBytes,
+};
 pub use interceptor::IndexerInterceptor;
 pub use real_indexer::RealIndexer;
 use serde::Serialize;
@@ -190,21 +191,10 @@ impl fmt::Display for BlockPointer {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
-pub struct SubgraphDeployment(pub String);
-
-impl Deref for SubgraphDeployment {
-    type Target = String;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 #[derive(Debug, Clone, Eq)]
 pub struct IndexingStatus {
     pub indexer: Arc<dyn IndexerClient>,
-    pub deployment: SubgraphDeployment,
+    pub deployment: IpfsCid,
     pub network: String,
     pub latest_block: BlockPointer,
     pub earliest_block_num: u64,
@@ -222,7 +212,7 @@ impl PartialEq for IndexingStatus {
 #[derive(Debug, Clone, Eq, PartialOrd, Ord)]
 pub struct ProofOfIndexing {
     pub indexer: Arc<dyn IndexerClient>,
-    pub deployment: SubgraphDeployment,
+    pub deployment: IpfsCid,
     pub block: BlockPointer,
     pub proof_of_indexing: PoiBytes,
 }
@@ -239,7 +229,7 @@ impl PartialEq for ProofOfIndexing {
 pub trait WritablePoi {
     type IndexerId: IndexerId;
 
-    fn deployment_cid(&self) -> &str;
+    fn deployment_cid(&self) -> IpfsCid;
     fn indexer_id(&self) -> Self::IndexerId;
     fn block(&self) -> &BlockPointer;
     fn proof_of_indexing(&self) -> &PoiBytes;
@@ -248,8 +238,8 @@ pub trait WritablePoi {
 impl WritablePoi for ProofOfIndexing {
     type IndexerId = Arc<dyn IndexerClient>;
 
-    fn deployment_cid(&self) -> &str {
-        self.deployment.as_str()
+    fn deployment_cid(&self) -> IpfsCid {
+        self.deployment.clone()
     }
 
     fn indexer_id(&self) -> Self::IndexerId {
@@ -281,6 +271,6 @@ pub struct POICrossCheckReport {
 
 #[derive(Debug, Clone)]
 pub struct PoiRequest {
-    pub deployment: SubgraphDeployment,
+    pub deployment: IpfsCid,
     pub block_number: u64,
 }

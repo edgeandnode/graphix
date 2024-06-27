@@ -1,10 +1,13 @@
+//! GraphQL-compatible wrapper types around [`graphix_store::models`] and other
+//! Graphix internal types.
+
 use async_graphql::{ComplexObject, Context, Object, SimpleObject};
 use common::{IndexerAddress, IpfsCid};
 use graphix_common_types::{self as common, ApiKeyPermissionLevel};
 use graphix_store::models::{self, IntId};
 use num_traits::cast::ToPrimitive;
 
-use super::{ctx_data, ServerState};
+use super::{ctx_data, GraphixState};
 
 #[derive(Clone, derive_more::From)]
 pub struct SubgraphDeployment {
@@ -20,7 +23,7 @@ impl SubgraphDeployment {
         self.model.name.as_deref()
     }
 
-    pub async fn network(&self, ctx: &ServerState) -> Result<Network, String> {
+    pub async fn network(&self, ctx: &GraphixState) -> Result<Network, String> {
         let loader = &ctx.loader_network;
 
         loader
@@ -124,7 +127,7 @@ impl Indexer {
 
     pub async fn graph_node_version(
         &self,
-        ctx: &ServerState,
+        ctx: &GraphixState,
     ) -> Result<Option<models::GraphNodeCollectedVersion>, String> {
         let loader = &ctx.loader_graph_node_collected_version;
 
@@ -246,7 +249,7 @@ impl Block {
         self.model.hash.clone().into()
     }
 
-    pub async fn network(&self, ctx: &ServerState) -> Result<Network, String> {
+    pub async fn network(&self, ctx: &GraphixState) -> Result<Network, String> {
         let loader = &ctx.loader_network;
 
         loader
@@ -323,7 +326,7 @@ impl ProofOfIndexing {
         self.model.poi.clone().into()
     }
 
-    pub async fn deployment(&self, ctx: &ServerState) -> Result<SubgraphDeployment, String> {
+    pub async fn deployment(&self, ctx: &GraphixState) -> Result<SubgraphDeployment, String> {
         let loader = &ctx.loader_subgraph_deployment;
 
         loader
@@ -334,7 +337,7 @@ impl ProofOfIndexing {
             .map(Into::into)
     }
 
-    pub async fn block(&self, ctx: &ServerState) -> Result<Block, String> {
+    pub async fn block(&self, ctx: &GraphixState) -> Result<Block, String> {
         let loader = &ctx.loader_block;
 
         loader
@@ -345,7 +348,7 @@ impl ProofOfIndexing {
             .map(Into::into)
     }
 
-    pub async fn indexer(&self, ctx: &ServerState) -> Result<Indexer, String> {
+    pub async fn indexer(&self, ctx: &GraphixState) -> Result<Indexer, String> {
         let loader = &ctx.loader_indexer;
 
         loader

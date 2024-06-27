@@ -123,7 +123,7 @@ impl IndexerClient for RealIndexer {
         Ok(())
     }
 
-    async fn indexing_statuses(self: Arc<Self>) -> Result<Vec<IndexingStatus>, anyhow::Error> {
+    async fn indexing_statuses(self: Arc<Self>) -> anyhow::Result<Vec<IndexingStatus>> {
         let request =
             gql_types::IndexingStatuses::build_query(gql_types::indexing_statuses::Variables);
 
@@ -322,10 +322,11 @@ impl IndexerClient for RealIndexer {
 }
 
 mod gql_types {
-    use graphix_common_types::{BlockHash, PoiBytes};
+    use graphix_common_types::{BlockHash, IpfsCid, PoiBytes};
 
     use super::*;
-    use crate::{BlockPointer, SubgraphDeployment};
+    use crate::BlockPointer;
+    use std::str::FromStr;
 
     pub type JSONObject = serde_json::Value;
     pub type BigInt = String;
@@ -387,9 +388,12 @@ mod gql_types {
             },
         };
 
+            let deployment = IpfsCid::from_str(&self.inner.subgraph)
+                .map_err(|e| anyhow!("invalid subgraph CID: {}", e))?;
+
             Ok(IndexingStatus {
                 indexer: self.indexer,
-                deployment: SubgraphDeployment(self.inner.subgraph),
+                deployment,
                 network: chain.network.clone(),
                 latest_block,
                 earliest_block_num,
@@ -414,9 +418,12 @@ mod gql_types {
         type Error = anyhow::Error;
 
         fn try_into(self) -> Result<ProofOfIndexing, Self::Error> {
+            let deployment = IpfsCid::from_str(&self.inner.deployment)
+                .map_err(|e| anyhow!("invalid deployment CID: {}", e))?;
+
             Ok(ProofOfIndexing {
                 indexer: self.indexer,
-                deployment: SubgraphDeployment(self.inner.deployment.clone()),
+                deployment,
                 block: BlockPointer {
                     number: self.inner.block.number.parse()?,
                     hash: self

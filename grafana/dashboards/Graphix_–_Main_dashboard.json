@@ -30,8 +30,8 @@
   "panels": [
     {
       "datasource": {
-        "type": "fifemon-graphql-datasource",
-        "uid": "gYhzyBE4k"
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "cc061b34-ab8f-4ed4-8905-45ce2d70806f"
       },
       "description": "",
       "fieldConfig": {
@@ -41,9 +41,7 @@
           },
           "custom": {
             "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
+            "displayMode": "auto",
             "filterable": true,
             "inspect": false
           },
@@ -60,14 +58,13 @@
                 "value": 80
               }
             ]
-          },
-          "unitScale": true
+          }
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "id"
+              "options": "cid"
             },
             "properties": [
               {
@@ -94,28 +91,22 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "networkName"
+              "options": "Subgraph name"
             },
             "properties": [
               {
-                "id": "displayName",
-                "value": "Network"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "name"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Sg. name"
-              },
-              {
-                "id": "noValue",
-                "value": "-"
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "null": {
+                        "index": 0,
+                        "text": "-"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
               }
             ]
           },
@@ -140,6 +131,10 @@
               {
                 "id": "custom.width",
                 "value": 98
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-text"
               }
             ]
           }
@@ -166,24 +161,45 @@
         "showHeader": true,
         "sortBy": []
       },
-      "pluginVersion": "10.3.3",
+      "pluginVersion": "9.3.16",
       "targets": [
         {
-          "aliasBy": "",
-          "annotationTags": "",
-          "annotationText": "",
-          "annotationTitle": "",
-          "constant": 6.5,
-          "dataPath": "deployments",
+          "columns": [
+            {
+              "selector": "cid",
+              "text": "Deployment ID",
+              "type": "string"
+            },
+            {
+              "selector": "network.name",
+              "text": "Network",
+              "type": "string"
+            },
+            {
+              "selector": "name",
+              "text": "Subgraph name",
+              "type": "string"
+            }
+          ],
           "datasource": {
-            "type": "fifemon-graphql-datasource",
-            "uid": "gYhzyBE4k"
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "cc061b34-ab8f-4ed4-8905-45ce2d70806f"
           },
-          "endTimePath": "endTime",
-          "groupBy": "",
-          "queryText": "query {\n deployments(filter: {}) { id\n networkName\n name\n }\n}",
+          "filters": [],
+          "format": "table",
+          "global_query_id": "",
           "refId": "A",
-          "timePath": ""
+          "root_selector": "data.deployments",
+          "source": "url",
+          "type": "graphql",
+          "url": "$graphix_baseurl",
+          "url_options": {
+            "body_content_type": "application/json",
+            "body_graphql_query": "{\n deployments {\n cid\n network {\n name\n }\n name\n }\n}",
+            "body_type": "graphql",
+            "data": "",
+            "method": "POST"
+          }
         }
       ],
       "title": "Monitored deployments",
@@ -200,7 +216,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -214,7 +229,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -244,8 +258,7 @@
                 "value": 80
               }
             ]
-          },
-          "unitScale": true
+          }
         },
         "overrides": []
       },
@@ -297,7 +310,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -311,7 +323,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -341,8 +352,7 @@
                 "value": 80
               }
             ]
-          },
-          "unitScale": true
+          }
         },
         "overrides": []
       },
@@ -385,6 +395,150 @@
     },
     {
       "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "cc061b34-ab8f-4ed4-8905-45ce2d70806f"
+      },
+      "description": "List of all existing API keys",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Permissions"
+            },
+            "properties": [
+              {
+                "id": "custom.filterable",
+                "value": true
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-text"
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              },
+              {
+                "id": "custom.width",
+                "value": 141
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Notes"
+            },
+            "properties": [
+              {
+                "id": "custom.inspect",
+                "value": true
+              },
+              {
+                "id": "custom.width",
+                "value": 296
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 9,
+        "x": 0,
+        "y": 16
+      },
+      "id": 13,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "API key (public prefix only)"
+          }
+        ]
+      },
+      "pluginVersion": "9.3.16",
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "publicPrefix",
+              "text": "API key (public prefix only)",
+              "type": "string"
+            },
+            {
+              "selector": "permissionLevel",
+              "text": "Permissions",
+              "type": "string"
+            },
+            {
+              "selector": "notes",
+              "text": "Notes",
+              "type": "string"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "cc061b34-ab8f-4ed4-8905-45ce2d70806f"
+          },
+          "filters": [],
+          "format": "table",
+          "global_query_id": "",
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "data.apiKeys",
+          "source": "url",
+          "type": "graphql",
+          "uql": "parse-json",
+          "url": "$graphix_baseurl",
+          "url_options": {
+            "body_content_type": "application/json",
+            "body_graphql_query": "{\n apiKeys {\n publicPrefix\n notes\n permissionLevel\n }\n}",
+            "body_graphql_variables": "{ }",
+            "body_type": "graphql",
+            "data": "",
+            "method": "POST"
+          }
+        }
+      ],
+      "title": "API keys",
+      "type": "table"
+    },
+    {
+      "datasource": {
         "type": "prometheus",
         "uid": "c19gyBP4z"
       },
@@ -394,7 +548,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -408,7 +561,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -439,8 +591,7 @@
               }
             ]
           },
-          "unit": "hertz",
-          "unitScale": true
+          "unit": "hertz"
         },
         "overrides": []
       },
@@ -483,8 +634,8 @@
     },
     {
       "datasource": {
-        "type": "fifemon-graphql-datasource",
-        "uid": "gYhzyBE4k"
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "cc061b34-ab8f-4ed4-8905-45ce2d70806f"
       },
       "fieldConfig": {
         "defaults": {
@@ -504,8 +655,7 @@
                 "value": 80
               }
             ]
-          },
-          "unitScale": true
+          }
         },
         "overrides": []
       },
@@ -532,25 +682,29 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.3.3",
+      "pluginVersion": "9.3.16",
       "targets": [
         {
-          "aliasBy": "",
-          "annotationTags": "",
-          "annotationText": "",
-          "annotationTitle": "",
-          "constant": 6.5,
-          "dataPath": "indexers",
+          "columns": [],
           "datasource": {
-            "type": "fifemon-graphql-datasource",
-            "uid": "gYhzyBE4k"
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "cc061b34-ab8f-4ed4-8905-45ce2d70806f"
           },
-          "endTimePath": "endTime",
-          "groupBy": "",
-          "hide": false,
-          "queryText": "query {\n indexers(filter: {}) {\n address\n }\n}",
+          "filters": [],
+          "format": "table",
+          "global_query_id": "",
           "refId": "A",
-          "timePath": ""
+          "root_selector": "data.indexers",
+          "source": "url",
+          "type": "graphql",
+          "url": "$graphix_baseurl",
+          "url_options": {
+            "body_content_type": "application/json",
+            "body_graphql_query": "query {\n indexers {\n address\n }\n}",
+            "body_type": "graphql",
+            "data": "",
+            "method": "POST"
+          }
         }
       ],
       "title": "Number of monitored indexers",
@@ -582,9 +736,7 @@
           },
           "custom": {
             "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
+            "displayMode": "auto",
             "inspect": false
           },
           "mappings": [],
@@ -600,8 +752,7 @@
                 "value": 80
               }
             ]
-          },
-          "unitScale": true
+          }
         },
         "overrides": [
           {
@@ -659,7 +810,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "name"
+              "options": "defaultDisplayName"
             },
             "properties": [
               {
@@ -684,7 +835,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 425
+                "value": 445
               }
             ]
           }
@@ -716,7 +867,7 @@
           }
         ]
       },
-      "pluginVersion": "10.3.3",
+      "pluginVersion": "9.3.16",
       "targets": [
         {
           "aliasBy": "",
@@ -731,7 +882,7 @@
           },
           "endTimePath": "endTime",
           "groupBy": "",
-          "queryText": "query {\n indexers(filter: {}) {\n address\n name\n allocatedTokens\n }\n}",
+          "queryText": "query {\n indexers {\n address\n defaultDisplayName\n networkSubgraphMetadata {\n allocatedTokens\n }\n }\n}",
           "refId": "A",
           "timePath": ""
         }
@@ -752,9 +903,7 @@
           },
           "custom": {
             "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
+            "displayMode": "auto",
             "inspect": false
           },
           "mappings": [],
@@ -770,8 +919,7 @@
                 "value": 80
               }
             ]
-          },
-          "unitScale": true
+          }
         },
         "overrides": [
           {
@@ -838,12 +986,12 @@
         "showHeader": true,
         "sortBy": [
           {
-            "desc": false,
-            "displayName": "CAIP2 network ID (if known)"
+            "desc": true,
+            "displayName": "CAIP-2 ID"
           }
         ]
       },
-      "pluginVersion": "10.3.3",
+      "pluginVersion": "9.3.16",
       "targets": [
         {
           "aliasBy": "",
@@ -867,12 +1015,21 @@
       "type": "table"
     }
   ],
-  "refresh": "",
+  "refresh": false,
   "revision": 1,
-  "schemaVersion": 39,
+  "schemaVersion": 37,
+  "style": "dark",
   "tags": [],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "hide": 2,
+        "name": "graphix_baseurl",
+        "query": "http://localhost:8000/graphql",
+        "skipUrlSync": false,
+        "type": "constant"
+      }
+    ]
   },
   "time": {
     "from": "now-5m",
@@ -882,6 +1039,6 @@
   "timezone": "",
   "title": "Graphix – Main dashboard",
   "uid": "dee4d09d-0dbc-4af2-b4a2-2fcb9ecf35cc",
-  "version": 7,
+  "version": 33,
   "weekStart": ""
 }

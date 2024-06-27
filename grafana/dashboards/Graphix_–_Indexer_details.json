@@ -91,7 +91,7 @@
           },
           "endTimePath": "endTime",
           "groupBy": "",
-          "queryText": "query {\n poiAgreementRatios(indexerAddress: \"$indexer\") {\n deployment {\n id\n }\n poi\n block {\n number\n }\n totalIndexers\n nAgreeingIndexers\n nDisagreeingIndexers\n hasConsensus\n inConsensus\n }\n}",
+          "queryText": "{\n poiAgreementRatios(indexerAddress: \"$indexer\") {\n poi {\n deployment {\n cid\n }\n block {\n number\n }\n }\n totalIndexers\n nAgreeingIndexers\n nDisagreeingIndexers\n hasConsensus\n inConsensus\n }\n}",
           "refId": "A",
           "timePath": ""
         }
@@ -131,6 +131,6 @@
   "timezone": "",
   "title": "Graphix – Indexer details",
   "uid": "c3d782e5-f574-4dc3-9908-b33367ced256",
-  "version": 3,
+  "version": 4,
   "weekStart": ""
 }

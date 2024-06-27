@@ -1,13 +1,15 @@
 #!/bin/bash
 
+# Run this script from `compose/` while Grafana is running to automatically export all dashboards.
+
 # API token from Grafana (view-only service account, configured in the grafana.db)
-API_TOKEN="glsa_2Wx4YNsrPlNvQwAlr3RrhvJfk4h5yvmM_3dad0c24"
+API_TOKEN="eyJrIjoiUE1nZU1WQXdrdlphZUhlanVLR012eUhkZGxSNEJtMTUiLCJuIjoiYWRtaW4iLCJpZCI6MX0="
 
 # Grafana URL (adjust as needed)
 GRAFANA_URL="http://localhost:3000"
 
 # Directory to save dashboards
-DASHBOARD_DIR="../../grafana/dashboards"
+DASHBOARD_DIR="../grafana/dashboards"
 
 # Create directory if it doesn't exist
 mkdir -p $DASHBOARD_DIR
