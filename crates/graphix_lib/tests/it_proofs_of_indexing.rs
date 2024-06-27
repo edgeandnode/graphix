@@ -34,7 +34,7 @@ async fn send_single_query_of_unknown_deployment_id_and_handle_error() {
     //// Given
     let indexer = test_indexer_from_url("https://testnet-indexer-03-europe-cent.thegraph.com");
 
-    let deployment_unknown = test_deployment_id("QmUnknownDeploymentId");
+    let deployment_unknown = test_deployment_id("Qmd3vU6y6pxxXPrvVWRZMN9soNB8AFQCEnqPa9jMSZZDEG");
 
     let poi_request = PoiRequest {
         deployment: deployment_unknown.clone(),
@@ -129,7 +129,7 @@ async fn send_multiple_queries_of_unknown_deployment_id_and_process_results() {
 
     let deployment0 = test_deployment_id("QmeYTH2fK2wv96XvnCGH2eyKFE8kmRfo53zYVy5dKysZtH");
     let deployment1 = test_deployment_id("QmawxQJ5U1JvgosoFVDyAwutLWxrckqVmBTQxaMaKoj3Lw");
-    let deployment_unknown = test_deployment_id("QmUnknownDeploymentId");
+    let deployment_unknown = test_deployment_id("Qmd3vU6y6pxxXPrvVWRZMN9soNB8AFQCEnqPa9jMSZZDEG");
 
     let poi_requests = vec![
         PoiRequest {

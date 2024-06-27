@@ -12,10 +12,10 @@ use super::mocks::{DeploymentDetails, MockIndexer, PartialProofOfIndexing};
 
 pub fn gen_deployments() -> Vec<IpfsCid> {
     vec![
-        "QmAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-        "QmBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-        "QmCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
-        "QmDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD",
+        "QmPfSbPF6PcT2ETAXMoFCPcz2CaKysRBXcUecHPySK66rk",
+        "QmTMKqty5yZvZtB3SwzXUG92aZUH1YQw3VjByGw4wgaMhW",
+        "QmWFi6uciaQPQmo1xRrahNwfiWLGeN9GTDJMuCfV8iVXSe",
+        "Qmd3vU6y6pxxXPrvVWRZMN9soNB8AFQCEnqPa9jMSZZDEG",
     ]
     .into_iter()
     .map(|s| IpfsCid::from_str(s).unwrap())
