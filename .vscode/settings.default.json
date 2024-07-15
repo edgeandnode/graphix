@@ -3,5 +3,16 @@
 {
   "yaml.schemas": {
     "./crates/autogen_config_json_schema/schema.json": "*.graphix.yml"
+  },
+  "rust-analyzer.server.extraEnv": {
+    "RUSTUP_TOOLCHAIN": "nightly"
+  },
+  "rust-analyzer.check.extraEnv": {
+    "RUSTFLAGS": "-Z threads=8 -Z tune-cpu=machine"
+  },
+  "rust-analyzer.cargo.targetDir": "target/rust-analyzer",
+  "rust-analyzer.rustfmt.extraArgs": ["+nightly"],
+  "rust-analyzer.cargo.extraEnv": {
+    "RUSTFLAGS": "-Z threads=8 -Z tune-cpu=machine"
   }
 }
