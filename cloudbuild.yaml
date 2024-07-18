@@ -1,0 +1,27 @@
+options:
+  machineType: "N1_HIGHCPU_32"
+timeout: 1800s
+
+steps:
+  - id: 'Update Graphix Deployment'
+    name: 'gcr.io/cloud-builders/kubectl'
+    env:
+      - "CLOUDSDK_COMPUTE_ZONE=us-central1-a"
+      - "CLOUDSDK_CONTAINER_CLUSTER=testnet"
+      - "CLOUDSDK_CORE_PROJECT=graph-mainnet"
+    args:
+      - 'set'
+      - 'image'
+      - 'deployment/graphix'
+      - 'graphix=ghcr.io/edgeandnode/graphix:latest'
+      - '--record'
+  - id: 'Restart Graphix Deployment'
+    name: 'gcr.io/cloud-builders/kubectl'
+    env:
+      - "CLOUDSDK_COMPUTE_ZONE=us-central1-a"
+      - "CLOUDSDK_CONTAINER_CLUSTER=testnet"
+      - "CLOUDSDK_CORE_PROJECT=graph-mainnet"
+    args:
+      - 'rollout'
+      - 'restart'
+      - 'deployment/graphix'
