@@ -6,7 +6,7 @@ steps:
   - id: 'Checkout Kustomize Configuration'
     name: 'gcr.io/cloud-builders/git'
     env:
-      - 'GIT_AUTH_TOKEN=$_GITHUB_PAT'
+      - 'GIT_AUTH_TOKEN=$_GITHUB_GRAPHIX_INFRA_PAT'
     args:
       - 'clone'
       - 'https://github.com/edgeandnode/graph-infra.git'
