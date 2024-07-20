@@ -1,0 +1,37 @@
+options:
+  machineType: "N1_HIGHCPU_32"
+timeout: 1800s
+
+steps:
+  - id: 'Checkout Kustomize Configuration'
+    name: 'gcr.io/cloud-builders/git'
+    env:
+      - 'GIT_AUTH_TOKEN=$_GITHUB_GRAPHIX_INFRA_PAT'
+    args:
+      - 'clone'
+      - 'https://github.com/edgeandnode/graph-infra.git'
+
+  - id: 'Update Graphix Deployment'
+    name: 'gcr.io/cloud-builders/kubectl'
+    env:
+      - "CLOUDSDK_COMPUTE_ZONE=us-central1-a"
+      - "CLOUDSDK_CONTAINER_CLUSTER=testnet"
+      - "CLOUDSDK_CORE_PROJECT=graph-mainnet"
+    args:
+      - 'apply'
+      - '-k'
+      - 'graph-infra/graph-mainnet/testnet/k8s/graphix/environments/'
+
+  - id: 'Restart Graphix Deployment'
+    name: 'gcr.io/cloud-builders/kubectl'
+    env:
+      - "CLOUDSDK_COMPUTE_ZONE=us-central1-a"
+      - "CLOUDSDK_CONTAINER_CLUSTER=testnet"
+      - "CLOUDSDK_CORE_PROJECT=graph-mainnet"
+    args:
+      - 'rollout'
+      - 'restart'
+      - 'deployment/graphix-cross-checker'
+
+substitutions:
+  _GITHUB_PAT: ${_GITHUB_PAT}
