@@ -34,4 +34,4 @@ steps:
       - 'deployment/graphix-cross-checker'
 
 substitutions:
-  _GITHUB_PAT: ${_GITHUB_PAT}
+  _GITHUB_GRAPHIX_INFRA_PAT: ${_GITHUB_GRAPHIX_INFRA_PAT}
