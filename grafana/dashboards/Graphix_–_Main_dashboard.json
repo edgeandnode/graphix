@@ -725,8 +725,8 @@
     },
     {
       "datasource": {
-        "type": "fifemon-graphql-datasource",
-        "uid": "gYhzyBE4k"
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "cc061b34-ab8f-4ed4-8905-45ce2d70806f"
       },
       "description": "List of indexers monitored by Graphix",
       "fieldConfig": {
@@ -818,12 +818,23 @@
                 "value": "Default display name"
               },
               {
-                "id": "noValue",
-                "value": "-"
-              },
-              {
                 "id": "custom.filterable",
                 "value": true
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "null": {
+                        "color": "text",
+                        "index": 0,
+                        "text": "-"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
               }
             ]
           },
@@ -836,6 +847,28 @@
               {
                 "id": "custom.width",
                 "value": 445
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "networkSubgraphMetadata"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "null": {
+                        "index": 0,
+                        "text": "-"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
               }
             ]
           }
@@ -870,21 +903,27 @@
       "pluginVersion": "9.3.16",
       "targets": [
         {
-          "aliasBy": "",
-          "annotationTags": "",
-          "annotationText": "",
-          "annotationTitle": "",
-          "constant": 6.5,
-          "dataPath": "indexers",
+          "columns": [],
           "datasource": {
-            "type": "fifemon-graphql-datasource",
-            "uid": "gYhzyBE4k"
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "cc061b34-ab8f-4ed4-8905-45ce2d70806f"
           },
-          "endTimePath": "endTime",
-          "groupBy": "",
-          "queryText": "query {\n indexers {\n address\n defaultDisplayName\n networkSubgraphMetadata {\n allocatedTokens\n }\n }\n}",
+          "filters": [],
+          "format": "table",
+          "global_query_id": "",
           "refId": "A",
-          "timePath": ""
+          "root_selector": "data.indexers",
+          "source": "url",
+          "type": "graphql",
+          "url": "$graphix_baseurl",
+          "url_options": {
+            "body_content_type": "application/json",
+            "body_graphql_query": "query {\n indexers {\n address\n defaultDisplayName\n networkSubgraphMetadata {\n allocatedTokens\n }\n }\n}",
+            "body_graphql_variables": "{ }",
+            "body_type": "graphql",
+            "data": "",
+            "method": "POST"
+          }
         }
       ],
       "title": "Monitored indexers",
@@ -892,8 +931,8 @@
     },
     {
       "datasource": {
-        "type": "fifemon-graphql-datasource",
-        "uid": "gYhzyBE4k"
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "cc061b34-ab8f-4ed4-8905-45ce2d70806f"
       },
       "description": "",
       "fieldConfig": {
@@ -994,21 +1033,26 @@
       "pluginVersion": "9.3.16",
       "targets": [
         {
-          "aliasBy": "",
-          "annotationTags": "",
-          "annotationText": "",
-          "annotationTitle": "",
-          "constant": 6.5,
-          "dataPath": "networks",
+          "columns": [],
           "datasource": {
-            "type": "fifemon-graphql-datasource",
-            "uid": "gYhzyBE4k"
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "cc061b34-ab8f-4ed4-8905-45ce2d70806f"
           },
-          "endTimePath": "endTime",
-          "groupBy": "",
-          "queryText": "query {\n networks {\n name\n caip2\n }\n}",
+          "filters": [],
+          "format": "table",
+          "global_query_id": "",
           "refId": "A",
-          "timePath": ""
+          "root_selector": "data.networks",
+          "source": "url",
+          "type": "graphql",
+          "url": "$graphix_baseurl",
+          "url_options": {
+            "body_content_type": "application/json",
+            "body_graphql_query": "query {\n networks {\n name\n caip2\n }\n}",
+            "body_type": "graphql",
+            "data": "",
+            "method": "POST"
+          }
         }
       ],
       "title": "Networks with known subgraphs",
@@ -1025,7 +1069,7 @@
       {
         "hide": 2,
         "name": "graphix_baseurl",
-        "query": "http://localhost:8000/graphql",
+        "query": "http://host.docker.internal:8000/graphql",
         "skipUrlSync": false,
         "type": "constant"
       }
@@ -1039,6 +1083,6 @@
   "timezone": "",
   "title": "Graphix – Main dashboard",
   "uid": "dee4d09d-0dbc-4af2-b4a2-2fcb9ecf35cc",
-  "version": 33,
+  "version": 37,
   "weekStart": ""
 }

@@ -1091,7 +1091,7 @@ checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
 
 [[package]]
 name = "graphix"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -1120,7 +1120,7 @@ dependencies = [
 
 [[package]]
 name = "graphix_autogen_config_json_schema"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "graphix_lib",
  "schemars",
@@ -1129,7 +1129,7 @@ dependencies = [
 
 [[package]]
 name = "graphix_autogen_graphql_schema"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "async-graphql",
  "graphix_lib",
@@ -1137,7 +1137,7 @@ dependencies = [
 
 [[package]]
 name = "graphix_common_types"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -1157,7 +1157,7 @@ dependencies = [
 
 [[package]]
 name = "graphix_indexer_client"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -1176,7 +1176,7 @@ dependencies = [
 
 [[package]]
 name = "graphix_lib"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -1218,7 +1218,7 @@ dependencies = [
 
 [[package]]
 name = "graphix_network_sg_client"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "graphix_common_types",
@@ -1235,7 +1235,7 @@ dependencies = [
 
 [[package]]
 name = "graphix_store"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "async-graphql",
