@@ -13,6 +13,11 @@ pub struct QueryRoot;
 
 #[Object]
 impl QueryRoot {
+    /// Returns the version of the Graphix instance.
+    async fn version(&self) -> Result<String> {
+        Ok(crate::GRAPHIX_VERSION.to_string())
+    }
+
     /// Fetches all tracked subgraph deploymens in this Graphix instance and
     /// filters them according to some filtering rules.
     async fn deployments(

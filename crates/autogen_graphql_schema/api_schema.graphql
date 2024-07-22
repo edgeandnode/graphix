@@ -399,6 +399,10 @@ type ProofOfIndexing {
 
 type QueryRoot {
 	"""
+	Returns the version of the Graphix instance.
+	"""
+	version: String!
+	"""
 	Fetches all tracked subgraph deploymens in this Graphix instance and
 	filters them according to some filtering rules.
 	"""

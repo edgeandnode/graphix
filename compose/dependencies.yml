@@ -8,7 +8,6 @@ services:
     user: ":"
     depends_on:
       - prometheus
-    network_mode: host
     ports:
       - "3000:3000"
     environment:
@@ -27,7 +26,6 @@ services:
       - --storage.tsdb.path=/prometheus
       - --web.console.libraries=/usr/share/prometheus/console_libraries
       - --web.console.templates=/usr/share/prometheus/consoles
-    network_mode: host
     ports:
       - "9090:9090"
     logging:
@@ -38,7 +36,6 @@ services:
   postgres:
     image: postgres
     restart: unless-stopped
-    network_mode: host
     ports:
       # We want to be able to connect to the Postgres database both from within
       # the Docker-compose network, and outside of it, to share Graphix
