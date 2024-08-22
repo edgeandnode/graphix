@@ -4,32 +4,34 @@ options:
 timeout: 1800s
 
 steps:
-  - id: 'Checkout Kustomize Configuration'
-    name: 'gcr.io/cloud-builders/git'
-    env:
-      - 'GIT_AUTH_TOKEN=$_GITHUB_GRAPHIX_INFRA_PAT'
-    args:
-      - 'clone'
-      - 'https://github.com/edgeandnode/graph-infra.git'
+  # Set the project ID
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: ['config', 'set', 'project', 'graph-mainnet']
 
-  - id: 'Update Graphix Deployment'
-    name: 'gcr.io/cloud-builders/kubectl'
-    env:
-      - "CLOUDSDK_COMPUTE_ZONE=us-central1-a"
-      - "CLOUDSDK_CONTAINER_CLUSTER=testnet"
-      - "CLOUDSDK_CORE_PROJECT=graph-mainnet"
+  # Authenticate to GKE cluster
+  - name: 'gcr.io/cloud-builders/gcloud'
     args:
-      - 'apply'
-      - '-k'
-      - 'graph-infra/graph-mainnet/testnet/k8s/graphix/environments/'
+      - 'container'
+      - 'clusters'
+      - 'get-credentials'
+      - 'testnet'
+      - '--zone=us-central1-a'
+      - '--project=graph-mainnet'
 
-  - id: 'Restart Graphix Deployment'
-    name: 'gcr.io/cloud-builders/kubectl'
-    env:
-      - "CLOUDSDK_COMPUTE_ZONE=us-central1-a"
-      - "CLOUDSDK_CONTAINER_CLUSTER=testnet"
-      - "CLOUDSDK_CORE_PROJECT=graph-mainnet"
+  # Update the deployment to use the latest image
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'set'
+      - 'image'
+      - 'deployment/graphix-cross-checker'
+      - 'graphix-cross-checker=ghcr.io/${_GITHUB_REPO_OWNER}/graphix:latest'
+
+  # Restart the deployment
+  - name: 'gcr.io/cloud-builders/kubectl'
     args:
       - 'rollout'
       - 'restart'
       - 'deployment/graphix-cross-checker'
+
+substitutions:
+  _GITHUB_REPO_OWNER: 'edgeandnode'
