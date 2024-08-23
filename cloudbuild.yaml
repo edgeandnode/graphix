@@ -25,6 +25,9 @@ steps:
       - 'image'
       - 'deployment/graphix-cross-checker'
       - 'graphix-cross-checker=ghcr.io/${_GITHUB_REPO_OWNER}/graphix:latest'
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=testnet'
 
   # Restart the deployment
   - name: 'gcr.io/cloud-builders/kubectl'
@@ -32,6 +35,9 @@ steps:
       - 'rollout'
       - 'restart'
       - 'deployment/graphix-cross-checker'
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=testnet'
 
 substitutions:
   _GITHUB_REPO_OWNER: 'edgeandnode'
