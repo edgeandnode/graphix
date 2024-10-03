@@ -4,7 +4,7 @@ members = ["crates/*"]
 
 [workspace.package]
 authors = ["Edge & Node Ventures, Inc. & contributors"]
-version = "1.2.0"
+version = "1.2.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "A GraphQL API for monitoring and cross-checking PoIs on the The Graph network."
