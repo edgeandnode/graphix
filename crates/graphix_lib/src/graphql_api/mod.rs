@@ -11,7 +11,6 @@ use async_graphql::http::GraphiQLSource;
 use async_graphql::{Context, EmptySubscription, Schema, SchemaBuilder};
 use async_graphql_axum::GraphQL;
 use axum::extract::State;
-use axum::http::header::AUTHORIZATION;
 use axum::http::StatusCode;
 use axum::Json;
 use graphix_common_types::ApiKeyPermissionLevel;
@@ -25,6 +24,8 @@ use crate::config::Config;
 use crate::GRAPHIX_VERSION;
 
 pub type ApiSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
+
+pub const GRAPHIX_API_KEY_HEADER_NAME: &str = "Graphix-Api-Key";
 
 /// A [`GraphixState`] paired with an [`ApiKey`] that was supplied with a GraphQL
 /// request.
@@ -107,7 +108,7 @@ async fn graphql_handler(
     State(state): State<Arc<GraphixState>>,
     request: axum::extract::Request,
 ) -> Result<axum::response::Response, (StatusCode, Json<serde_json::Value>)> {
-    let api_key = match request.headers().get(AUTHORIZATION) {
+    let api_key = match request.headers().get(GRAPHIX_API_KEY_HEADER_NAME) {
         None => None,
         Some(value) => {
             let header_s = value.to_str().map_err(api_key_error)?;
