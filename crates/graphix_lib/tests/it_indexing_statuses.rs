@@ -1,8 +1,8 @@
-use std::time::Duration;
-
-use graphix_indexer_client::IndexerClient;
-use graphix_lib::test_utils::{test_deployment_id, test_indexer_from_url};
-
+//use std::time::Duration;
+//
+//use graphix_indexer_client::IndexerClient;
+//use graphix_lib::test_utils::{test_deployment_id, test_indexer_from_url};
+//
 // FIXME(neysofu)
 //#[tokio::test]
 //async fn send_indexer_statuses_query() {
