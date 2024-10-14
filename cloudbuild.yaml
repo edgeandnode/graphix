@@ -23,7 +23,7 @@ steps:
     args:
       - 'set'
       - 'image'
-      - 'deployment/graphix-cross-checker'
+      - 'deployment/graphix'
       - 'graphix=ghcr.io/${_GITHUB_REPO_OWNER}/graphix:latest'
     env:
       - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
@@ -34,7 +34,7 @@ steps:
     args:
       - 'rollout'
       - 'restart'
-      - 'deployment/graphix-cross-checker'
+      - 'deployment/graphix'
     env:
       - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
       - 'CLOUDSDK_CONTAINER_CLUSTER=testnet'
