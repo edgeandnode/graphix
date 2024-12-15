@@ -138,7 +138,7 @@ impl NetworkSubgraphClient {
         #[serde(rename_all = "camelCase")]
         struct IndexerData {
             url: String,
-            default_display_name: String,
+            default_display_name: Option<String>,
         }
 
         let indexer_data = response_data
@@ -147,7 +147,7 @@ impl NetworkSubgraphClient {
             .ok_or_else(|| anyhow::anyhow!("No indexer found for address {}", address))?;
 
         let indexer = RealIndexer::new(
-            Some(indexer_data.default_display_name.clone()),
+            indexer_data.default_display_name.clone(),
             *address,
             Url::parse(&format!("{}/status", indexer_data.url))?.to_string(),
             self.public_poi_requests.clone(),
@@ -397,9 +397,8 @@ mod tests {
     #[tokio::test]
     async fn mainnet_fetch_ellipfra() {
         let client = network_sg_client_on_ethereum();
-        // ellipfra.eth:
-        // htps://thegraph.com/explorer/profile/0x62a0bd1d110ff4e5b793119e95fc07c9d1fc8c4a?view=Indexing&chain=mainnet
-        let address = str::parse("62a0bd1d110ff4e5b793119e95fc07c9d1fc8c4a").unwrap();
+        // htps://thegraph.com/explorer/profile/0x...?view=Indexing&chain=mainnet
+        let address = str::parse("f92f430dd8567b0d466358c79594ab58d919a6d4").unwrap();
         let indexer = client.indexer_by_address(&address).await.unwrap();
         assert_eq!(indexer.address(), address);
     }

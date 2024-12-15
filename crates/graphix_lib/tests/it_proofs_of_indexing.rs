@@ -1,14 +1,14 @@
 use std::time::Duration;
 
 use graphix_indexer_client::{IndexerClient, PoiRequest};
-use graphix_lib::test_utils::{ipfs_cid, test_indexer_from_url};
+use graphix_lib::test_utils::{deployments, indexers, ipfs_cid, test_indexer_from_url};
 
 #[tokio::test]
 async fn send_single_query_and_process_result() {
     //// Given
-    let indexer = test_indexer_from_url("https://testnet-indexer-03-europe-cent.thegraph.com");
+    let indexer = test_indexer_from_url(indexers::ARB1_DATA_NEXUS);
 
-    let deployment = ipfs_cid("QmeYTH2fK2wv96XvnCGH2eyKFE8kmRfo53zYVy5dKysZtH");
+    let deployment = ipfs_cid(deployments::ARB1_PREMIA_BLUE);
 
     let poi_request = PoiRequest {
         deployment: deployment.clone(),
@@ -32,9 +32,9 @@ async fn send_single_query_and_process_result() {
 #[tokio::test]
 async fn send_single_query_of_unknown_deployment_id_and_handle_error() {
     //// Given
-    let indexer = test_indexer_from_url("https://testnet-indexer-03-europe-cent.thegraph.com");
+    let indexer = test_indexer_from_url(indexers::ARB1_DATA_NEXUS);
 
-    let deployment_unknown = ipfs_cid("Qmd3vU6y6pxxXPrvVWRZMN9soNB8AFQCEnqPa9jMSZZDEG");
+    let deployment_unknown = ipfs_cid(deployments::FUSE_TO_ETHEREUM_AMB);
 
     let poi_request = PoiRequest {
         deployment: deployment_unknown.clone(),
@@ -59,9 +59,9 @@ async fn send_single_query_of_unknown_deployment_id_and_handle_error() {
 #[tokio::test]
 async fn send_single_query_of_unknown_block_number_and_handle_error() {
     //// Given
-    let indexer = test_indexer_from_url("https://testnet-indexer-03-europe-cent.thegraph.com");
+    let indexer = test_indexer_from_url(indexers::ARB1_DATA_NEXUS);
 
-    let deployment = ipfs_cid("QmeYTH2fK2wv96XvnCGH2eyKFE8kmRfo53zYVy5dKysZtH");
+    let deployment = ipfs_cid(deployments::ARB1_QUICKSWAP_V3);
 
     let poi_request = PoiRequest {
         deployment: deployment.clone(),
@@ -87,13 +87,16 @@ async fn send_single_query_of_unknown_block_number_and_handle_error() {
 async fn send_multiple_queries_and_process_results() {
     // Given
 
+    // FIXME: This is temporarily set to 1 until we fix the error: 'Null value resolved for
+    //  non-null field `proofOfIndexing`' Which is probably a Graph Node bug. Setting it to 1
+    //  reduces the impact of this issue.
     const MAX_REQUESTS_PER_QUERY: usize = 1;
 
-    let indexer = test_indexer_from_url("https://testnet-indexer-03-europe-cent.thegraph.com");
+    let indexer = test_indexer_from_url(indexers::ARB1_DATA_NEXUS);
 
-    let deployment = ipfs_cid("QmeYTH2fK2wv96XvnCGH2eyKFE8kmRfo53zYVy5dKysZtH");
+    let deployment = ipfs_cid(deployments::ARB1_QUICKSWAP_V3);
 
-    let poi_requests = (1..=MAX_REQUESTS_PER_QUERY)
+    let poi_requests = (1..=MAX_REQUESTS_PER_QUERY + 2)
         .map(|i| PoiRequest {
             deployment: deployment.clone(),
             block_number: i as u64,
@@ -124,11 +127,11 @@ async fn send_multiple_queries_and_process_results() {
 #[tokio::test]
 async fn send_multiple_queries_of_unknown_deployment_id_and_process_results() {
     //// Given
-    let indexer = test_indexer_from_url("https://testnet-indexer-03-europe-cent.thegraph.com");
+    let indexer = test_indexer_from_url(indexers::ARB1_DATA_NEXUS);
 
-    let deployment0 = ipfs_cid("QmeYTH2fK2wv96XvnCGH2eyKFE8kmRfo53zYVy5dKysZtH");
-    let deployment1 = ipfs_cid("QmawxQJ5U1JvgosoFVDyAwutLWxrckqVmBTQxaMaKoj3Lw");
-    let deployment_unknown = ipfs_cid("Qmd3vU6y6pxxXPrvVWRZMN9soNB8AFQCEnqPa9jMSZZDEG");
+    let deployment0 = ipfs_cid(deployments::ARB1_PREMIA_BLUE);
+    let deployment1 = ipfs_cid(deployments::ARB1_QUICKSWAP_V3);
+    let deployment_unknown = ipfs_cid(deployments::FUSE_TO_ETHEREUM_AMB);
 
     let poi_requests = vec![
         PoiRequest {
@@ -150,6 +153,8 @@ async fn send_multiple_queries_of_unknown_deployment_id_and_process_results() {
     let response = tokio::time::timeout(Duration::from_secs(10), request_fut)
         .await
         .expect("Timeout");
+
+    println!("response: {:?}", response);
 
     //// Then
     assert_eq!(response.len(), 2);

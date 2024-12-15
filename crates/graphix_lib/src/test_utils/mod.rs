@@ -15,6 +15,20 @@ use url::Url;
 
 use crate::config::IndexerConfig;
 
+pub mod deployments {
+    pub const ARB1_PREMIA_BLUE: &str = "QmdHQVHirs3yPygcgo3HNttXaFCS4pnoGiMx3aKXr192En";
+    pub const ARB1_QUICKSWAP_V3: &str = "QmQEYSGSD8t7jTw4gS2dwC4DLvyZceR9fYQ432Ff1hZpCp";
+    pub const ARB1_LIDO: &str = "Qmd3vU6y6pxxXPrvVWRZMN9soNB8AFQCEnqPa9jMSZZDEG";
+
+    /// Extremely low curation signal, basically no indexer has it.
+    pub const FUSE_TO_ETHEREUM_AMB: &str = "QmYU3Exnta8H52vWUFhGQi6Qm8LhXr5LqmypNrLba8rRem";
+}
+
+pub mod indexers {
+    pub const ARB1_DATA_NEXUS: &str = "https://arb-service.thegraph.datanexus.tech/";
+    pub const ARB1_ELLIPFRA: &str = "https://graph-l2prod.ellipfra.com/";
+}
+
 pub static TEST_SEED: Lazy<u64> = Lazy::new(|| {
     let seed = env::var("TEST_SEED")
         .map(|seed| seed.parse().expect("Invalid TEST_SEED value"))

@@ -1,14 +1,14 @@
 use std::time::Duration;
 
 use graphix_indexer_client::IndexerClient;
-use graphix_lib::test_utils::{ipfs_cid, test_indexer_from_url};
+use graphix_lib::test_utils::{deployments, indexers, ipfs_cid, test_indexer_from_url};
 
 #[tokio::test]
 async fn send_indexer_statuses_query() {
     //// Given
-    let indexer = test_indexer_from_url("https://testnet-indexer-03-europe-cent.thegraph.com");
+    let indexer = test_indexer_from_url(indexers::ARB1_DATA_NEXUS);
 
-    let test_deployment = ipfs_cid("QmeYTH2fK2wv96XvnCGH2eyKFE8kmRfo53zYVy5dKysZtH");
+    let test_deployment = ipfs_cid(deployments::ARB1_QUICKSWAP_V3);
 
     //// When
     let request_fut = IndexerClient::indexing_statuses(indexer);
