@@ -69,7 +69,7 @@ impl MutationRoot {
         let ctx_data = ctx_data(ctx);
         let store = &ctx_data.store;
 
-        store.set_config(config).await?;
+        store.overwrite_config(config).await?;
 
         Ok(true)
     }

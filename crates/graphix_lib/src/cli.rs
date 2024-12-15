@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -9,9 +7,6 @@ pub struct CliOptions {
     /// var..
     #[clap(long, env = "GRAPHIX_DB_URL")]
     pub database_url: String,
-    /// Path to the initial Graphix YAML configuration file.
-    #[clap(long)]
-    pub base_config: Option<PathBuf>,
     /// The port on which the GraphQL API server should listen.
     #[clap(long, default_value_t = 8000)]
     pub port: u16,

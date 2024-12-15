@@ -21,8 +21,6 @@ Usage: graphix [OPTIONS] --database-url <DATABASE_URL>
 Options:
       --database-url <DATABASE_URL>
           The URL of the PostgreSQL database to use. Can also be set via env. var.. [env: GRAPHIX_DB_URL=]
-      --base-config <BASE_CONFIG>
-          Path to the initial Graphix YAML configuration file
       --port <PORT>
           The port on which the GraphQL API server should listen [default: 8000]
       --prometheus-port <PROMETHEUS_PORT>

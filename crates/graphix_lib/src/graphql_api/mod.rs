@@ -16,6 +16,7 @@ use axum::Json;
 use graphix_common_types::ApiKeyPermissionLevel;
 use graphix_store::models::{self, ApiKey};
 use graphix_store::{Store, StoreLoader};
+use tokio::sync::watch;
 use tower_service::Service;
 
 use self::mutations::MutationRoot;
@@ -39,7 +40,6 @@ pub struct RequestState {
 /// Global Graphix state.
 pub struct GraphixState {
     pub store: Store,
-    pub config: Config,
     pub loader_poi: DataLoader<StoreLoader<models::Poi>>,
     pub loader_network: DataLoader<StoreLoader<models::Network>>,
     pub loader_graph_node_collected_version:
@@ -49,10 +49,11 @@ pub struct GraphixState {
     pub loader_block: DataLoader<StoreLoader<models::Block>>,
     pub loader_indexer: DataLoader<StoreLoader<models::Indexer>>,
     pub loader_subgraph_deployment: DataLoader<StoreLoader<models::SgDeployment>>,
+    config_receiver: watch::Receiver<Config>,
 }
 
 impl GraphixState {
-    pub fn new(store: Store, config: Config) -> Self {
+    pub fn new(store: Store, config_receiver: watch::Receiver<Config>) -> Self {
         Self {
             loader_poi: new_data_loader(&store),
             loader_network: new_data_loader(&store),
@@ -62,8 +63,12 @@ impl GraphixState {
             loader_indexer: new_data_loader(&store),
             loader_subgraph_deployment: new_data_loader(&store),
             store,
-            config,
+            config_receiver,
         }
+    }
+
+    pub fn config(&self) -> Config {
+        self.config_receiver.borrow().clone()
     }
 }
 
@@ -84,11 +89,14 @@ pub fn ctx_data<'a>(ctx: &'a Context) -> &'a RequestState {
         .expect("Failed to get API context")
 }
 
-pub async fn axum_router(database_url: &str, config: Config) -> anyhow::Result<axum::Router<()>> {
+pub async fn axum_router(
+    database_url: &str,
+    config_receiver: watch::Receiver<Config>,
+) -> anyhow::Result<axum::Router<()>> {
     use axum::routing::get;
 
     let store = Store::new(database_url).await?;
-    let server_state = GraphixState::new(store.clone(), config.clone());
+    let server_state = GraphixState::new(store.clone(), config_receiver);
 
     Ok(axum::Router::new()
         .route(

@@ -273,7 +273,8 @@ impl Block {
         ctx: &Context<'_>,
     ) -> Option<chrono::DateTime<chrono::Utc>> {
         let network = self.network(ctx_data(ctx)).await.ok()?;
-        let chain_config = ctx_data(ctx).config.chains.get(network.name())?;
+        let config = ctx_data(ctx).config();
+        let chain_config = config.chains.get(network.name())?;
         let speed_config = chain_config.speed.as_ref()?;
 
         let duration_per_block =
@@ -286,7 +287,8 @@ impl Block {
     #[graphql(name = "blockExplorerUrl")]
     pub async fn graphql_block_explorer_url(&self, ctx: &Context<'_>) -> Option<String> {
         let network = self.network(ctx_data(ctx)).await.ok()?;
-        let chain_config = ctx_data(ctx).config.chains.get(network.name())?;
+        let config = ctx_data(ctx).config();
+        let chain_config = config.chains.get(network.name())?;
 
         let block_explorer_url_template = chain_config
             .block_explorer_url_template_for_block

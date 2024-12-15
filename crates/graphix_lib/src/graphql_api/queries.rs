@@ -118,7 +118,7 @@ impl QueryRoot {
         require_permission_level(ctx, ApiKeyPermissionLevel::Admin).await?;
 
         let ctx_data = ctx_data(ctx);
-        let config = ctx_data.store.config().await?;
+        let config = ctx_data.store.current_config().await?;
 
         Ok(config)
     }

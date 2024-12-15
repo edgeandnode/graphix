@@ -20,30 +20,36 @@ use tokio::net::TcpListener;
 use tokio::sync::watch;
 use tracing::*;
 
+async fn load_config(store: &Store) -> anyhow::Result<Config> {
+    info!("Loading configuration from database...");
+    let config_json_opt = store.current_config().await?;
+
+    Ok(if let Some(json) = config_json_opt {
+        serde_json::from_value(json)?
+    } else {
+        warn!("Missing configuration; using empty configuration");
+        Config::default()
+    })
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let cli_options = CliOptions::parse();
 
-    let config = if let Some(path) = cli_options.base_config {
-        info!("Loading configuration file");
-        Config::read(&path)?
-    } else {
-        warn!("No base configuration file provided; using empty configuration");
-        Config::default()
-    };
-
     info!("Initialize store and running migrations");
     let store = Store::new(&cli_options.database_url).await?;
     info!("Store initialization successful");
 
+    let (config_sender, config_receiver) = watch::channel(load_config(&store).await?);
+
     {
-        let config = config.clone();
+        let config_receiver = config_receiver.clone();
         tokio::spawn(async move {
             axum::serve(
                 TcpListener::bind((Ipv4Addr::UNSPECIFIED, cli_options.port)).await?,
-                axum_router(&cli_options.database_url, config).await?,
+                axum_router(&cli_options.database_url, config_receiver).await?,
             )
             .await?;
 
@@ -51,7 +57,7 @@ async fn main() -> anyhow::Result<()> {
         });
     }
 
-    let sleep_duration = Duration::from_secs(config.polling_period_in_seconds);
+    let mut config = load_config(&store).await?;
 
     // Prometheus metrics.
     let _exporter = PrometheusExporter::start(
@@ -63,7 +69,8 @@ async fn main() -> anyhow::Result<()> {
     let (tx_indexers, rx_indexers) = watch::channel(vec![]);
     {
         let store_clone = store.clone();
-        let ctx = GraphixState::new(store_clone.clone(), config.clone());
+
+        let ctx = GraphixState::new(store_clone.clone(), config_receiver.clone());
 
         let networks: Vec<models::NewNetwork> = config
             .chains
@@ -83,6 +90,11 @@ async fn main() -> anyhow::Result<()> {
     }
 
     loop {
+        config = load_config(&store).await?;
+        config_sender.send(config.clone()).ok();
+
+        let sleep_duration = Duration::from_secs(config.polling_period_in_seconds);
+
         info!("New main loop iteration");
         info!("Initialize inputs (indexers, indexing statuses etc.)");
 

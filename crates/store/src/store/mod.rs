@@ -23,8 +23,6 @@ use crate::models::{
 };
 use crate::{models, schema};
 
-const SINGLETON_CONFIG_ID: i32 = 1;
-
 /// An abstraction over all database operations. It uses [`Arc`] internally, so
 /// it's cheaply cloneable.
 #[derive(Clone)]
@@ -90,6 +88,17 @@ pub enum PoiLiveness {
 
 /// Getters.
 impl Store {
+    pub async fn current_config(&self) -> anyhow::Result<Option<serde_json::Value>> {
+        use schema::configs;
+
+        Ok(configs::table
+            .order_by(configs::id.desc())
+            .select(configs::config)
+            .first::<serde_json::Value>(&mut self.conn().await?)
+            .await
+            .optional()?)
+    }
+
     /// Returns subgraph deployments stored in the database that match the
     /// filtering criteria.
     pub async fn sg_deployments(
@@ -134,16 +143,6 @@ impl Store {
         let query = pois::table
             .select(pois::all_columns)
             .filter(pois::poi.eq(poi));
-
-        Ok(query.get_result(&mut self.conn().await?).await.optional()?)
-    }
-
-    pub async fn config(&self) -> anyhow::Result<Option<serde_json::Value>> {
-        use schema::configs;
-
-        let query = configs::table
-            .select(configs::config)
-            .filter(configs::id.eq(SINGLETON_CONFIG_ID));
 
         Ok(query.get_result(&mut self.conn().await?).await.optional()?)
     }
@@ -319,6 +318,17 @@ impl Store {
 
 /// Setters and write operations.
 impl Store {
+    pub async fn overwrite_config(&self, config: serde_json::Value) -> anyhow::Result<()> {
+        use schema::configs;
+
+        diesel::update(configs::table)
+            .set(configs::config.eq(config))
+            .execute(&mut self.conn().await?)
+            .await?;
+
+        Ok(())
+    }
+
     async fn create_master_api_key(&self) -> anyhow::Result<()> {
         let api_key = self
             .create_api_key(None, ApiKeyPermissionLevel::Admin)
@@ -367,20 +377,6 @@ impl Store {
                     .filter(schema::networks::name.eq(network_name))
                     .single_value()
                     .assume_not_null()),
-            ))
-            .execute(&mut self.conn().await?)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn set_config(&self, config: serde_json::Value) -> anyhow::Result<()> {
-        use schema::configs;
-
-        diesel::insert_into(configs::table)
-            .values((
-                configs::id.eq(SINGLETON_CONFIG_ID),
-                configs::config.eq(config),
             ))
             .execute(&mut self.conn().await?)
             .await?;
