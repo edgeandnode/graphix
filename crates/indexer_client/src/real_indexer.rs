@@ -322,11 +322,12 @@ impl IndexerClient for RealIndexer {
 }
 
 mod gql_types {
+    use std::str::FromStr;
+
     use graphix_common_types::{BlockHash, IpfsCid, PoiBytes};
 
     use super::*;
     use crate::BlockPointer;
-    use std::str::FromStr;
 
     pub type JSONObject = serde_json::Value;
     pub type BigInt = String;

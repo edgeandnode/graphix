@@ -344,10 +344,11 @@ mod tests {
     use super::*;
 
     fn network_sg_client_on_ethereum() -> NetworkSubgraphClient {
+        let api_key = std::env::var("GRAPHIX_GATEWAY_API_KEY").unwrap();
         NetworkSubgraphClient::new(
-            "https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-mainnet"
-                .parse()
-                .unwrap(),
+            format!(
+                "https://gateway.thegraph.com/api/{api_key}/subgraphs/id/DZz4kDTdmzWLWsV373w2bSmoar3umKKH9y82SUKr5qmp"
+            ).parse().unwrap(),
             IntCounterVec::new(prometheus::Opts::new("foo", "bar"), &["a", "b"]).unwrap(),
         )
     }

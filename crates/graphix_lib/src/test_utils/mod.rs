@@ -34,6 +34,7 @@ pub fn test_indexer_from_url(url: impl Into<String>) -> Arc<impl IndexerClient> 
 
     let mut addr = url.to_string().into_bytes();
     addr.resize(20, 0);
+    // Create a fake address from the URL.
     let address = <[u8; 20]>::try_from(addr).unwrap().into();
 
     let conf = IndexerConfig {
@@ -53,9 +54,8 @@ pub fn test_indexer_from_url(url: impl Into<String>) -> Arc<impl IndexerClient> 
     ))
 }
 
-/// Test utility function to create a valid `SubgraphDeployment` with an arbitrary deployment
-/// id/ipfs hash.
-pub fn test_deployment_id(deployment: impl Into<String>) -> IpfsCid {
+/// Parses the [`IpfsCid`] of a subgraph deployment.
+pub fn ipfs_cid(deployment: impl Into<String>) -> IpfsCid {
     IpfsCid::from_str(&deployment.into()).unwrap()
 }
 
