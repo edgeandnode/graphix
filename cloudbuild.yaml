@@ -1,3 +1,12 @@
+# Important information
+#
+# As of 2024-12-15, this Cloud Build pipeline doesn't wait for GH Actions to
+# finish running and pushing the latest Docker image to the registry before
+# updating the deployment.
+#
+# In practice, this is hardly a big deal. It just means the latest deployment
+# lags behind by one commit (usually, but can be more).
+
 options:
   machineType: "N1_HIGHCPU_32"
   logging: CLOUD_LOGGING_ONLY
