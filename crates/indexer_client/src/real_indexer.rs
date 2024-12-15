@@ -119,7 +119,7 @@ impl IndexerClient for RealIndexer {
 
     async fn ping(self: Arc<Self>) -> anyhow::Result<()> {
         let request = gql_types::Typename::build_query(gql_types::typename::Variables);
-        self.graphql_query(request).await?;
+        self.graphql_query::<_, serde_json::Value>(request).await?;
         Ok(())
     }
 
