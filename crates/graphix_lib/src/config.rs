@@ -2,10 +2,8 @@
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::Context;
 use graphix_common_types::IndexerAddress;
 use graphix_indexer_client::{IndexerClient, IndexerId, IndexerInterceptor, RealIndexer};
 use graphix_network_sg_client::NetworkSubgraphClient;
@@ -80,13 +78,12 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn read(path: &Path) -> anyhow::Result<Self> {
-        let file_contents = std::fs::read_to_string(path)?;
-        Self::from_str(&file_contents)
-    }
+    #[cfg(test)]
+    pub fn read(path: impl AsRef<std::path::Path>) -> anyhow::Result<Self> {
+        use anyhow::Context;
 
-    pub fn from_str(s: &str) -> anyhow::Result<Self> {
-        serde_yaml::from_str(s).context("invalid config file")
+        let file_contents = std::fs::read_to_string(path)?;
+        serde_yaml::from_str(&file_contents).context("invalid config file")
     }
 
     pub fn indexers(&self) -> Vec<IndexerConfig> {
@@ -152,10 +149,7 @@ impl IndexerId for IndexerConfig {
     }
 
     fn name(&self) -> Option<Cow<str>> {
-        match &self.name {
-            Some(name) => Some(Cow::Borrowed(name)),
-            None => None,
-        }
+        self.name.as_ref().map(|s| Cow::Borrowed(s.as_str()))
     }
 }
 
@@ -299,8 +293,8 @@ mod tests {
 
     #[test]
     fn parse_example_configs() {
-        Config::from_str(include_str!("../../../configs/testnet.graphix.yml")).unwrap();
-        Config::from_str(include_str!("../../../configs/network.graphix.yml")).unwrap();
-        Config::from_str(include_str!("../../../configs/readonly.graphix.yml")).unwrap();
+        Config::read("../../configs/testnet.graphix.yml").unwrap();
+        Config::read("../../configs/network.graphix.yml").unwrap();
+        Config::read("../../configs/readonly.graphix.yml").unwrap();
     }
 }

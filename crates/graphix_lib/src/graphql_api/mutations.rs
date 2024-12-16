@@ -50,7 +50,7 @@ impl MutationRoot {
             .await?;
 
         let report = DivergenceInvestigationReport {
-            uuid: uuid.clone(),
+            uuid,
             status: DivergenceInvestigationStatus::Pending,
             bisection_runs: vec![],
             error: None,

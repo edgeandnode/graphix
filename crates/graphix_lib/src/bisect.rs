@@ -380,7 +380,7 @@ async fn handle_divergence_investigation_request(
     ctx: &GraphixState,
 ) -> DivergenceInvestigationReport {
     let mut report = DivergenceInvestigationReport {
-        uuid: req_uuid.clone(),
+        uuid: *req_uuid,
         status: DivergenceInvestigationStatus::Complete,
         bisection_runs: vec![],
         error: None,

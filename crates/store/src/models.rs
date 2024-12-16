@@ -122,10 +122,7 @@ impl IndexerId for Indexer {
     }
 
     fn name(&self) -> Option<Cow<str>> {
-        match &self.name {
-            Some(name) => Some(Cow::Borrowed(name)),
-            None => None,
-        }
+        self.name.as_ref().map(|s| Cow::Borrowed(s.as_str()))
     }
 }
 
@@ -310,7 +307,7 @@ pub struct DivergingBlock {
 impl From<types::DivergingBlock> for DivergingBlock {
     fn from(block: types::DivergingBlock) -> Self {
         Self {
-            block_number: block.block.number as i64,
+            block_number: block.block.number,
             block_hash: block.block.hash.map(|hash| hash.to_string()),
             proof_of_indexing1: block.proof_of_indexing1.to_string(),
             proof_of_indexing2: block.proof_of_indexing2.to_string(),

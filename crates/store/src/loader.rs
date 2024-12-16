@@ -100,7 +100,6 @@ impl async_graphql::dataloader::Loader<IntId> for StoreLoader<models::Network> {
             .await
             .map_err(|e| e.to_string())?
             .into_iter()
-            .map(|(id, network)| (id, network))
             .collect())
     }
 }

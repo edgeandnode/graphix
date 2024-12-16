@@ -69,7 +69,7 @@ impl ApiKey {
 
     #[graphql(name = "permissionLevel")]
     async fn graphql_permission_level(&self) -> ApiKeyPermissionLevel {
-        self.model.permission_level.clone()
+        self.model.permission_level
     }
 
     #[graphql(name = "notes")]
@@ -246,7 +246,7 @@ impl Block {
     }
 
     pub fn hash(&self) -> common::BlockHash {
-        self.model.hash.clone().into()
+        self.model.hash.clone()
     }
 
     pub async fn network(&self, ctx: &GraphixState) -> Result<Network, String> {
@@ -306,7 +306,7 @@ impl Block {
     /// The block hash, expressed as a hex string with a '0x' prefix.
     #[graphql(name = "hash")]
     async fn graphql_hash(&self) -> common::BlockHash {
-        self.model.hash.clone().into()
+        self.model.hash.clone()
     }
 
     /// The network that this block belongs to.
@@ -325,7 +325,7 @@ pub struct ProofOfIndexing {
 
 impl ProofOfIndexing {
     pub fn hash(&self) -> common::PoiBytes {
-        self.model.poi.clone().into()
+        self.model.poi
     }
 
     pub async fn deployment(&self, ctx: &GraphixState) -> Result<SubgraphDeployment, String> {

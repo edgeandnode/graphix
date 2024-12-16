@@ -76,7 +76,7 @@ impl Store {
     }
 
     pub async fn conn_err_string(&self) -> Result<Object<AsyncPgConnection>, String> {
-        Ok(self.pool.get().await.map_err(|e| e.to_string())?)
+        self.pool.get().await.map_err(|e| e.to_string())
     }
 }
 
@@ -334,7 +334,7 @@ impl Store {
             .create_api_key(None, ApiKeyPermissionLevel::Admin)
             .await?;
 
-        let description = format!("Master API key created during database initialization. Use it to create a new private API key and then delete it for security reasons. `{}`", api_key.api_key.to_string());
+        let description = format!("Master API key created during database initialization. Use it to create a new private API key and then delete it for security reasons. `{}`", api_key.api_key);
         self.modify_api_key(
             &api_key.api_key,
             Some(&description),

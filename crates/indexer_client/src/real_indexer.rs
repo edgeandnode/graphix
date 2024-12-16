@@ -111,10 +111,7 @@ impl IndexerClient for RealIndexer {
     }
 
     fn name(&self) -> Option<Cow<str>> {
-        match &self.name {
-            Some(name) => Some(Cow::Borrowed(name.as_str())),
-            None => None,
-        }
+        self.name.as_ref().map(|s| Cow::Borrowed(s.as_str()))
     }
 
     async fn ping(self: Arc<Self>) -> anyhow::Result<()> {

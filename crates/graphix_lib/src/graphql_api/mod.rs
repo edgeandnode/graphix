@@ -134,10 +134,10 @@ async fn graphql_handler(
         .finish();
 
     let mut service = GraphQL::new(api_schema);
-    Ok(service
+    service
         .call(request)
         .await
-        .map_err(|_| api_key_error("Internal server error"))?)
+        .map_err(|_| api_key_error("Internal server error"))
 }
 
 fn api_key_error(err: impl ToString) -> (StatusCode, Json<serde_json::Value>) {
@@ -164,7 +164,7 @@ async fn require_permission_level(
         .as_ref()
         .ok_or_else(|| anyhow::anyhow!("No API key provided"))?;
 
-    let Some(actual_permission_level) = ctx_data.store.permission_level(&api_key).await? else {
+    let Some(actual_permission_level) = ctx_data.store.permission_level(api_key).await? else {
         return Err(anyhow::anyhow!("No permission level for API key").into());
     };
 
